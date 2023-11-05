@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import {ERC4337} from "@solady/src/accounts/ERC4337.sol";
+import "@forge/Test.sol";
 
 contract Account is ERC4337 {
     /// @dev Constructs
@@ -17,7 +18,7 @@ contract Account is ERC4337 {
         override
         returns (string memory, string memory)
     {
-        return ("NANI", "0.0.0");
+        return ("Milady", "1");
     }
 
     /// @dev Validates userOp
@@ -38,25 +39,35 @@ contract Account is ERC4337 {
         if (userOp.nonce < type(uint64).max) {
             validationData = _validateSignature(userOp, userOpHash);
         } else {
-            validationData = _validateAuth(userOp, userOpHash);
+            validationData = _validateUserOp(userOp, userOpHash, missingAccountFunds);
         }
     }
 
     /// @dev This implementation decodes `nonce` for a 'key'-stored
-    /// authorizer address and selector that performs validation checks.
-    function _validateAuth(UserOperation calldata userOp, bytes32 userOpHash)
-        internal
-        virtual
-        returns (uint256 validationData)
-    {
-        bytes32 result = storageLoad(keccak256(abi.encodePacked(userOp.nonce >> 64)));
-        // ToDo: make sure result is not any priority slots like owner, implementation, etc.
+    /// authorizer that helps perform additional validation checks.
+    function _validateUserOp(
+        UserOperation calldata userOp,
+        bytes32 userOpHash,
+        uint256 missingAccountFunds
+    ) internal virtual returns (uint256 validationData) {
+        console.log("_validateUserOp userOp.nonce key");
+        console.log(userOp.nonce >> 64);
 
-        (bool success, bytes memory retData) = address(bytes20(result)).call(
-            abi.encodeWithSelector(bytes4(result << 224), userOp, userOpHash)
+        storageStore(
+            keccak256(abi.encodePacked(userOp.nonce >> 64)),
+            0xf62849f9a0b5bf2913b396098f7c7019b51a820a000000000000000000000000
         );
 
-        if (!success) validationData = 1;
-        else return abi.decode(retData, (uint256));
+        bytes32 result = storageLoad(keccak256(abi.encodePacked(userOp.nonce >> 64)));
+        Account validator = Account(payable(address(bytes20(result))));
+
+        console.log("_validateUserOp storageLoad result");
+        console.logBytes32(result);
+
+        if (result.length == 20) {
+            validationData = validator.validateUserOp(userOp, userOpHash, missingAccountFunds);
+        } else {
+            validationData = uint256(result);
+        }
     }
 }

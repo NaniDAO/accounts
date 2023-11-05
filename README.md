@@ -14,8 +14,6 @@ Build the foundry project with `forge build`. Run tests with `forge test`. Measu
 lib
 ├─ forge-std — https://github.com/foundry-rs/forge-std
 ├─ solady — https://github.com/vectorized/solady
-script
-├─ Deploy.s.sol — Test Deployment
 src
 ├─ Account — Account Contract
 test
