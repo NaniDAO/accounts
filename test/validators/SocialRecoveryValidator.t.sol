@@ -245,17 +245,8 @@ contract SocialRecoveryValidatorTest is Test {
         userOp.signature =
             abi.encodePacked(_sign(guardian2key, _toEthSignedMessageHash(userOpHash)));
         vm.startPrank(_ENTRY_POINT);
-        uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
-        console.log("validationData", validationData);
-
-        if (validationData == 0) {
-            account.execute(
-                address(account),
-                0 ether,
-                abi.encodeWithSelector(account.transferOwnership.selector, guardian2)
-            );
-        }
-        assertEq(account.owner(), guardian1);
+        vm.expectRevert();
+        account.validateUserOp(userOp, userOpHash, 0);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////

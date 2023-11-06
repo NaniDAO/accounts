@@ -2,7 +2,6 @@
 pragma solidity ^0.8.19;
 
 import {ERC4337} from "@solady/src/accounts/ERC4337.sol";
-import "@forge/Test.sol";
 
 contract Account is ERC4337 {
     /// @dev Constructs
@@ -53,21 +52,21 @@ contract Account is ERC4337 {
         /// @solidity memory-safe-assembly
         assembly {
             calldatacopy(0x00, 0x00, calldatasize())
-            if or(
+            if or( // Checks authorizer return.
                 iszero(eq(returndatasize(), 0x20)),
-                iszero(
+                iszero( // Checks authorizer validation.
                     call(
                         gas(),
-                        shr(96, sload(shl(64, shr(64, calldataload(0x84))))),
+                        shr(96, sload(shl(64, shr(64, /*authorizer*/ calldataload(0x84))))),
                         0,
-                        0x00,
+                        0x00, // Call.
                         calldatasize(),
-                        0x00,
+                        0x00, // Return.
                         0x20
                     )
                 )
-            ) { validationData := iszero(0) }
-            if iszero(validationData) { validationData := mload(0x00) }
+            ) { validationData := iszero(0) } // Failure returns digit.
+            if iszero(validationData) { validationData := mload(0x00) } // Success returns data.
         }
     }
 }
