@@ -54,7 +54,7 @@ contract Account is ERC4337 {
         assembly {
             calldatacopy(0x00, 0x00, calldatasize())
             if or(
-                lt(returndatasize(), 0x20),
+                iszero(eq(returndatasize(), 0x20)),
                 iszero(
                     call(
                         gas(),
