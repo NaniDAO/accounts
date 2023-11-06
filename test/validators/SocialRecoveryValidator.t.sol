@@ -145,8 +145,20 @@ contract SocialRecoveryValidatorTest is Test {
         );*/
     }
 
+    // function testNonce() public {
+    //     uint192 key = type(uint192).max;
+    //     bytes32 keyHash = keccak256(abi.encodePacked(key));
+    //     account.initialize(address(this));
+    //     uint256 nonce = 0 | (uint256(key) << 64);
+    //     uint192 keyFromNonce = uint192(nonce >> 64);
+    //     assertEq(keyFromNonce, key);
+    //     assertEq(keccak256(abi.encodePacked(keyFromNonce)), keyHash);
+    // }
+
     function testSRV() public {
         uint192 key = type(uint192).max;
+        bytes32 keyHash = keccak256(abi.encodePacked(key));
+
         console.log("key");
         console.log(key);
         address[] memory guardians = new address[](3);
@@ -165,7 +177,7 @@ contract SocialRecoveryValidatorTest is Test {
         calls[1].data = abi.encodeWithSelector(
             account.storageStore.selector,
             keccak256(abi.encodePacked(key)),
-            bytes32(abi.encodePacked(address(socialRecoveryValidator)))
+            bytes32(abi.encodePacked(address(socialRecoveryValidator), type(uint48).max - 1, type(uint48).max - 1))
         );
         vm.startPrank(guardian1);
         account.executeBatch(calls);

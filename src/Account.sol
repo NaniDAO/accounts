@@ -53,21 +53,28 @@ contract Account is ERC4337 {
         console.log("_validateUserOp userOp.nonce key");
         console.log(userOp.nonce >> 64);
 
-        storageStore(
-            keccak256(abi.encodePacked(userOp.nonce >> 64)),
-            0xf62849f9a0b5bf2913b396098f7c7019b51a820a000000000000000000000000
-        );
-
-        bytes32 result = storageLoad(keccak256(abi.encodePacked(userOp.nonce >> 64)));
-        Account validator = Account(payable(address(bytes20(result))));
-
+        (address validator, uint256 validAfter, uint256 validUntil) = decodeStorage(storageLoad(keccak256(abi.encodePacked(uint192(userOp.nonce >> 64)))));
+        
         console.log("_validateUserOp storageLoad result");
-        console.logBytes32(result);
-
-        if (result.length == 20) {
-            validationData = validator.validateUserOp(userOp, userOpHash, missingAccountFunds);
+        console.logAddress(validator);
+        console.log(uint256(validAfter));
+        console.log(uint256(validUntil));
+        if (validAfter == type(uint48).max && validUntil == type(uint48).max) {
+            validationData = Account(payable(validator)).validateUserOp(userOp, userOpHash, missingAccountFunds);
         } else {
-            validationData = uint256(result);
+            validationData = packValidationData(validator, validAfter, validUntil);
         }
+    }
+
+    function decodeStorage(bytes32 value) public view  returns (address validator, uint256 validAfter, uint256 validUntil) {
+        console.log("decodeStorage value");
+        console.logBytes32(value);
+        validator = address(bytes20(value));
+        validAfter = uint256(value) << 160;
+        validUntil = uint256(value) << 208;
+    }
+
+    function packValidationData(address validator, uint256 validAfter, uint256 validUntil) public pure returns (uint256 validationData) {
+        return type(uint256).min;
     }
 }
