@@ -112,7 +112,7 @@ contract SocialRecoveryValidatorTest is Test {
         assertEq(guardianThree, address(0));*/
     }
 
-    function testSocialRecovery() public {
+    function testSetGuardians() public {
         vm.startPrank(guardian1);
         vm.deal(address(account), 1 ether);
         address[] memory guardians = new address[](3);
@@ -132,52 +132,31 @@ contract SocialRecoveryValidatorTest is Test {
         assertEq(guardianOne, guardian1);
         assertEq(guardianTwo, guardian2);
         assertEq(guardianThree, guardian3);
-
-        /*UserOperation memory userOp;
-        userOp.sender = address(account);
-        userOp.signature = hex"00";
-        bytes32 userOpHash = keccak256(abi.encode(userOp));
-
-        account.execute(
-            address(socialRecoveryValidator),
-            0 ether,
-            abi.encodeWithSelector(socialRecoveryValidator.validateUserOp.selector, userOpHash, 0)
-        );*/
     }
 
-    // function testNonce() public {
-    //     uint192 key = type(uint192).max;
-    //     bytes32 keyHash = keccak256(abi.encodePacked(key));
-    //     account.initialize(address(this));
-    //     uint256 nonce = 0 | (uint256(key) << 64);
-    //     uint192 keyFromNonce = uint192(nonce >> 64);
-    //     assertEq(keyFromNonce, key);
-    //     assertEq(keccak256(abi.encodePacked(keyFromNonce)), keyHash);
-    // }
-
-    function testSRV() public {
+    function testSocialRecovery() public {
         uint192 key = type(uint192).max;
         bytes32 keyHash = keccak256(abi.encodePacked(key));
 
         console.log("key");
         console.log(key);
-        address[] memory guardians = new address[](3);
-        guardians[0] = guardian1; // Account owner.
-        guardians[1] = guardian2;
-        guardians[2] = guardian3;
-        account.initialize(guardians[0]);
+        address[] memory guardians = new address[](2);
+
+        guardians[0] = guardian2;
+        guardians[1] = guardian3;
+        account.initialize(guardian1);
         NaniAccount.Call[] memory calls = new NaniAccount.Call[](2);
         calls[0].target = address(socialRecoveryValidator);
         calls[0].value = 0 ether;
         calls[0].data =
-            abi.encodeWithSelector(socialRecoveryValidator.install.selector, guardians, 3);
+            abi.encodeWithSelector(socialRecoveryValidator.install.selector, guardians, 2);
 
         calls[1].target = address(account);
         calls[1].value = 0 ether;
         calls[1].data = abi.encodeWithSelector(
             account.storageStore.selector,
-            keccak256(abi.encodePacked(key)),
-            bytes32(abi.encodePacked(address(socialRecoveryValidator), type(uint48).max - 1, type(uint48).max - 1))
+            bytes32(abi.encodePacked(key)),
+            bytes32(abi.encodePacked(address(socialRecoveryValidator)))
         );
         vm.startPrank(guardian1);
         account.executeBatch(calls);
@@ -185,23 +164,98 @@ contract SocialRecoveryValidatorTest is Test {
         bytes memory stored = account.execute(
             address(account),
             0 ether,
-            abi.encodeWithSelector(account.storageLoad.selector, keccak256(abi.encodePacked(key)))
+            abi.encodeWithSelector(account.storageLoad.selector, bytes32(abi.encodePacked(key)))
         );
-        console.log("stored");
-        console.logBytes(stored);
-        console.logBytes32(bytes32(stored));
-        console.log(address(bytes20(bytes32(stored))));
         assertEq(bytes20(bytes32(stored)), bytes20(address(socialRecoveryValidator)));
 
         NaniAccount.UserOperation memory userOp;
         userOp.sender = address(account);
+        userOp.callData = abi.encodeWithSelector(
+            account.execute.selector,
+            address(this),
+            0 ether,
+            abi.encodeWithSelector(account.transferOwnership.selector, guardian2)
+        );
         userOp.nonce = 0 | (uint256(key) << 64);
         console.log(userOp.nonce);
         bytes32 userOpHash = hex"00";
-        userOp.signature = _sign(guardian1key, _toEthSignedMessageHash(userOpHash));
+        userOp.signature = abi.encodePacked(
+            _sign(guardian2key, _toEthSignedMessageHash(userOpHash)),
+            _sign(guardian3key, _toEthSignedMessageHash(userOpHash))
+        );
         vm.startPrank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
-        console.log(address(bytes20(bytes32(validationData))));
+        console.log("validationData", validationData);
+
+        if (validationData == 0) {
+            account.execute(
+                address(account),
+                0 ether,
+                abi.encodeWithSelector(account.transferOwnership.selector, guardian2)
+            );
+        }
+        assertEq(account.owner(), guardian2);
+    }
+
+    function testFailSocialRecovery() public {
+        uint192 key = type(uint192).max;
+        bytes32 keyHash = keccak256(abi.encodePacked(key));
+
+        console.log("key");
+        console.log(key);
+        address[] memory guardians = new address[](2);
+
+        guardians[0] = guardian2;
+        guardians[1] = guardian3;
+        account.initialize(guardian1);
+        NaniAccount.Call[] memory calls = new NaniAccount.Call[](2);
+        calls[0].target = address(socialRecoveryValidator);
+        calls[0].value = 0 ether;
+        calls[0].data =
+            abi.encodeWithSelector(socialRecoveryValidator.install.selector, guardians, 2);
+
+        calls[1].target = address(account);
+        calls[1].value = 0 ether;
+        calls[1].data = abi.encodeWithSelector(
+            account.storageStore.selector,
+            bytes32(abi.encodePacked(key)),
+            bytes32(abi.encodePacked(address(socialRecoveryValidator)))
+        );
+        vm.startPrank(guardian1);
+        account.executeBatch(calls);
+        console.log("socialRecoveryValidator", address(socialRecoveryValidator));
+        bytes memory stored = account.execute(
+            address(account),
+            0 ether,
+            abi.encodeWithSelector(account.storageLoad.selector, bytes32(abi.encodePacked(key)))
+        );
+        assertEq(bytes20(bytes32(stored)), bytes20(address(socialRecoveryValidator)));
+
+        NaniAccount.UserOperation memory userOp;
+        userOp.sender = address(account);
+        userOp.callData = abi.encodeWithSelector(
+            account.execute.selector,
+            address(this),
+            0 ether,
+            abi.encodeWithSelector(account.transferOwnership.selector, guardian2)
+        );
+        userOp.nonce = 0 | (uint256(key) << 64);
+        console.log(userOp.nonce);
+        bytes32 userOpHash = hex"00";
+        userOp.signature =
+            abi.encodePacked(_sign(guardian2key, _toEthSignedMessageHash(userOpHash)));
+        vm.startPrank(_ENTRY_POINT);
+        uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
+        console.log("validationData", validationData);
+
+        if (validationData == 0) {
+            account.execute(
+                address(account),
+                0 ether,
+                abi.encodeWithSelector(account.transferOwnership.selector, guardian2)
+            );
+        }
+        assertEq(account.owner(), guardian1);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////

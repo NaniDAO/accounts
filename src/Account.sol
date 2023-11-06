@@ -28,7 +28,7 @@ contract Account is ERC4337 {
         bytes32 userOpHash,
         uint256 missingAccountFunds
     )
-        public
+        external
         payable
         virtual
         override
@@ -43,38 +43,31 @@ contract Account is ERC4337 {
         }
     }
 
-    /// @dev This implementation decodes `nonce` for a 'key'-stored
-    /// authorizer that helps perform additional validation checks.
-    function _validateUserOp(
-        UserOperation calldata userOp,
-        bytes32 userOpHash,
-        uint256 missingAccountFunds
-    ) internal virtual returns (uint256 validationData) {
-        console.log("_validateUserOp userOp.nonce key");
-        console.log(userOp.nonce >> 64);
-
-        (address validator, uint256 validAfter, uint256 validUntil) = decodeStorage(storageLoad(keccak256(abi.encodePacked(uint192(userOp.nonce >> 64)))));
-        
-        console.log("_validateUserOp storageLoad result");
-        console.logAddress(validator);
-        console.log(uint256(validAfter));
-        console.log(uint256(validUntil));
-        if (validAfter == type(uint48).max && validUntil == type(uint48).max) {
-            validationData = Account(payable(validator)).validateUserOp(userOp, userOpHash, missingAccountFunds);
-        } else {
-            validationData = packValidationData(validator, validAfter, validUntil);
+    // @dev This implementation decodes `nonce` for a 'key'-stored
+    // authorizer that helps perform additional validation checks.
+    function _validateUserOp(UserOperation calldata, bytes32, uint256)
+        internal
+        virtual
+        returns (uint256 validationData)
+    {
+        /// @solidity memory-safe-assembly
+        assembly {
+            calldatacopy(0x00, 0x00, calldatasize())
+            if or(
+                lt(returndatasize(), 0x20),
+                iszero(
+                    call(
+                        gas(),
+                        shr(96, sload(shl(64, shr(64, calldataload(0x84))))),
+                        0,
+                        0x00,
+                        calldatasize(),
+                        0x00,
+                        0x20
+                    )
+                )
+            ) { validationData := iszero(0) }
+            if iszero(validationData) { validationData := mload(0x00) }
         }
-    }
-
-    function decodeStorage(bytes32 value) public view  returns (address validator, uint256 validAfter, uint256 validUntil) {
-        console.log("decodeStorage value");
-        console.logBytes32(value);
-        validator = address(bytes20(value));
-        validAfter = uint256(value) << 160;
-        validUntil = uint256(value) << 208;
-    }
-
-    function packValidationData(address validator, uint256 validAfter, uint256 validUntil) public pure returns (uint256 validationData) {
-        return type(uint256).min;
     }
 }
