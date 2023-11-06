@@ -136,7 +136,6 @@ contract SocialRecoveryValidatorTest is Test {
 
     function testSocialRecovery() public {
         uint192 key = type(uint192).max;
-        bytes32 keyHash = keccak256(abi.encodePacked(key));
 
         console.log("key");
         console.log(key);
@@ -199,7 +198,6 @@ contract SocialRecoveryValidatorTest is Test {
 
     function testFailSocialRecovery() public {
         uint192 key = type(uint192).max;
-        bytes32 keyHash = keccak256(abi.encodePacked(key));
 
         console.log("key");
         console.log(key);

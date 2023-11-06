@@ -3,31 +3,32 @@ pragma solidity ^0.8.19;
 
 import {LibClone} from "@solady/src/utils/LibClone.sol";
 
-/// @notice Simple ERC4337 account factory implementation.
+/// @notice Simple extendable smart account factory implementation.
+/// @author nani.eth (https://github.com/nanidao/account/blob/main/src/AccountFactory.sol)
 /// @author Modified from Solady (https://github.com/vectorized/solady/blob/main/src/accounts/ERC4337Factory.sol)
 contract AccountFactory {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                         IMMUTABLES                         */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @dev Address of the ERC4337 implementation.
-    address public immutable implementation;
+    /// @dev Address of the Account implementation.
+    address internal immutable implementation;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                        CONSTRUCTOR                         */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    constructor(address erc4337) payable {
-        implementation = erc4337;
+    constructor(address account) payable {
+        implementation = account;
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                      DEPLOY FUNCTIONS                      */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @dev Deploys an ERC4337 account with `salt` and returns its deterministic address.
-    /// If the account is already deployed, it will simply return its address.
-    /// Any `msg.value` will simply be forwarded to the account, regardless.
+    /// @dev Deploys an Account with `salt` and returns its deterministic address.
+    /// If the Account is already deployed, it will simply return its address.
+    /// Any `msg.value` will simply be forwarded to the Account, regardless.
     function createAccount(address owner, bytes32 salt) public payable virtual returns (address) {
         // Check that the salt is tied to the owner if required, regardless.
         LibClone.checkStartsWith(salt, owner);
@@ -49,12 +50,12 @@ contract AccountFactory {
         return account;
     }
 
-    /// @dev Returns the deterministic address of the account created via `createAccount`.
+    /// @dev Returns the deterministic address of the Account created via `createAccount`.
     function getAddress(bytes32 salt) public view virtual returns (address) {
         return LibClone.predictDeterministicAddressERC1967(implementation, salt, address(this));
     }
 
-    /// @dev Returns the initialization code hash of the ERC4337 account (a minimal ERC1967 proxy).
+    /// @dev Returns the initialization code hash of the Account (a minimal ERC1967 proxy).
     /// Used for mining vanity addresses with create2crunch.
     function initCodeHash() public view virtual returns (bytes32) {
         return LibClone.initCodeHashERC1967(implementation);
