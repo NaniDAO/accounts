@@ -54,10 +54,10 @@ contract Account is ERC4337 {
         /// @solidity memory-safe-assembly
         assembly {
             calldatacopy(0x00, 0x00, calldatasize())
-            if or( // Checks authorizer return.
+            if or( // Check authorizer returns.
                 iszero(eq(returndatasize(), 0x20)),
-                iszero( // Checks authorizer validation.
-                    call(
+                iszero( // Check authorizer in decoded `nonce`
+                    call( // to forward calldata in `validateUserOp`.
                         gas(),
                         shr(
                             96, /*authorizer*/ sload(shl(64, shr(64, /*nonce*/ calldataload(0x84))))
