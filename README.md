@@ -12,7 +12,7 @@ Build the foundry project with `forge build`. Run tests with `forge test`. Measu
 
 Chain           | Factory                                 | Implementation                          | Commit
 ----------------|-----------------------------------------|-----------------------------------------|------------------------------------------
-base-goerlie    | 0x17c8c526CC73F969f510d20027BF2f96a7f41A2e | 0xd673BdCBCC054f0B149FF0376937f1CE15d9cd2D | [d379a653246d2953489a29413a6c6e59bda1db24](https://github.com/NaniDAO/Account/commit/d379a653246d2953489a29413a6c6e59bda1db24)
+base-goerli    | [0x17c8c526CC73F969f510d20027BF2f96a7f41A2e](https://goerli.basescan.org/address/0x17c8c526cc73f969f510d20027bf2f96a7f41a2e#code) | [0xd673BdCBCC054f0B149FF0376937f1CE15d9cd2D](https://goerli.basescan.org/address/0xd673BdCBCC054f0B149FF0376937f1CE15d9cd2D#code) | [d379a653246d2953489a29413a6c6e59bda1db24](https://github.com/NaniDAO/Account/commit/d379a653246d2953489a29413a6c6e59bda1db24)
 
 
 ## Blueprint
