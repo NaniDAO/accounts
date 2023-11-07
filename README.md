@@ -8,6 +8,13 @@ Run: `curl -L https://foundry.paradigm.xyz | bash && source ~/.bashrc && foundry
 
 Build the foundry project with `forge build`. Run tests with `forge test`. Measure gas with `forge snapshot`. Format with `forge fmt`.
 
+## Deployments
+
+Chain           | Factory                                 | Implementation
+----------------|-----------------------------------------|------------------------------------------
+base-goerlie    | 0x17c8c526CC73F969f510d20027BF2f96a7f41A2e | 0xd673BdCBCC054f0B149FF0376937f1CE15d9cd2D
+
+
 ## Blueprint
 
 ```txt
