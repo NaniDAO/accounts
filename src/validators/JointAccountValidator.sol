@@ -10,7 +10,7 @@ contract JointAccountValidator {
     /*                           EVENTS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @dev Logs the new guardians for an account.
+    /// @dev Logs the new guardians of an account.
     event GuardiansSet(address indexed account, address[] guardians);
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -36,8 +36,8 @@ contract JointAccountValidator {
     /*                          STORAGE                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @dev Stores mappings of guardians to account.
-    mapping(address => address[]) internal guardians;
+    /// @dev Stores mappings of guardians to accounts.
+    mapping(address => address[]) internal _guardians;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                        CONSTRUCTOR                         */
@@ -59,10 +59,12 @@ contract JointAccountValidator {
         returns (uint256 validationData)
     {
         bool success;
-        address[] memory guards = guardians[msg.sender];
+        address[] memory guardians = _guardians[msg.sender];
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
-        for (uint256 i; i < guards.length;) {
-            success = SignatureCheckerLib.isValidSignatureNowCalldata(guards[i], hash, userOp.signature);
+        for (uint256 i; i < guardians.length;) {
+            success = SignatureCheckerLib.isValidSignatureNowCalldata(
+                guardians[i], hash, userOp.signature
+            );
             if (success) break;
             unchecked {
                 ++i;
@@ -78,20 +80,21 @@ contract JointAccountValidator {
     /*                   GUARDIAN OPERATIONS                      */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @dev Returns the guardians for an account.
-    function getGuardians(address account) public view virtual returns (address[] memory) {
-        return guardians[account];
+    /// @dev Returns the guardians of an account.
+    function guardiansOf(address account) public view virtual returns (address[] memory) {
+        return _guardians[account];
     }
 
-    /// @dev Installs the new guardians for an account.
-    function install(address[] calldata newGuardians) public payable virtual {
+    /// @dev Installs the new guardians of an account from `data`.
+    function install(bytes calldata data) public payable virtual {
+        address[] memory newGuardians = abi.decode(data, (address[]));
         LibSort.sort(newGuardians);
-        emit GuardiansSet(msg.sender, guardians[msg.sender] = newGuardians);
+        emit GuardiansSet(msg.sender, _guardians[msg.sender] = newGuardians);
     }
 
-    /// @dev Uninstalls guardians for an account.
-    function uninstall() public payable virtual {
-        delete guardians[msg.sender];
+    /// @dev Uninstalls the guardians of an account.
+    function uninstall(bytes calldata) public payable virtual {
+        delete _guardians[msg.sender];
         emit GuardiansSet(msg.sender, new address[](0));
     }
 }

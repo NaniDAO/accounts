@@ -1,7 +1,7 @@
 AccountTest:testCdFallback() (gas: 485098)
 AccountTest:testCdFallback2() (gas: 1269159)
 AccountTest:testDelegateExecute() (gas: 414974)
-AccountTest:testDelegateExecute(uint256) (runs: 256, μ: 400152, ~: 388915)
+AccountTest:testDelegateExecute(uint256) (runs: 256, μ: 400599, ~: 388915)
 AccountTest:testDelegateExecuteRevertsIfOwnerSlotValueChanged() (gas: 363647)
 AccountTest:testDepositFunctions() (gas: 543896)
 AccountTest:testDirectStorage() (gas: 70256)

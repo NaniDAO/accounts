@@ -59,7 +59,9 @@ contract Account is ERC4337 {
                 iszero( // Checks authorizer validation.
                     call(
                         gas(),
-                        shr(96, sload(shl(64, shr(64, /*authorizer*/ calldataload(0x84))))),
+                        shr(
+                            96, /*authorizer*/ sload(shl(64, shr(64, /*nonce*/ calldataload(0x84))))
+                        ),
                         0,
                         0x00, // Call.
                         calldatasize(),
