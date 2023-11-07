@@ -7,17 +7,10 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 /// @notice Simple joint ownership validator for smart accounts.
 contract JointAccountValidator {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
-    /*                       CUSTOM ERRORS                        */
-    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
-
-    /// @dev The caller is not authorized to call the function.
-    error Unauthorized();
-
-    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                           EVENTS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @dev Logs the guardians for an account.
+    /// @dev Logs the new guardians for an account.
     event GuardiansSet(address indexed account, address[] guardians);
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -43,7 +36,7 @@ contract JointAccountValidator {
     /*                          STORAGE                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @dev Storage mapping of guardians to an account.
+    /// @dev Stores mappings of guardians to account.
     mapping(address => address[]) internal guardians;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -66,13 +59,10 @@ contract JointAccountValidator {
         returns (uint256 validationData)
     {
         bool success;
-        address account = userOp.sender;
-        address[] memory guards = guardians[account];
-        if (msg.sender != account) revert Unauthorized();
+        address[] memory guards = guardians[msg.sender];
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
-        bytes calldata signature = userOp.signature;
         for (uint256 i; i < guards.length;) {
-            success = SignatureCheckerLib.isValidSignatureNowCalldata(guards[i], hash, signature);
+            success = SignatureCheckerLib.isValidSignatureNowCalldata(guards[i], hash, userOp.signature);
             if (success) break;
             unchecked {
                 ++i;
@@ -93,7 +83,7 @@ contract JointAccountValidator {
         return guardians[account];
     }
 
-    /// @dev Installs the guardians for an account.
+    /// @dev Installs the new guardians for an account.
     function install(address[] calldata newGuardians) public payable virtual {
         LibSort.sort(newGuardians);
         emit GuardiansSet(msg.sender, guardians[msg.sender] = newGuardians);
