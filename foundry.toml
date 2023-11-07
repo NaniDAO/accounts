@@ -6,7 +6,7 @@ optimizer_runs = 9_999_999
 
 remappings = [
   "@forge=lib/forge-std/src/",
-  "@solady=lib/solady/",
+  "@solady=lib/solady/"
 ]
 
 [fmt]
