@@ -57,21 +57,22 @@ contract JointValidator {
         virtual
         returns (uint256 validationData)
     {
-        bool success;
         address[] memory guardians = _guardians[msg.sender];
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
         for (uint256 i; i < guardians.length;) {
-            success = SignatureCheckerLib.isValidSignatureNowCalldata(
-                guardians[i], hash, userOp.signature
-            );
-            if (success) break;
+            if (
+                SignatureCheckerLib.isValidSignatureNowCalldata(
+                    guardians[i], hash, userOp.signature
+                )
+            ) validationData = 0x01;
+            break;
             unchecked {
                 ++i;
             }
         }
         /// @solidity memory-safe-assembly
         assembly {
-            validationData := iszero(success)
+            validationData := iszero(validationData)
         }
     }
 
