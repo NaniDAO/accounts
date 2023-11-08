@@ -49,6 +49,9 @@ contract Accounts is ERC4337Factory {
         _delegates[selector] = delegate;
     }
 
+    /// @dev Receives ether (ETH) payables.
+    receive() external payable virtual {}
+
     /// @dev Falls back to delegated peripherals.
     fallback() external payable virtual {
         address delegate = _delegates[msg.sig];
@@ -65,7 +68,4 @@ contract Accounts is ERC4337Factory {
             return(0x00, returndatasize())
         }
     }
-
-    /// @dev Receives ether (ETH) payables.
-    receive() external payable virtual {}
 }
