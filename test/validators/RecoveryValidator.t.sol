@@ -1,36 +1,37 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.19;
 
-import {LibClone} from "@solady/src/utils/LibClone.sol";
-
-import {Account as NaniAccount} from "../../src/Account.sol";
-import {RecoveryValidator} from "../../src/validators/RecoveryValidator.sol";
 import "@forge/Test.sol";
 
+import {LibClone} from "@solady/src/utils/LibClone.sol";
+import {Account as NaniAccount} from "../../src/Account.sol";
+import {RecoveryValidator} from "../../src/validators/RecoveryValidator.sol";
+
 interface IEntryPoint {
+    function getNonce(address sender, uint192 key) external view returns (uint256 nonce);
+
     function getUserOpHash(NaniAccount.UserOperation calldata userOp)
         external
         view
         returns (bytes32);
+
     function handleOps(NaniAccount.UserOperation[] calldata ops, address payable beneficiary)
         external;
-    function getNonce(address sender, uint192 key) external view returns (uint256 nonce);
 }
 
 contract RecoveryValidatorTest is Test {
     address internal constant _ENTRY_POINT = 0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789;
 
-    address erc4337;
+    address internal erc4337;
+    NaniAccount internal account;
+    RecoveryValidator internal socialRecoveryValidator;
 
-    NaniAccount account;
-    RecoveryValidator socialRecoveryValidator;
-
-    address guardian1;
-    uint256 guardian1key;
-    address guardian2;
-    uint256 guardian2key;
-    address guardian3;
-    uint256 guardian3key;
+    address internal guardian1;
+    uint256 internal guardian1key;
+    address internal guardian2;
+    uint256 internal guardian2key;
+    address internal guardian3;
+    uint256 internal guardian3key;
 
     struct _TestTemps {
         bytes32 userOpHash;
@@ -54,6 +55,10 @@ contract RecoveryValidatorTest is Test {
         (guardian1, guardian1key) = makeAddrAndKey("guardian1");
         (guardian2, guardian2key) = makeAddrAndKey("guardian2");
         (guardian3, guardian3key) = makeAddrAndKey("guardian3");
+    }
+
+    function testDeploy() public {
+        new RecoveryValidator();
     }
 
     function testInstall() public {
