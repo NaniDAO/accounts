@@ -87,7 +87,7 @@ contract JointValidator {
         return _guardians[account];
     }
 
-    /// @dev Installs the new guardians of an account from `data`.
+    /// @dev Installs the new guardians of an account.
     function install(address[] calldata guardians) public payable virtual {
         emit GuardiansSet(msg.sender, _guardians[msg.sender] = guardians);
     }
