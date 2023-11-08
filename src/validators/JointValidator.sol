@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.19;
 
-import {LibSort} from "@solady/src/utils/LibSort.sol";
 import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 
 /// @notice Simple joint ownership validator for smart accounts.
@@ -87,9 +86,7 @@ contract JointValidator {
 
     /// @dev Installs the new guardians of an account from `data`.
     function install(bytes calldata data) public payable virtual {
-        address[] memory guardians = abi.decode(data, (address[]));
-        LibSort.sort(guardians);
-        emit GuardiansSet(msg.sender, _guardians[msg.sender] = guardians);
+        emit GuardiansSet(msg.sender, _guardians[msg.sender] = abi.decode(data, (address[])));
     }
 
     /// @dev Uninstalls the guardians of an account.
