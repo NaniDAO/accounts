@@ -5,16 +5,13 @@ import {LibSort} from "@solady/src/utils/LibSort.sol";
 import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 
 /// @notice Simple social recovery validator for smart accounts.
-/// @dev Operationally this validator works as one-time recovery
-/// multisig singleton by allowing accounts to set trusted users
-/// and threshold for these guardians to execute a 4337 operation.
-contract SocialRecoveryValidator {
+/// @dev Operationally this validator works as a one-time recovery
+/// multisig singleton by allowing accounts to set up trusted users
+/// and a threshold for such guardians to execute ERC4337 operations.
+contract RecoveryValidator {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                       CUSTOM ERRORS                        */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
-
-    /// @dev The caller is not authorized to call the function.
-    error Unauthorized();
 
     /// @dev Guardians or threshold are invalid for a setting.
     error InvalidSetting();
@@ -23,10 +20,10 @@ contract SocialRecoveryValidator {
     /*                           EVENTS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @dev Logs the guardians for an account.
+    /// @dev Logs the new guardians of an account.
     event GuardiansSet(address indexed account, address[] guardians);
 
-    /// @dev Logs the guardians' threshold for an account.
+    /// @dev Logs the new guardians' threshold of an account.
     event ThresholdSet(address indexed account, uint256 threshold);
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -52,11 +49,11 @@ contract SocialRecoveryValidator {
     /*                          STORAGE                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @dev Storage mapping of guardians to an account.
-    mapping(address => address[]) internal guardians;
+    /// @dev Stores mappings of guardians to accounts.
+    mapping(address => address[]) internal _guardians;
 
-    /// @dev Storage mapping of thresholds to an account.
-    mapping(address => uint256) public thresholds;
+    /// @dev Stores mappings of thresholds to accounts.
+    mapping(address => uint256) public _thresholds;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                        CONSTRUCTOR                         */
@@ -71,35 +68,32 @@ contract SocialRecoveryValidator {
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @dev Validates ERC4337 userOp with additional auth logic flow among guardians.
+    /// Generally, this should be used to execute `transferOwnership` to backup owner.
     function validateUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint256)
         external
         payable
         virtual
         returns (uint256 validationData)
     {
-        address account = userOp.sender;
-        uint256 threshold = thresholds[account];
-        address[] memory guards = guardians[account];
+        uint256 threshold = _thresholds[userOp.sender];
+        address[] memory guardians = _guardians[userOp.sender];
         bytes[] memory sigs = _splitSignature(userOp.signature);
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
-
-        if (msg.sender != account) revert Unauthorized();
-        if (sigs.length < threshold) revert Unauthorized();
-
+        if (sigs.length < threshold) revert InvalidSetting();
         for (uint256 i; i < threshold;) {
             unchecked {
-                for (uint256 j; j < guards.length;) {
-                    if (SignatureCheckerLib.isValidSignatureNow(guards[j], hash, sigs[i])) {
+                for (uint256 j; j < guardians.length;) {
+                    if (SignatureCheckerLib.isValidSignatureNow(guardians[j], hash, sigs[i])) {
                         ++i;
                         break;
                     } else {
-                        if (j == guards.length - 1) return 0x01;
+                        if (j == (guardians.length - 1)) return 0x01; // Return digit on failure.
                         ++j;
                     }
                 }
             }
         }
-        uninstall();
+        uninstall(); // Uninstall the guardians and threshold of caller if validation succeeded.
     }
 
     /// @dev Returns bytes array from split signature.
@@ -124,35 +118,34 @@ contract SocialRecoveryValidator {
     /*                   GUARDIAN OPERATIONS                      */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @dev Returns the guardians for an account.
-    function getGuardians(address account) public view virtual returns (address[] memory) {
-        return guardians[account];
+    /// @dev Returns the guardians of an account.
+    function guardiansOf(address account) public view virtual returns (address[] memory) {
+        return _guardians[account];
     }
 
-    /// @dev Sets the guardians for an account.
-    function setGuardians(address[] calldata newGuardians) public payable virtual {
-        LibSort.sort(newGuardians);
-        if (thresholds[msg.sender] > newGuardians.length) revert InvalidSetting();
-        emit GuardiansSet(msg.sender, guardians[msg.sender] = newGuardians);
+    /// @dev Sets the new guardians of an account.
+    function setGuardians(address[] memory guardians) public payable virtual {
+        LibSort.sort(guardians);
+        if (_thresholds[msg.sender] > guardians.length) revert InvalidSetting();
+        emit GuardiansSet(msg.sender, _guardians[msg.sender] = guardians);
     }
 
-    /// @dev Sets the guardians' threshold for an account.
+    /// @dev Sets the new guardians' threshold of an account.
     function setThreshold(uint256 threshold) public payable virtual {
-        if (threshold > guardians[msg.sender].length) revert InvalidSetting();
-        emit ThresholdSet(msg.sender, thresholds[msg.sender] = threshold);
+        if (threshold > _guardians[msg.sender].length) revert InvalidSetting();
+        emit ThresholdSet(msg.sender, _thresholds[msg.sender] = threshold);
     }
 
-    /// @dev Installs new guardians and threshold for an account.
-    function install(address[] calldata newGuardians, uint256 threshold) public payable virtual {
-        setGuardians(newGuardians);
+    /// @dev Installs the new guardians and threshold of an account.
+    function install(bytes calldata data) public payable virtual {
+        (uint256 threshold, address[] memory guardians) = abi.decode(data, (uint256, address[]));
+        setGuardians(guardians);
         setThreshold(threshold);
     }
 
-    /// @dev Uninstalls new guardians and threshold for an account.
+    /// @dev Uninstalls the guardians and threshold of an account.
     function uninstall() public payable virtual {
-        delete guardians[msg.sender];
-        delete thresholds[msg.sender];
-        emit GuardiansSet(msg.sender, new address[](0));
-        emit ThresholdSet(msg.sender, 0);
+        emit GuardiansSet(msg.sender, _guardians[msg.sender] = new address[](0));
+        emit ThresholdSet(msg.sender, _thresholds[msg.sender] = 0);
     }
 }

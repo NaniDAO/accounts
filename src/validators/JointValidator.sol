@@ -5,7 +5,7 @@ import {LibSort} from "@solady/src/utils/LibSort.sol";
 import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 
 /// @notice Simple joint ownership validator for smart accounts.
-contract JointAccountValidator {
+contract JointValidator {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                           EVENTS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -87,14 +87,13 @@ contract JointAccountValidator {
 
     /// @dev Installs the new guardians of an account from `data`.
     function install(bytes calldata data) public payable virtual {
-        address[] memory newGuardians = abi.decode(data, (address[]));
-        LibSort.sort(newGuardians);
-        emit GuardiansSet(msg.sender, _guardians[msg.sender] = newGuardians);
+        address[] memory guardians = abi.decode(data, (address[]));
+        LibSort.sort(guardians);
+        emit GuardiansSet(msg.sender, _guardians[msg.sender] = guardians);
     }
 
     /// @dev Uninstalls the guardians of an account.
     function uninstall(bytes calldata) public payable virtual {
-        delete _guardians[msg.sender];
-        emit GuardiansSet(msg.sender, new address[](0));
+        emit GuardiansSet(msg.sender, _guardians[msg.sender] = new address[](0));
     }
 }

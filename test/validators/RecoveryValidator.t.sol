@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import {LibClone} from "@solady/src/utils/LibClone.sol";
 
 import {Account as NaniAccount} from "../../src/Account.sol";
-import {SocialRecoveryValidator} from "../../src/validators/SocialRecoveryValidator.sol";
+import {RecoveryValidator} from "../../src/validators/RecoveryValidator.sol";
 import "@forge/Test.sol";
 
 interface IEntryPoint {
@@ -17,13 +17,13 @@ interface IEntryPoint {
     function getNonce(address sender, uint192 key) external view returns (uint256 nonce);
 }
 
-contract SocialRecoveryValidatorTest is Test {
+contract RecoveryValidatorTest is Test {
     address internal constant _ENTRY_POINT = 0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789;
 
     address erc4337;
 
     NaniAccount account;
-    SocialRecoveryValidator socialRecoveryValidator;
+    RecoveryValidator socialRecoveryValidator;
 
     address guardian1;
     uint256 guardian1key;
@@ -49,7 +49,7 @@ contract SocialRecoveryValidatorTest is Test {
         vm.etch(_ENTRY_POINT, hex"00");
         erc4337 = address(new NaniAccount());
         account = NaniAccount(payable(LibClone.deployERC1967(erc4337)));
-        socialRecoveryValidator = new SocialRecoveryValidator();
+        socialRecoveryValidator = new RecoveryValidator();
 
         (guardian1, guardian1key) = makeAddrAndKey("guardian1");
         (guardian2, guardian2key) = makeAddrAndKey("guardian2");
@@ -66,9 +66,9 @@ contract SocialRecoveryValidatorTest is Test {
         account.execute(
             address(socialRecoveryValidator),
             0 ether,
-            abi.encodeWithSelector(socialRecoveryValidator.install.selector, guardians, 3)
+            abi.encodeWithSelector(RecoveryValidator.install.selector, abi.encode(3, guardians))
         );
-        guardians = socialRecoveryValidator.getGuardians(address(account));
+        guardians = socialRecoveryValidator.guardiansOf(address(account));
         address guardianOne = guardians[0];
         address guardianTwo = guardians[1];
         address guardianThree = guardians[2];
@@ -87,9 +87,11 @@ contract SocialRecoveryValidatorTest is Test {
         account.execute(
             address(socialRecoveryValidator),
             0 ether,
-            abi.encodeWithSelector(socialRecoveryValidator.install.selector, guardians, 3)
+            abi.encodeWithSelector(
+                socialRecoveryValidator.install.selector, abi.encode(3, guardians)
+            )
         );
-        guardians = socialRecoveryValidator.getGuardians(address(account));
+        guardians = socialRecoveryValidator.guardiansOf(address(account));
         address guardianOne = guardians[0];
         address guardianTwo = guardians[1];
         address guardianThree = guardians[2];
@@ -123,9 +125,11 @@ contract SocialRecoveryValidatorTest is Test {
         account.execute(
             address(socialRecoveryValidator),
             0 ether,
-            abi.encodeWithSelector(socialRecoveryValidator.install.selector, guardians, 3)
+            abi.encodeWithSelector(
+                socialRecoveryValidator.install.selector, abi.encode(3, guardians)
+            )
         );
-        guardians = socialRecoveryValidator.getGuardians(address(account));
+        guardians = socialRecoveryValidator.guardiansOf(address(account));
         address guardianOne = guardians[0];
         address guardianTwo = guardians[1];
         address guardianThree = guardians[2];
@@ -147,8 +151,9 @@ contract SocialRecoveryValidatorTest is Test {
         NaniAccount.Call[] memory calls = new NaniAccount.Call[](2);
         calls[0].target = address(socialRecoveryValidator);
         calls[0].value = 0 ether;
-        calls[0].data =
-            abi.encodeWithSelector(socialRecoveryValidator.install.selector, guardians, 2);
+        calls[0].data = abi.encodeWithSelector(
+            socialRecoveryValidator.install.selector, abi.encode(2, guardians)
+        );
 
         calls[1].target = address(account);
         calls[1].value = 0 ether;
@@ -209,8 +214,9 @@ contract SocialRecoveryValidatorTest is Test {
         NaniAccount.Call[] memory calls = new NaniAccount.Call[](2);
         calls[0].target = address(socialRecoveryValidator);
         calls[0].value = 0 ether;
-        calls[0].data =
-            abi.encodeWithSelector(socialRecoveryValidator.install.selector, guardians, 2);
+        calls[0].data = abi.encodeWithSelector(
+            socialRecoveryValidator.install.selector, abi.encode(2, guardians)
+        );
 
         calls[1].target = address(account);
         calls[1].value = 0 ether;
@@ -259,8 +265,9 @@ contract SocialRecoveryValidatorTest is Test {
         NaniAccount.Call[] memory calls = new NaniAccount.Call[](2);
         calls[0].target = address(socialRecoveryValidator);
         calls[0].value = 0 ether;
-        calls[0].data =
-            abi.encodeWithSelector(socialRecoveryValidator.install.selector, guardians, threshold);
+        calls[0].data = abi.encodeWithSelector(
+            socialRecoveryValidator.install.selector, abi.encode(threshold, guardians)
+        );
 
         calls[1].target = address(account);
         calls[1].value = 0 ether;
