@@ -167,9 +167,11 @@ contract RecoveryValidator {
     /// @dev Installs the new guardians of an account from `data`,
     /// sets the threshold by which guardians validate, as well as
     /// an optional userOpHash to limit such validation operations.
-    function install(bytes calldata data) public payable virtual {
-        (uint256 threshold, bytes32 userOpHash, address[] memory guardians) =
-            abi.decode(data, (uint256, bytes32, address[]));
+    function install(uint256 threshold, bytes32 userOpHash, address[] memory guardians)
+        public
+        payable
+        virtual
+    {
         if (guardians.length != 0) {
             LibSort.sort(guardians);
             emit GuardiansSet(msg.sender, _guardians[msg.sender] = guardians);

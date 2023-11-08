@@ -135,11 +135,13 @@ contract DeadlineValidator {
     }
 
     /// @dev Installs the new guardians of an account from `data`,
-    /// sets the deadline from which guardians validate, as well as
+    /// sets the deadline from when guardians validate, as well as
     /// an optional userOpHash to limit such validation operations.
-    function install(bytes calldata data) public payable virtual {
-        (uint256 deadline, bytes32 userOpHash, address[] memory guardians) =
-            abi.decode(data, (uint256, bytes32, address[]));
+    function install(uint256 deadline, bytes32 userOpHash, address[] memory guardians)
+        public
+        payable
+        virtual
+    {
         LibSort.sort(guardians);
         emit DeadlineSet(msg.sender, _deadlines[msg.sender] = deadline);
         emit GuardiansSet(msg.sender, _guardians[msg.sender] = guardians);
