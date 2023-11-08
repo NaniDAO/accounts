@@ -88,12 +88,12 @@ contract JointValidator {
     }
 
     /// @dev Installs the new guardians of an account from `data`.
-    function install(bytes calldata data) public payable virtual {
-        emit GuardiansSet(msg.sender, _guardians[msg.sender] = abi.decode(data, (address[])));
+    function install(address[] calldata guardians) public payable virtual {
+        emit GuardiansSet(msg.sender, _guardians[msg.sender] = guardians);
     }
 
     /// @dev Uninstalls the guardians of an account.
-    function uninstall(bytes calldata) public payable virtual {
+    function uninstall() public payable virtual {
         emit GuardiansSet(msg.sender, _guardians[msg.sender] = new address[](0));
     }
 }
