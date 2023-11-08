@@ -26,6 +26,9 @@ contract RecoveryValidator {
     /// @dev Logs the new guardians' threshold of an account.
     event ThresholdSet(address indexed account, uint256 threshold);
 
+    /// @dev Logs the new userOpHash of an account.
+    event UserOpHashSet(address indexed account, bytes32 userOpHash);
+
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          STRUCTS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
@@ -53,7 +56,10 @@ contract RecoveryValidator {
     mapping(address => address[]) internal _guardians;
 
     /// @dev Stores mappings of thresholds to accounts.
-    mapping(address => uint256) public _thresholds;
+    mapping(address => uint256) internal _thresholds;
+
+    /// @dev Stores mappings of userOpHash(es) to accounts.
+    mapping(address => bytes32) internal _userOpHashes;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                        CONSTRUCTOR                         */
@@ -93,7 +99,14 @@ contract RecoveryValidator {
                 }
             }
         }
-        uninstall(); // Uninstall the guardians and threshold of caller if validation succeeded.
+        // If a guardian validated `userOp` and `userOpHash` is stored
+        // for the caller, assert and check this matches the validated.
+        // This effectively allows this recovery validator to ensure
+        // that only an account's countersigned userOp can execute.
+        if (_userOpHashes[msg.sender] != "") {
+            assert(_userOpHashes[msg.sender] != userOpHash);
+        }
+        uninstall(); // Uninstall the recovery settings.
     }
 
     /// @dev Returns bytes array from split signature.
@@ -123,6 +136,16 @@ contract RecoveryValidator {
         return _guardians[account];
     }
 
+    /// @dev Returns the threshold of an account.
+    function thresholdOf(address account) public view virtual returns (uint256) {
+        return _thresholds[account];
+    }
+
+    /// @dev Returns the userOpHash of an account.
+    function userOpHashOf(address account) public view virtual returns (bytes32) {
+        return _userOpHashes[account];
+    }
+
     /// @dev Sets the new guardians of an account.
     function setGuardians(address[] memory guardians) public payable virtual {
         LibSort.sort(guardians);
@@ -136,16 +159,34 @@ contract RecoveryValidator {
         emit ThresholdSet(msg.sender, _thresholds[msg.sender] = threshold);
     }
 
-    /// @dev Installs the new guardians and threshold of an account.
-    function install(bytes calldata data) public payable virtual {
-        (uint256 threshold, address[] memory guardians) = abi.decode(data, (uint256, address[]));
-        setGuardians(guardians);
-        setThreshold(threshold);
+    /// @dev Sets the new userOpHash of an account.
+    function setUserOpHash(bytes32 userOpHash) public payable virtual {
+        emit UserOpHashSet(msg.sender, _userOpHashes[msg.sender] = userOpHash);
     }
 
-    /// @dev Uninstalls the guardians and threshold of an account.
+    /// @dev Installs the new guardians of an account from `data`,
+    /// sets the threshold by which guardians validate, as well as
+    /// an optional userOpHash to limit such validation operations.
+    function install(bytes calldata data) public payable virtual {
+        (uint256 threshold, bytes32 userOpHash, address[] memory guardians) =
+            abi.decode(data, (uint256, bytes32, address[]));
+        if (guardians.length != 0) {
+            LibSort.sort(guardians);
+            emit GuardiansSet(msg.sender, _guardians[msg.sender] = guardians);
+        }
+        if (guardians.length >= threshold) {
+            emit ThresholdSet(msg.sender, _thresholds[msg.sender] = threshold);
+        }
+        if (userOpHash != "") {
+            emit UserOpHashSet(msg.sender, _userOpHashes[msg.sender] = userOpHash);
+        }
+    }
+
+    /// @dev Uninstalls the guardians, threshold and userOpHash
+    /// of an account such that recovery validation will revert.
     function uninstall() public payable virtual {
         emit GuardiansSet(msg.sender, _guardians[msg.sender] = new address[](0));
         emit ThresholdSet(msg.sender, _thresholds[msg.sender] = 0);
+        emit UserOpHashSet(msg.sender, _userOpHashes[msg.sender] = "");
     }
 }

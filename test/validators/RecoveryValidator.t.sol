@@ -66,7 +66,7 @@ contract RecoveryValidatorTest is Test {
         account.execute(
             address(socialRecoveryValidator),
             0 ether,
-            abi.encodeWithSelector(RecoveryValidator.install.selector, abi.encode(3, guardians))
+            abi.encodeWithSelector(RecoveryValidator.install.selector, abi.encode(3, "", guardians))
         );
         guardians = socialRecoveryValidator.guardiansOf(address(account));
         address guardianOne = guardians[0];
@@ -88,7 +88,7 @@ contract RecoveryValidatorTest is Test {
             address(socialRecoveryValidator),
             0 ether,
             abi.encodeWithSelector(
-                socialRecoveryValidator.install.selector, abi.encode(3, guardians)
+                socialRecoveryValidator.install.selector, abi.encode(3, "", guardians)
             )
         );
         guardians = socialRecoveryValidator.guardiansOf(address(account));
@@ -126,7 +126,7 @@ contract RecoveryValidatorTest is Test {
             address(socialRecoveryValidator),
             0 ether,
             abi.encodeWithSelector(
-                socialRecoveryValidator.install.selector, abi.encode(3, guardians)
+                socialRecoveryValidator.install.selector, abi.encode(3, "", guardians)
             )
         );
         guardians = socialRecoveryValidator.guardiansOf(address(account));
@@ -152,7 +152,7 @@ contract RecoveryValidatorTest is Test {
         calls[0].target = address(socialRecoveryValidator);
         calls[0].value = 0 ether;
         calls[0].data = abi.encodeWithSelector(
-            socialRecoveryValidator.install.selector, abi.encode(2, guardians)
+            socialRecoveryValidator.install.selector, abi.encode(2, "", guardians)
         );
 
         calls[1].target = address(account);
@@ -215,7 +215,7 @@ contract RecoveryValidatorTest is Test {
         calls[0].target = address(socialRecoveryValidator);
         calls[0].value = 0 ether;
         calls[0].data = abi.encodeWithSelector(
-            socialRecoveryValidator.install.selector, abi.encode(2, guardians)
+            socialRecoveryValidator.install.selector, abi.encode(2, "", guardians)
         );
 
         calls[1].target = address(account);
@@ -266,7 +266,7 @@ contract RecoveryValidatorTest is Test {
         calls[0].target = address(socialRecoveryValidator);
         calls[0].value = 0 ether;
         calls[0].data = abi.encodeWithSelector(
-            socialRecoveryValidator.install.selector, abi.encode(threshold, guardians)
+            socialRecoveryValidator.install.selector, abi.encode(threshold, "", guardians)
         );
 
         calls[1].target = address(account);
