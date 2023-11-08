@@ -80,7 +80,7 @@ contract JointValidator {
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @dev Returns the guardians of an account.
-    function guardiansOf(address account) public view virtual returns (address[] memory) {
+    function getGuardians(address account) public view virtual returns (address[] memory) {
         return _guardians[account];
     }
 

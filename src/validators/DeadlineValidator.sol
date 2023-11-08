@@ -104,17 +104,17 @@ contract DeadlineValidator {
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @dev Returns the guardian validation deadline of an account.
-    function deadlineOf(address account) public view virtual returns (uint256) {
+    function getDeadline(address account) public view virtual returns (uint256) {
         return _deadlines[account];
     }
 
     /// @dev Returns the guardians of an account.
-    function guardiansOf(address account) public view virtual returns (address[] memory) {
+    function getGuardians(address account) public view virtual returns (address[] memory) {
         return _guardians[account];
     }
 
     /// @dev Returns the userOpHash of an account.
-    function userOpHashOf(address account) public view virtual returns (bytes32) {
+    function getUserOpHash(address account) public view virtual returns (bytes32) {
         return _userOpHashes[account];
     }
 
