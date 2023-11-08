@@ -64,8 +64,10 @@ contract JointValidator {
                 SignatureCheckerLib.isValidSignatureNowCalldata(
                     guardians[i], hash, userOp.signature
                 )
-            ) validationData = 0x01;
-            break;
+            ) {
+                validationData = 0x01;
+                break;
+            }
             unchecked {
                 ++i;
             }
