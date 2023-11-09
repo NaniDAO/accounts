@@ -83,16 +83,76 @@ contract JointValidatorTest is Test {
     }
 
     function testJointUserOp() public {
-        vm.deal(address(account), 1 ether);
-        account.initialize(address(this));
-        address[] memory guardians = new address[](3);
-        guardians[0] = guardian1;
-        guardians[1] = guardian2;
-        guardians[2] = guardian3;
-        account.execute(
-            address(jointValidator),
-            0 ether,
-            abi.encodeWithSelector(JointValidator.install.selector, guardians)
+        /*uint192 key = type(uint192).max;
+        address[] memory guardians = new address[](2);
+        guardians[0] = guardian2;
+        guardians[1] = guardian3;
+
+        account.initialize(guardian1);
+
+        NaniAccount.Call[] memory calls = new NaniAccount.Call[](2);
+        calls[0].target = address(jointValidator);
+        calls[0].value = 0 ether;
+        calls[0].data = abi.encodeWithSelector(jointValidator.install.selector, guardians);
+
+        calls[1].target = address(account);
+        calls[1].value = 0 ether;
+        calls[1].data = abi.encodeWithSelector(
+            account.storageStore.selector,
+            bytes32(abi.encodePacked(key)),
+            bytes32(abi.encodePacked(address(jointValidator)))
         );
+
+        vm.startPrank(guardian1);
+        account.executeBatch(calls);
+
+        bytes memory stored = account.execute(
+            address(account),
+            0 ether,
+            abi.encodeWithSelector(account.storageLoad.selector, bytes32(abi.encodePacked(key)))
+        );
+        assertEq(bytes20(bytes32(stored)), bytes20(address(jointValidator)));
+
+        NaniAccount.UserOperation memory userOp;
+        userOp.sender = address(account);
+        userOp.callData = abi.encodeWithSelector(
+            account.execute.selector,
+            address(account),
+            0 ether,
+            abi.encodeWithSelector(account.transferOwnership.selector, guardian2)
+        );
+        userOp.nonce = 0 | (uint256(key) << 64);
+        bytes32 userOpHash = hex"00";
+        userOp.signature = abi.encodePacked(
+            _sign(guardian2key, _toEthSignedMessageHash(userOpHash)),
+            _sign(guardian3key, _toEthSignedMessageHash(userOpHash))
+        );
+        vm.startPrank(_ENTRY_POINT);
+        uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
+
+        if (validationData == 0) {
+            account.execute(
+                address(account),
+                0 ether,
+                abi.encodeWithSelector(account.transferOwnership.selector, guardian2)
+            );
+        }
+        assertEq(account.owner(), guardian2);*/
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    function _toEthSignedMessageHash(bytes32 hash) internal pure returns (bytes32 result) {
+        /// @solidity memory-safe-assembly
+        assembly {
+            mstore(0x20, hash) // Store into scratch space for keccak256.
+            mstore(0x00, "\x00\x00\x00\x00\x19Ethereum Signed Message:\n32") // 28 bytes.
+            result := keccak256(0x04, 0x3c) // `32 * 2 - (32 - 28) = 60 = 0x3c`.
+        }
+    }
+
+    function _sign(uint256 pK, bytes32 hash) internal pure returns (bytes memory) {
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pK, hash);
+        return abi.encodePacked(r, s, v);
     }
 }

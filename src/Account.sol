@@ -55,7 +55,7 @@ contract Account is ERC4337 {
         assembly {
             calldatacopy(0x00, 0x00, calldatasize())
             if or( // Check authorizer returns.
-                iszero(eq(returndatasize(), 0x20)),
+                lt(returndatasize(), 0x20), // At least 32 bytes returned.
                 iszero( // Check authorizer in decoded `nonce`
                     call( // to forward calldata in `validateUserOp`.
                         gas(),
