@@ -12,7 +12,7 @@ contract Accounts is ERC4337Factory {
     /// @dev Constructs this factory to deploy the implementation.
     /// Additionally, sets owner account for peripheral concerns.
     constructor(address erc4337, bytes32 salt) payable ERC4337Factory(erc4337) {
-        _OWNER = createAccount{value: msg.value}(tx.origin, salt);
+        _OWNER = createAccount(tx.origin, salt);
     }
 
     /// @dev Delegates peripheral call concerns. Can only be called by the owner.
