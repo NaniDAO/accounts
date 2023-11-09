@@ -15,31 +15,6 @@ contract Accounts is ERC4337Factory {
         _OWNER = ERC4337Factory.createAccount(tx.origin, 0);
     }
 
-    /// @dev Executes a call from this factory for peripheral concerns.
-    function execute(address target, uint256 value, bytes calldata data)
-        public
-        payable
-        virtual
-        returns (bytes memory result)
-    {
-        // Only the owner can call.
-        assert(msg.sender == _OWNER);
-        /// @solidity memory-safe-assembly
-        assembly {
-            result := mload(0x40)
-            calldatacopy(result, data.offset, data.length)
-            if iszero(call(gas(), target, value, result, data.length, codesize(), 0x00)) {
-                // Bubble up the revert if the call reverts.
-                returndatacopy(result, 0x00, returndatasize())
-                revert(result, returndatasize())
-            }
-            mstore(result, returndatasize()) // Store the length.
-            let o := add(result, 0x20)
-            returndatacopy(o, 0x00, returndatasize()) // Copy the returndata.
-            mstore(0x40, add(o, returndatasize())) // Allocate the memory.
-        }
-    }
-
     /// @dev Delegates peripheral call concerns. Can only be called by the owner.
     function delegate(bytes4 selector, address executor) public payable virtual {
         assert(msg.sender == _OWNER);
