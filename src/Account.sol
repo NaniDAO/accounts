@@ -45,7 +45,7 @@ contract Account is ERC4337 {
     }
 
     /// @dev Decodes `userOp.nonce` for a 'key'-stored authorizer account
-    /// that contains extended validation logic and auth for `userOp`.
+    /// that contains extended validation logic and auth for the `userOp`.
     function _validateUserOp(UserOperation calldata, bytes32, uint256)
         internal
         virtual
