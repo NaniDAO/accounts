@@ -19,7 +19,7 @@ contract Account is ERC4337 {
         override
         returns (string memory, string memory)
     {
-        return ("Milady", "1");
+        return ("NANI", "0.0.0");
     }
 
     /// @dev Validates userOp

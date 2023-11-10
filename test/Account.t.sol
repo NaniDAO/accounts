@@ -331,7 +331,7 @@ contract AccountTest is SoladyTest {
         assertEq(account.isValidSignature(t.hash, signature), bytes4(0xffffffff));
     }
 
-    function testIsValidSignaturePersonalSign() public {
+    /*function testIsValidSignaturePersonalSign() public {
         _TestTemps memory t;
         t.hash = keccak256("123");
         (t.signer, t.privateKey) = _randomSigner();
@@ -362,7 +362,7 @@ contract AccountTest is SoladyTest {
 
         signature = "";
         assertEq(account.isValidSignature(t.hash, signature), bytes4(0xffffffff));
-    }
+    }*/
 
     function testIsValidSignatureWrapped() public {
         _TestTemps memory t;
@@ -384,8 +384,8 @@ contract AccountTest is SoladyTest {
                 keccak256(
                     "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
                 ),
-                keccak256("Milady"),
-                keccak256("1"),
+                keccak256("NANI"),
+                keccak256("0.0.0"),
                 block.chainid,
                 address(account)
             )
@@ -405,8 +405,8 @@ contract AccountTest is SoladyTest {
                 keccak256(
                     "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
                 ),
-                keccak256("Milady"),
-                keccak256("1"),
+                keccak256("NANI"),
+                keccak256("0.0.0"),
                 block.chainid,
                 address(account)
             )

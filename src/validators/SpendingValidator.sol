@@ -51,8 +51,8 @@ contract SpendingValidator {
     /// @dev Stores mappings of guardians to accounts.
     mapping(address => address[]) internal _guardians;
 
-    /// @dev Stores mappings of spending plans to accounts.
-    mapping(address => mapping(address => uint256)) _plans;
+    /// @dev Stores mappings of asset spending plans to accounts.
+    mapping(address => mapping(address => uint256)) internal _plans;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                        CONSTRUCTOR                         */
@@ -73,21 +73,24 @@ contract SpendingValidator {
         virtual
         returns (uint256 validationData)
     {
-        // The userOp must be a call to `execute` from `sender` account.
+        // The userOp must be a call to `execute` from sender account.
         assert(bytes4(userOp.callData[:4]) == IAccount.execute.selector);
-        assert(address(bytes20(userOp.callData[4:24])) == userOp.sender);
+
+        address target = address(bytes20(userOp.callData[4:24]));
+        uint256 value = uint256(bytes32(userOp.callData[24:56]));
 
         // The userOp `execute` must be a call to ERC20 `transfer` method.
-        assert(bytes4(userOp.callData[24:28]) == IERC20.transfer.selector);
+        assert(bytes4(userOp.callData[56:60]) == IERC20.transfer.selector);
 
-        // The userOp must `transfer` `to` an `amount` within the `sender` account plan.
-        (address token, address to, uint256 amount) =
-            abi.decode(userOp.callData[28:100], (address, address, uint256));
+        // The userOp must `transfer` `to` an `amount` within the account plan.
+        (address to, uint256 amount) = abi.decode(userOp.callData[60:124], (address, uint256));
+
         // The `amount` must be within plan.
-        _plans[msg.sender][token] >= amount;
+        _plans[msg.sender][target] >= amount;
 
         // The planned spend must be validated by guardians.
         address[] memory guardians = _guardians[msg.sender];
+
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
 
         for (uint256 i; i < guardians.length;) {
