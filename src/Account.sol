@@ -64,8 +64,12 @@ contract Account is ERC4337 {
                     0x00, // Return.
                     0x20
                 )
-            ) { validationData := iszero(0) } // Failure returns digit.
-            if iszero(validationData) { validationData := mload(0x00) } // Success returns data.
+            ) {
+                // Bubble up the revert if the call reverts.
+                returndatacopy(0x00, 0x00, returndatasize())
+                revert(0x00, returndatasize())
+            }
+            validationData := mload(0x00)
         }
     }
 }
