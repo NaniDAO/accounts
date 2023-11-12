@@ -3,14 +3,6 @@ pragma solidity ^0.8.19;
 
 import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 
-/// @notice Smart account interface.
-interface IAccount {
-    function execute(address target, uint256 value, bytes calldata data)
-        external
-        payable
-        returns (bytes memory result);
-}
-
 /// @notice ERC20 token interface.
 interface IERC20 {
     function transfer(address to, uint256 amount) external returns (bool);
@@ -19,15 +11,42 @@ interface IERC20 {
 /// @notice Simple spending plan validator for smart accounts.
 contract SpendingValidator {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                       CUSTOM ERRORS                        */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @dev Spend exceeds the planned allowance for asset.
+    error InvalidAllowance();
+
+    /// @dev Spend is outside planned time range for asset.
+    error InvalidTimestamp();
+
+    /// @dev Calldata is attached to an ether (ETH) spend.
+    error InvalidETHCalldata();
+
+    /// @dev Invalid calldata is attached to asset spend.
+    error InvalidCalldata();
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                           EVENTS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @dev Logs the new guardians of an account.
     event GuardiansSet(address indexed account, address[] guardians);
 
+    /// @dev Logs the new asset spending plans of an account.
+    event PlanSet(address indexed account, address asset, Plan plan);
+
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                          STRUCTS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @dev Asset spending plan struct.
+    struct Plan {
+        uint192 allowance;
+        uint32 validAfter;
+        uint32 validUntil;
+        address[] validTo;
+    }
 
     /// @dev The ERC4337 user operation (userOp) struct.
     struct UserOperation {
@@ -52,7 +71,7 @@ contract SpendingValidator {
     mapping(address => address[]) internal _guardians;
 
     /// @dev Stores mappings of asset spending plans to accounts.
-    mapping(address => mapping(address => uint256)) internal _plans;
+    mapping(address => mapping(address => Plan)) internal _plans;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                        CONSTRUCTOR                         */
@@ -73,26 +92,51 @@ contract SpendingValidator {
         virtual
         returns (uint256 validationData)
     {
-        // The userOp must be a call to `execute` from sender account.
-        assert(bytes4(userOp.callData[:4]) == IAccount.execute.selector);
-
+        // Extract the `target` and ether `value` for calldata.
         address target = address(bytes20(userOp.callData[4:24]));
         uint256 value = uint256(bytes32(userOp.callData[24:56]));
 
-        // The userOp `execute` must be a call to ERC20 `transfer` method.
-        assert(bytes4(userOp.callData[56:60]) == IERC20.transfer.selector);
+        // Extract the plan settings for spending.
+        Plan memory plan = _plans[msg.sender][target];
+        // Ensure that the plan for the asset is active.
+        if (plan.allowance == 0) revert InvalidAllowance();
+        // Ensure that the plan time range for the asset is active.
+        if (block.timestamp < plan.validAfter) revert InvalidTimestamp();
+        if (block.timestamp > plan.validUntil) revert InvalidTimestamp();
 
-        // The userOp must `transfer` `to` an `amount` within the account plan.
-        (address to, uint256 amount) = abi.decode(userOp.callData[60:124], (address, uint256));
+        // If ether `value` included, ensure no calldata,
+        // as well, that the limit of plan is respected.
+        if (value != 0) {
+            if (userOp.callData.length != 0) revert InvalidETHCalldata();
+            plan.allowance -= uint192(value);
+        } else {
+            // The userOp `execute` must be a call to ERC20 `transfer` method.
+            if (bytes4(userOp.callData[56:60]) != IERC20.transfer.selector) {
+                revert InvalidCalldata();
+            }
+            // The userOp must transfer an `amount` within the account plan.
+            (target, value) = abi.decode(userOp.callData[60:124], (address, uint256));
+            plan.allowance -= uint192(value);
+        }
 
-        // The `amount` must be within plan.
-        _plans[msg.sender][target] >= amount;
+        // The planned spend must be to a valid address.
+        // If no `validTo` array, recipients are open.
+        if (plan.validTo.length != 0) {
+            for (uint256 i; i < plan.validTo.length;) {
+                if (plan.validTo[i] == target) {
+                    validationData = 0x01;
+                    break;
+                }
+                unchecked {
+                    ++i;
+                }
+            }
+            if (validationData == 0) revert InvalidCalldata();
+        }
 
         // The planned spend must be validated by guardians.
         address[] memory guardians = _guardians[msg.sender];
-
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
-
         for (uint256 i; i < guardians.length;) {
             if (
                 SignatureCheckerLib.isValidSignatureNowCalldata(
@@ -121,13 +165,42 @@ contract SpendingValidator {
         return _guardians[account];
     }
 
-    /// @dev Installs the new guardians of an account.
-    function install(address[] calldata guardians) public payable virtual {
-        emit GuardiansSet(msg.sender, _guardians[msg.sender] = guardians);
+    /// @dev Returns an asset spending plan of an account.
+    function getPlan(address account, address asset) public view virtual returns (Plan memory) {
+        return _plans[account][asset];
+    }
+
+    /// @dev Sets the new guardians of the caller account.
+    function setGuardians(address[] calldata guardians) public payable virtual {
+        emit GuardiansSet(msg.sender, (_guardians[msg.sender] = guardians));
+    }
+
+    /// @dev Sets an asset spending plan of the caller account.
+    function setPlan(address asset, Plan calldata plan) public payable virtual {
+        emit PlanSet(msg.sender, asset, (_plans[msg.sender][asset] = plan));
+    }
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                 GUARDIAN INSTALLATION                      */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @dev Installs the new guardians of the caller account and asset spending plans.
+    function install(address[] calldata guardians, address[] calldata assets, Plan[] calldata plans)
+        public
+        payable
+        virtual
+    {
+        emit GuardiansSet(msg.sender, (_guardians[msg.sender] = guardians));
+        for (uint256 i; i < assets.length;) {
+            emit PlanSet(msg.sender, assets[i], (_plans[msg.sender][assets[i]] = plans[i]));
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     /// @dev Uninstalls the guardians of an account.
     function uninstall() public payable virtual {
-        emit GuardiansSet(msg.sender, _guardians[msg.sender] = new address[](0));
+        emit GuardiansSet(msg.sender, (_guardians[msg.sender] = new address[](0)));
     }
 }

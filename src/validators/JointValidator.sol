@@ -89,11 +89,11 @@ contract JointValidator {
 
     /// @dev Installs the new guardians of an account.
     function install(address[] calldata guardians) public payable virtual {
-        emit GuardiansSet(msg.sender, _guardians[msg.sender] = guardians);
+        emit GuardiansSet(msg.sender, (_guardians[msg.sender] = guardians));
     }
 
     /// @dev Uninstalls the guardians of an account.
     function uninstall() public payable virtual {
-        emit GuardiansSet(msg.sender, _guardians[msg.sender] = new address[](0));
+        emit GuardiansSet(msg.sender, (_guardians[msg.sender] = new address[](0)));
     }
 }
