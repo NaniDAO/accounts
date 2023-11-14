@@ -37,11 +37,9 @@ contract Account is ERC4337 {
         payPrefund(missingAccountFunds)
         returns (uint256 validationData)
     {
-        if (userOp.nonce < type(uint64).max) {
-            validationData = _validateSignature(userOp, userOpHash);
-        } else {
-            validationData = _validateUserOp();
-        }
+        validationData = userOp.nonce < type(uint64).max
+            ? _validateSignature(userOp, userOpHash)
+            : _validateUserOp();
     }
 
     /// @dev Extends validation
