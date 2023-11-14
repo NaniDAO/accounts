@@ -10,8 +10,8 @@ contract Account is ERC4337 {
     /// this implementation.
     constructor() payable {}
 
-    /// @dev Returns domain name &
-    /// version of implementation.
+    /// @dev Returns domain name
+    /// & version of implementation.
     function _domainNameAndVersion()
         internal
         pure
@@ -42,20 +42,20 @@ contract Account is ERC4337 {
             : _validateUserOp();
     }
 
-    /// @dev Extends validation
-    /// with authorizer plugin.
+    /// @dev Extends validation by forwarding calldata to nonce-key-stored validator.
     function _validateUserOp() internal virtual returns (uint256 validationData) {
         /// @solidity memory-safe-assembly
         assembly {
             calldatacopy(0x00, 0x00, calldatasize())
-            if iszero( // Check authorizer in decoded `nonce`
-                call( // to forward calldata in `validateUserOp`.
+            if iszero(
+                call(
                     gas(),
-                    shr(96, /*authorizer*/ sload(shl(64, shr(64, /*nonce*/ calldataload(0x84))))),
+                    /*validator*/
+                    shr(96, sload(shl(64, /*key*/ shr(64, /*nonce*/ calldataload(0x84))))),
                     0,
-                    0x00, // Call.
+                    0x00,
                     calldatasize(),
-                    0x00, // Return.
+                    0x00,
                     0x20
                 )
             ) {
