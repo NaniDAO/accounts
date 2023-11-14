@@ -10,8 +10,8 @@ contract Account is ERC4337 {
     /// this implementation.
     constructor() payable {}
 
-    /// @dev Returns domain name and
-    /// version of this implementation.
+    /// @dev Returns domain name &
+    /// version of implementation.
     function _domainNameAndVersion()
         internal
         pure
@@ -23,7 +23,7 @@ contract Account is ERC4337 {
     }
 
     /// @dev Validates userOp
-    /// with auth logic flow.
+    /// with nonce handling.
     function validateUserOp(
         UserOperation calldata userOp,
         bytes32 userOpHash,
@@ -40,17 +40,13 @@ contract Account is ERC4337 {
         if (userOp.nonce < type(uint64).max) {
             validationData = _validateSignature(userOp, userOpHash);
         } else {
-            validationData = _validateUserOp(userOp, userOpHash, missingAccountFunds);
+            validationData = _validateUserOp();
         }
     }
 
-    /// @dev Decodes `userOp.nonce` for a 'key'-stored authorizer account
-    /// that contains extended validation logic and auth for the `userOp`.
-    function _validateUserOp(UserOperation calldata, bytes32, uint256)
-        internal
-        virtual
-        returns (uint256 validationData)
-    {
+    /// @dev Extends validation
+    /// with authorizer plugin.
+    function _validateUserOp() internal virtual returns (uint256 validationData) {
         /// @solidity memory-safe-assembly
         assembly {
             calldatacopy(0x00, 0x00, calldatasize())
