@@ -46,7 +46,6 @@ contract JointValidatorTest is Test {
 
     function setUp() public {
         // Etch something onto `_ENTRY_POINT` such that we can deploy the account implementation.
-        vm.createSelectFork(vm.rpcUrl("main"));
         vm.etch(_ENTRY_POINT, hex"00");
         erc4337 = address(new NaniAccount());
         account = NaniAccount(payable(LibClone.deployERC1967(erc4337)));
