@@ -5,16 +5,12 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 
 /// @notice Simple joint ownership validator for smart accounts.
 contract JointValidator {
-    /// `````````````````````````````````````
-    ///         EVENTS
-    /// `````````````````````````````````````
+    /// =========================== EVENTS =========================== ///
 
     /// @dev Logs the new authorizers for an account.
     event AuthorizersSet(address indexed account, address[] authorizers);
 
-    /// `````````````````````````````````````
-    ///         STRUCTS
-    /// `````````````````````````````````````
+    /// ========================== STRUCTS ========================== ///
 
     /// @dev The ERC4337 user operation (userOp) struct.
     struct UserOperation {
@@ -31,24 +27,18 @@ contract JointValidator {
         bytes signature;
     }
 
-    /// `````````````````````````````````````
-    ///         STORAGE
-    /// `````````````````````````````````````
+    /// ========================== STORAGE ========================== ///
 
     /// @dev Stores mappings of authorizers to accounts.
     mapping(address => address[]) internal _authorizers;
 
-    /// `````````````````````````````````````
-    ///         CONSTRUCTOR
-    /// `````````````````````````````````````
+    /// ======================== CONSTRUCTOR ======================== ///
 
     /// @dev Constructs
     /// this implementation.
     constructor() payable {}
 
-    /// `````````````````````````````````````
-    ///         VALIDATION OPERATIONS
-    /// `````````````````````````````````````
+    /// =================== VALIDATION OPERATIONS =================== ///
 
     /// @dev Validates ERC4337 userOp with additional auth logic flow among authorizers.
     function validateUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint256)
@@ -78,9 +68,7 @@ contract JointValidator {
         }
     }
 
-    /// `````````````````````````````````````
-    ///         AUTHORIZER OPERATIONS
-    /// `````````````````````````````````````
+    /// =================== AUTHORIZER OPERATIONS =================== ///
 
     /// @dev Returns the authorizers for an account.
     function get(address account) public view virtual returns (address[] memory) {
