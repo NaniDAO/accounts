@@ -30,8 +30,8 @@ contract SpendingValidator {
     /*                           EVENTS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @dev Logs the new guardians of an account.
-    event GuardiansSet(address indexed account, address[] guardians);
+    /// @dev Logs the new authorizers of an account.
+    event AuthorizersSet(address indexed account, address[] authorizers);
 
     /// @dev Logs the new asset spending plans of an account.
     event PlanSet(address indexed account, address asset, Plan plan);
@@ -67,8 +67,8 @@ contract SpendingValidator {
     /*                          STORAGE                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @dev Stores mappings of guardians to accounts.
-    mapping(address => address[]) internal _guardians;
+    /// @dev Stores mappings of authorizers to accounts.
+    mapping(address => address[]) internal _authorizers;
 
     /// @dev Stores mappings of asset spending plans to accounts.
     mapping(address => mapping(address => Plan)) internal _plans;
@@ -85,7 +85,7 @@ contract SpendingValidator {
     /*                   VALIDATION OPERATIONS                    */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @dev Validates ERC4337 userOp with additional auth logic flow among guardians.
+    /// @dev Validates ERC4337 userOp with additional auth logic flow among authorizers.
     function validateUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint256)
         external
         payable
@@ -134,13 +134,13 @@ contract SpendingValidator {
             if (validationData == 0) revert InvalidCalldata();
         }
 
-        // The planned spend must be validated by guardians.
-        address[] memory guardians = _guardians[msg.sender];
+        // The planned spend must be validated by authorizers.
+        address[] memory authorizers = _authorizers[msg.sender];
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
-        for (uint256 i; i < guardians.length;) {
+        for (uint256 i; i < authorizers.length;) {
             if (
                 SignatureCheckerLib.isValidSignatureNowCalldata(
-                    guardians[i], hash, userOp.signature
+                    authorizers[i], hash, userOp.signature
                 )
             ) {
                 validationData = 0x01;
@@ -157,12 +157,12 @@ contract SpendingValidator {
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
-    /*                   GUARDIAN OPERATIONS                      */
+    /*                    AUTHORIZER OPERATIONS                   */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @dev Returns the guardians of an account.
-    function getGuardians(address account) public view virtual returns (address[] memory) {
-        return _guardians[account];
+    /// @dev Returns the authorizers of an account.
+    function getAuthorizers(address account) public view virtual returns (address[] memory) {
+        return _authorizers[account];
     }
 
     /// @dev Returns an asset spending plan of an account.
@@ -170,9 +170,9 @@ contract SpendingValidator {
         return _plans[account][asset];
     }
 
-    /// @dev Sets the new guardians of the caller account.
-    function setGuardians(address[] calldata guardians) public payable virtual {
-        emit GuardiansSet(msg.sender, (_guardians[msg.sender] = guardians));
+    /// @dev Sets the new authorizers of the caller account.
+    function setauthorizers(address[] calldata authorizers) public payable virtual {
+        emit AuthorizersSet(msg.sender, (_authorizers[msg.sender] = authorizers));
     }
 
     /// @dev Sets an asset spending plan of the caller account.
@@ -181,16 +181,16 @@ contract SpendingValidator {
     }
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
-    /*                 GUARDIAN INSTALLATION                      */
+    /*                   AUTHORIZER INSTALLATION                  */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @dev Installs the new guardians of the caller account and asset spending plans.
-    function install(address[] calldata guardians, address[] calldata assets, Plan[] calldata plans)
-        public
-        payable
-        virtual
-    {
-        emit GuardiansSet(msg.sender, (_guardians[msg.sender] = guardians));
+    /// @dev Installs the new authorizers of the caller account and asset spending plans.
+    function install(
+        address[] calldata authorizers,
+        address[] calldata assets,
+        Plan[] calldata plans
+    ) public payable virtual {
+        emit AuthorizersSet(msg.sender, (_authorizers[msg.sender] = authorizers));
         for (uint256 i; i < assets.length;) {
             emit PlanSet(msg.sender, assets[i], (_plans[msg.sender][assets[i]] = plans[i]));
             unchecked {
@@ -199,8 +199,8 @@ contract SpendingValidator {
         }
     }
 
-    /// @dev Uninstalls the guardians of an account.
+    /// @dev Uninstalls the authorizers of an account.
     function uninstall() public payable virtual {
-        emit GuardiansSet(msg.sender, (_guardians[msg.sender] = new address[](0)));
+        emit AuthorizersSet(msg.sender, (_authorizers[msg.sender] = new address[](0)));
     }
 }
