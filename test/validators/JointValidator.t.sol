@@ -73,7 +73,7 @@ contract JointValidatorTest is Test {
             0 ether,
             abi.encodeWithSelector(JointValidator.install.selector, guardians)
         );
-        guardians = jointValidator.getGuardians(address(account));
+        guardians = jointValidator.get(address(account));
         address guardianOne = guardians[0];
         address guardianTwo = guardians[1];
         address guardianThree = guardians[2];
