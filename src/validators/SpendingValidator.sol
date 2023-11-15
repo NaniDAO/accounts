@@ -30,10 +30,10 @@ contract SpendingValidator {
     /*                           EVENTS                           */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @dev Logs the new authorizers of an account.
+    /// @dev Logs the new authorizers for an account.
     event AuthorizersSet(address indexed account, address[] authorizers);
 
-    /// @dev Logs the new asset spending plans of an account.
+    /// @dev Logs the new asset spending plans for an account.
     event PlanSet(address indexed account, address asset, Plan plan);
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
@@ -160,22 +160,22 @@ contract SpendingValidator {
     /*                    AUTHORIZER OPERATIONS                   */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @dev Returns the authorizers of an account.
+    /// @dev Returns the authorizers for an account.
     function getAuthorizers(address account) public view virtual returns (address[] memory) {
         return _authorizers[account];
     }
 
-    /// @dev Returns an asset spending plan of an account.
+    /// @dev Returns an asset spending plan for an account.
     function getPlan(address account, address asset) public view virtual returns (Plan memory) {
         return _plans[account][asset];
     }
 
-    /// @dev Sets the new authorizers of the caller account.
+    /// @dev Sets the new authorizers for the caller account.
     function setauthorizers(address[] calldata authorizers) public payable virtual {
         emit AuthorizersSet(msg.sender, (_authorizers[msg.sender] = authorizers));
     }
 
-    /// @dev Sets an asset spending plan of the caller account.
+    /// @dev Sets an asset spending plan for the caller account.
     function setPlan(address asset, Plan calldata plan) public payable virtual {
         emit PlanSet(msg.sender, asset, (_plans[msg.sender][asset] = plan));
     }
@@ -199,7 +199,7 @@ contract SpendingValidator {
         }
     }
 
-    /// @dev Uninstalls the authorizers of an account.
+    /// @dev Uninstalls the authorizers for an account.
     function uninstall() public payable virtual {
         emit AuthorizersSet(msg.sender, (_authorizers[msg.sender] = new address[](0)));
     }
