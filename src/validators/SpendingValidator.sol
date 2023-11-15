@@ -184,7 +184,7 @@ contract SpendingValidator {
     /*                   AUTHORIZER INSTALLATION                  */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-    /// @dev Installs the new authorizers of the caller account and asset spending plans.
+    /// @dev Installs the new authorizers and spending plans for the caller account.
     function install(
         address[] calldata authorizers,
         address[] calldata assets,
@@ -199,7 +199,7 @@ contract SpendingValidator {
         }
     }
 
-    /// @dev Uninstalls the authorizers for an account.
+    /// @dev Uninstalls the authorizers for the caller account.
     function uninstall() public payable virtual {
         emit AuthorizersSet(msg.sender, (_authorizers[msg.sender] = new address[](0)));
     }
