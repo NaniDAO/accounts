@@ -46,22 +46,22 @@ contract Account is ERC4337 {
     function _validateUserOp() internal virtual returns (uint256 validationData) {
         /// @solidity memory-safe-assembly
         assembly {
-            calldatacopy(0x00, 0x00, calldatasize())
+            calldatacopy(validationData, validationData, calldatasize())
             if iszero(
                 call(
                     gas(),
                     /*validator*/
                     shr(96, sload(shl(64, /*key*/ shr(64, /*nonce*/ calldataload(0x84))))),
-                    0,
-                    0x00,
+                    validationData,
+                    validationData,
                     calldatasize(),
                     validationData,
                     0x20
                 )
             ) {
                 // Bubble up the revert if the call reverts.
-                returndatacopy(0x00, 0x00, returndatasize())
-                revert(0x00, returndatasize())
+                returndatacopy(validationData, validationData, returndatasize())
+                revert(validationData, returndatasize())
             }
             validationData := mload(validationData)
         }
