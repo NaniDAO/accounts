@@ -35,7 +35,9 @@ contract Account is ERC4337 {
         override
         onlyEntryPoint
         payPrefund(missingAccountFunds)
-        returns (uint256)
+        returns (
+            uint256 // `validationData`.
+        )
     {
         return userOp.nonce < type(uint64).max
             ? _validateSignature(userOp, userOpHash)
@@ -63,7 +65,7 @@ contract Account is ERC4337 {
                 returndatacopy(0x00, 0x00, returndatasize())
                 revert(0x00, returndatasize())
             }
-            return(0x00, 0x20)
+            return(0x00, 0x20) // `validationData`.
         }
     }
 }
