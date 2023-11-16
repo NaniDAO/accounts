@@ -35,9 +35,9 @@ contract Account is ERC4337 {
         override
         onlyEntryPoint
         payPrefund(missingAccountFunds)
-        returns (uint256 validationData)
+        returns (uint256)
     {
-        validationData = userOp.nonce < type(uint64).max
+        return userOp.nonce < type(uint64).max
             ? _validateSignature(userOp, userOpHash)
             : _validateUserOp();
     }
