@@ -15,6 +15,14 @@ contract Accounts is ERC4337Factory {
         _OWNER = createAccount(tx.origin, salt);
     }
 
+    /// @dev Tracks mappings of peripheral call executors the owner has delegated to.
+    function get(bytes4 selector) public view virtual returns (address executor) {
+        /// @solidity memory-safe-assembly
+        assembly {
+            executor := sload(selector)
+        }
+    }
+
     /// @dev Delegates peripheral call concerns. Can only be called by the owner.
     function delegate(bytes4 selector, address executor) public payable virtual {
         assert(msg.sender == _OWNER);
