@@ -44,7 +44,7 @@ contract Accounts is ERC4337Factory {
                 delegatecall(
                     gas(),
                     /*executor*/
-                    sload(/*selector*/calldataload(0x00)),
+                    sload( /*selector*/ calldataload(0x00)),
                     0x20,
                     calldatasize(),
                     0,

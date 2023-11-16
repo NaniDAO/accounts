@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.19;
 
-
 import {Account} from "../src/Account.sol";
 import {Accounts} from "../src/Accounts.sol";
 
@@ -42,18 +41,26 @@ contract AccountsTest is Test {
         accounts.get(foo.foo.selector);
         assertEq(address(foo), accounts.get(foo.foo.selector));
 
-        uint256 foos = Foo(address(accounts)).foo();
-        //assertEq(Foo(address(accounts)).foos(), 1);
+        Foo(address(accounts)).foo();
+
+        accounts.delegate(foo.getFoos.selector, address(foo));
+        accounts.get(foo.getFoos.selector);
+        assertEq(address(foo), accounts.get(foo.getFoos.selector));
+
+        assertEq(Foo(address(accounts)).getFoos(), 1);
     }
 }
 
 contract Foo {
     uint256 public foos;
 
-    function foo() public returns (uint256 foos) {
-        console.log("foo called");
+    function foo() public {
         unchecked {
-            foos = ++foos;
+            foos++;
         }
+    }
+
+    function getFoos() public view returns (uint256) {
+        return foos;
     }
 }
