@@ -63,7 +63,7 @@ contract Account is ERC4337 {
                 returndatacopy(validationData, validationData, returndatasize())
                 revert(validationData, returndatasize())
             }
-            validationData := mload(validationData)
+            return(validationData, 0x20)
         }
     }
 }
