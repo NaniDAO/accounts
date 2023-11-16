@@ -42,28 +42,28 @@ contract Account is ERC4337 {
             : _validateUserOp();
     }
 
-    /// @dev Extends validation by forwarding calldata to nonce-key-stored validator.
-    function _validateUserOp() internal virtual returns (uint256 validationData) {
+    /// @dev Extends validation by forwarding calldata to validator.
+    function _validateUserOp() internal virtual returns (uint256) {
         /// @solidity memory-safe-assembly
         assembly {
-            calldatacopy(validationData, validationData, calldatasize())
+            calldatacopy(0x00, 0x00, calldatasize())
             if iszero(
                 call(
                     gas(),
                     /*validator*/
                     shr(96, sload(shl(64, /*key*/ shr(64, /*nonce*/ calldataload(0x84))))),
-                    validationData,
-                    validationData,
+                    0,
+                    0x00,
                     calldatasize(),
-                    validationData,
+                    0x00,
                     0x20
                 )
             ) {
                 // Bubble up the revert if the call reverts.
-                returndatacopy(validationData, validationData, returndatasize())
-                revert(validationData, returndatasize())
+                returndatacopy(0x00, 0x00, returndatasize())
+                revert(0x00, returndatasize())
             }
-            return(validationData, 0x20)
+            return(0x00, 0x20)
         }
     }
 }
