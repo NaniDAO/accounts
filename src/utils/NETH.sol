@@ -19,6 +19,7 @@ contract NETH {
 
     /// ================== DELEGATE OPERATIONS ==================== ///
 
+    /// @dev Tracks mappings of peripheral call concerns delegated by the owner.
     function delegates(bytes4 selector) public view virtual returns (address result) {
         /// @solidity memory-safe-assembly
         assembly {
