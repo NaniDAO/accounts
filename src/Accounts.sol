@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import {ERC4337Factory} from "@solady/src/accounts/ERC4337Factory.sol";
+import "@forge/Test.sol";
 
 /// @notice Simple extendable smart account factory implementation.
 /// @author nani.eth (https://github.com/nanidao/accounts/blob/main/src/Accounts.sol)
@@ -33,19 +34,20 @@ contract Accounts is ERC4337Factory {
     }
 
     /// @dev Falls back to delegated calls.
-    fallback() external payable virtual {
-        /// @solidity memory-safe-assembly
+    fallback(bytes calldata) external returns (bytes memory) {
+        // @solidity memory-safe-assembly
         assembly {
-            calldatacopy(0x00, 0x00, calldatasize())
+            calldatacopy(0x00, 0x00, 0x04)
+            calldatacopy(0x20, 0x00, calldatasize())
             // Forwards the calldata to `executor` via delegatecall.
             if iszero(
                 delegatecall(
                     gas(),
                     /*executor*/
-                    sload( /*selector*/ shr(224, calldataload(0))),
-                    0x00,
+                    sload(/*selector*/calldataload(0x00)),
+                    0x20,
                     calldatasize(),
-                    codesize(),
+                    0,
                     0x00
                 )
             ) {
