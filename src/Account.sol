@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import {ERC4337} from "@solady/src/accounts/ERC4337.sol";
 
 /// @notice Simple extendable smart account implementation.
-/// @author nani.eth (https://github.com/nanidao/account/blob/main/src/Account.sol)
+/// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/Account.sol)
 contract Account is ERC4337 {
     /// @dev Constructs
     /// this implementation.
