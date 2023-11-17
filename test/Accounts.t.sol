@@ -13,24 +13,24 @@ contract AccountsTest is Test {
 
     function setUp() public {
         erc4337 = new Account();
-        accounts = new Accounts(address(erc4337), bytes32(0));
+        accounts = new Accounts(address(erc4337));
         owner = accounts.getAddress(bytes32(0));
     }
 
     function testDeploy() public {
         Account account = new Account();
-        new Accounts(address(account), bytes32(0));
+        new Accounts(address(account));
     }
 
     function testDelegate(bytes4 selector, address executor) public {
         vm.prank(owner);
-        accounts.delegate(selector, executor);
+        accounts.set(selector, executor);
         accounts.get(selector);
         assertEq(executor, accounts.get(selector));
     }
 
     function testFailDelegate(bytes4 selector, address executor) public {
-        accounts.delegate(selector, executor);
+        accounts.set(selector, executor);
     }
 
     function testDelegatedFunc(bytes32 key) public {
@@ -42,13 +42,13 @@ contract AccountsTest is Test {
         console.log("foo", address(foo));
 
         vm.startPrank(owner);
-        accounts.delegate(foo.foo.selector, address(foo));
+        accounts.set(foo.foo.selector, address(foo));
         accounts.get(foo.foo.selector);
         assertEq(address(foo), accounts.get(foo.foo.selector));
 
         Foo(address(accounts)).foo(key);
 
-        accounts.delegate(foo.getFoos.selector, address(foo));
+        accounts.set(foo.getFoos.selector, address(foo));
         accounts.get(foo.getFoos.selector);
         assertEq(address(foo), accounts.get(foo.getFoos.selector));
 

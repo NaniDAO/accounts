@@ -11,8 +11,8 @@ contract Accounts is ERC4337Factory {
 
     /// @dev Constructs this factory to deploy the implementation.
     /// Additionally, sets owner account for peripheral concerns.
-    constructor(address erc4337, bytes32 salt) payable ERC4337Factory(erc4337) {
-        _OWNER = createAccount(tx.origin, salt);
+    constructor(address erc4337) payable ERC4337Factory(erc4337) {
+        _OWNER = createAccount(tx.origin, bytes32(0));
     }
 
     /// @dev Tracks mappings of selectors to executors the owner has delegated to.
@@ -23,8 +23,8 @@ contract Accounts is ERC4337Factory {
         }
     }
 
-    /// @dev Delegates peripheral call concerns. Can only be called by the owner.
-    function delegate(bytes4 selector, address executor) public payable virtual {
+    /// @dev Delegates peripheral call concerns. Can only be called by owner.
+    function set(bytes4 selector, address executor) public payable virtual {
         assert(msg.sender == _OWNER);
         /// @solidity memory-safe-assembly
         assembly {
