@@ -33,34 +33,39 @@ contract AccountsTest is Test {
         accounts.delegate(selector, executor);
     }
 
-    function testDelegatedFunc() public {
+    function testDelegatedFunc(bytes32 key) public {
+        if (key == bytes32(0)) {
+            return;
+        }
+
         Foo foo = new Foo();
+        console.log("foo", address(foo));
 
         vm.startPrank(owner);
         accounts.delegate(foo.foo.selector, address(foo));
         accounts.get(foo.foo.selector);
         assertEq(address(foo), accounts.get(foo.foo.selector));
 
-        Foo(address(accounts)).foo();
+        Foo(address(accounts)).foo(key);
 
         accounts.delegate(foo.getFoos.selector, address(foo));
         accounts.get(foo.getFoos.selector);
         assertEq(address(foo), accounts.get(foo.getFoos.selector));
 
-        assertEq(Foo(address(accounts)).getFoos(), 1);
+        assertEq(Foo(address(accounts)).getFoos(key), 1);
     }
 }
 
 contract Foo {
-    uint256 public foos;
+    mapping(bytes32 => uint256) public foos;
 
-    function foo() public {
+    function foo(bytes32 key) public {
         unchecked {
-            foos++;
+            foos[key]++;
         }
     }
 
-    function getFoos() public view returns (uint256) {
-        return foos;
+    function getFoos(bytes32 key) public view returns (uint256) {
+        return foos[key];
     }
 }

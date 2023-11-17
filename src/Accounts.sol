@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import {ERC4337Factory} from "@solady/src/accounts/ERC4337Factory.sol";
 
 /// @notice Simple extendable smart account factory implementation.
-/// @author nani.eth (https://github.com/nanidao/accounts/blob/main/src/Accounts.sol)
+/// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/Accounts.sol)
 contract Accounts is ERC4337Factory {
     /// @dev Holds an immutable owner.
     address internal immutable _OWNER;
@@ -42,7 +42,7 @@ contract Accounts is ERC4337Factory {
                 delegatecall(
                     gas(),
                     /*executor*/
-                    sload( /*selector*/ calldataload(0)),
+                    sload( /*selector*/ shl(224, shr(224, calldataload(0)))),
                     0x00,
                     calldatasize(),
                     codesize(),
