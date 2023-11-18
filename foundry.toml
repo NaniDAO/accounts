@@ -5,15 +5,15 @@ optimizer = true
 optimizer_runs = 9_999_999
 
 remappings = [
-  "@forge=lib/forge-std/src/",
-  "@solady=lib/solady/"
+  "@solady=lib/solady/",
+  "@forge=lib/forge-std/src/"
 ]
-
-[fmt]
-line_length = 100 
 
 [profile.via-ir]
 via_ir = true
+
+[fmt]
+line_length = 100
 
 [rpc_endpoints]
 main = "https://rpc.ankr.com/eth"

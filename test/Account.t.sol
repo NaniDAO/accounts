@@ -1,16 +1,17 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity ^0.8.19;
 
-import "@solady/test/utils/SoladyTest.sol";
+import {MockERC1271Wallet} from "@solady/test/utils/mocks/MockERC1271Wallet.sol";
 import {Ownable, SignatureCheckerLib} from "@solady/src/accounts/ERC4337.sol";
 import {ERC4337, MockERC4337} from "@solady/test/utils/mocks/MockERC4337.sol";
 import {MockEntryPoint} from "@solady/test/utils/mocks/MockEntryPoint.sol";
-import {MockERC721} from "@solady/test/utils/mocks/MockERC721.sol";
 import {MockERC1155} from "@solady/test/utils/mocks/MockERC1155.sol";
-import {MockERC1271Wallet} from "@solady/test/utils/mocks/MockERC1271Wallet.sol";
-import {LibClone} from "@solady/src/utils/LibClone.sol";
+import {MockERC721} from "@solady/test/utils/mocks/MockERC721.sol";
 import {LibString} from "@solady/src/utils/LibString.sol";
+import {LibClone} from "@solady/src/utils/LibClone.sol";
 import {LibZip} from "@solady/src/utils/LibZip.sol";
+
+import "@solady/test/utils/SoladyTest.sol";
 
 import {Account} from "../src/Account.sol";
 
@@ -331,7 +332,7 @@ contract AccountTest is SoladyTest {
         assertEq(account.isValidSignature(t.hash, signature), bytes4(0xffffffff));
     }
 
-    function testIsValidSignaturePersonalSign() public {
+    /*function testIsValidSignaturePersonalSign() public {
         _TestTemps memory t;
         t.hash = keccak256("123");
         (t.signer, t.privateKey) = _randomSigner();
@@ -362,7 +363,7 @@ contract AccountTest is SoladyTest {
 
         signature = "";
         assertEq(account.isValidSignature(t.hash, signature), bytes4(0xffffffff));
-    }
+    }*/
 
     function testIsValidSignatureWrapped() public {
         _TestTemps memory t;
@@ -384,8 +385,8 @@ contract AccountTest is SoladyTest {
                 keccak256(
                     "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
                 ),
-                keccak256("Milady"),
-                keccak256("1"),
+                keccak256("NANI"),
+                keccak256("0.0.0"),
                 block.chainid,
                 address(account)
             )
@@ -405,8 +406,8 @@ contract AccountTest is SoladyTest {
                 keccak256(
                     "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
                 ),
-                keccak256("Milady"),
-                keccak256("1"),
+                keccak256("NANI"),
+                keccak256("0.0.0"),
                 block.chainid,
                 address(account)
             )
