@@ -10,9 +10,11 @@ Build the foundry project with `forge build`. Run contract tests with `forge tes
 
 ## Deployments
 
+***v0.0.0***
+
 Chain           | Factory                                 | Implementation                          | Commit
 ----------------|-----------------------------------------|-----------------------------------------|------------------------------------------
-base-goerli    | [0x17c8c526CC73F969f510d20027BF2f96a7f41A2e](https://goerli.basescan.org/address/0x17c8c526cc73f969f510d20027bf2f96a7f41a2e#code) | [0xd673BdCBCC054f0B149FF0376937f1CE15d9cd2D](https://goerli.basescan.org/address/0xd673BdCBCC054f0B149FF0376937f1CE15d9cd2D#code) | [d379a653246d2953489a29413a6c6e59bda1db24](https://github.com/NaniDAO/Account/commit/d379a653246d2953489a29413a6c6e59bda1db24)
+Ethereum, Base, Goerli, Base-Goerli    | [0x000000000000dD366cc2E4432bB998e41DFD47C7](https://etherscan.io/address/0x000000000000dD366cc2E4432bB998e41DFD47C7#code) | [0x0000000000001C05075915622130c16f6febC541](https://etherscan.io/address/0x0000000000001C05075915622130c16f6febC541#code) | [77bc49fdf9f9695af1971cc6573500dfc7fb9786](https://github.com/NaniDAO/Account/commit/77bc49fdf9f9695af1971cc6573500dfc7fb9786)
 
 ## Blueprint
 
