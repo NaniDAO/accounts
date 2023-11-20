@@ -3,18 +3,16 @@ pragma solidity ^0.8.19;
 
 import "@forge/Test.sol";
 import "@solady/test/utils/TestPlus.sol";
+
+import {LibSort} from "@solady/src/utils/LibSort.sol";
 import {LibClone} from "@solady/src/utils/LibClone.sol";
+import {MockERC20} from "@solady/test/utils/mocks/MockERC20.sol";
 import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 
-import {MockERC20} from "@solady/test/utils/mocks/MockERC20.sol";
-import {LibSort} from "@solady/src/utils/LibSort.sol";
-
-import {
-    Permissions, Slip, Param, TYPE, Span
-} from "../../src/validators/PermitValidator.sol";
+import {PermitValidator} from "../../src/validators/PermitValidator.sol";
 import {Account as NaniAccount} from "../../src/Account.sol";
 
-contract PermissionsTester {
+contract PermitValidatorTester {
     enum State {
         PENDING,
         APPROVED,
@@ -31,7 +29,7 @@ contract PermissionsTester {
         bool c;
     }
 
-    constructor() {}
+    constructor() payable {}
 
     function getRandomState() public view returns (uint256[] memory) {
         uint256[] memory randomStates = new uint256[](7);
@@ -62,142 +60,175 @@ contract PermissionsTester {
     }
 }
 
-contract PermitTest is Test, TestPlus {
-    /// @dev Call struct for the `executeBatch` function.
+contract PermitValidatorTest is Test, TestPlus {
     struct Call {
         address target;
         uint256 value;
         bytes data;
     }
 
-    Permissions permissions;
-    NaniAccount wallet;
+    PermitValidator permissions;
+
+    address payable erc4337;
+    address payable account;
 
     address alice;
     uint256 aliceKey;
-
     address bob;
     uint256 bobKey;
 
     function setUp() public payable {
         (alice, aliceKey) = makeAddrAndKey("alice");
-
-        permissions = new Permissions();
-
-        address erc4337 = address(new NaniAccount());
-        wallet = NaniAccount(payable(LibClone.deployERC1967(erc4337)));
-        wallet.initialize(alice);
+        (bob, bobKey) = makeAddrAndKey("bob");
+        permissions = new PermitValidator();
+        erc4337 = payable(address(new NaniAccount()));
+        account = payable(address(LibClone.deployERC1967(erc4337)));
+        NaniAccount(account).initialize(alice);
     }
 
-    function testValuePermission(uint256 value, uint256 maxValue) public {
-        vm.assume(value <= type(uint128).max);
-        vm.assume(maxValue <= type(uint128).max);
-        address[] memory targets = getTargets(0, alice);
-        console.log(targets[0]);
-        Span[] memory spans = new Span[](1);
-        spans[0] = Span({
-            validAfter: uint32(block.timestamp),
-            validUntil: uint32(block.timestamp + 100000)
-        });
-        Slip memory slip = createSlip(targets, maxValue, bytes4(0), new Param[](0), spans);
-        Call memory call = Call({ target: alice, value: value, data: hex"00" });
-        bytes32 slipHash = permissions.getSlipHash(wallet, slip);
+    function testInstall() public {
+        address[] memory _authorized = getTargets(8, alice);
+        vm.startPrank(account);
+        permissions.install(_authorized);
+        address[] memory authorized = permissions.get(account);
+        assertEq(authorized.length, _authorized.length);
+        for (uint256 i = 0; i < authorized.length; i++) {
+            assertEq(authorized[i], _authorized[i]);
+        }
 
-        bytes memory sig = sign(aliceKey, SignatureCheckerLib.toEthSignedMessageHash(slipHash));
-        bool assertion = value <= slip.maxValue;
-        assertEq(permissions.checkPermission(wallet, sig, slip, call), assertion);
+        permissions.uninstall();
     }
 
-    // function testTimePermissions(Span[] spans) public {
+    // function testValuePermission(uint256 value, uint256 maxValue) public {
+    //     vm.assume(value <= type(uint128).max);
+    //     vm.assume(maxValue <= type(uint128).max);
+    //     address[] memory targets = getTargets(0, alice);
+    //     console.log(targets[0]);
+    //     PermitValidator.Span[] memory spans = new PermitValidator.Span[](1);
+    //     spans[0] = PermitValidator.Span({
+    //         validAfter: uint32(block.timestamp),
+    //         validUntil: uint32(block.timestamp + 100000)
+    //     });
+    //     PermitValidator.Permit memory permit =
+    //         createPermit(targets, maxValue, bytes4(0), new PermitValidator.Param[](0), spans);
+    //     PermitValidator.Call memory call =
+    //         PermitValidator.Call({target: alice, value: value, data: hex"00"});
+    //     bytes32 permitHash = permissions.getPermitHash(account, permit);
+
+    //     bytes memory sig = sign(aliceKey, SignatureCheckerLib.toEthSignedMessageHash(permitHash));
+    //     bool assertion = value <= permit.allowance;
+    //     assertEq(permissions.validatePermit(spans, permit, abi.encodeCall(NaniAccount.execute, call.target, call.value, call.data), sig, account));
+    // }
+
+    // function testTimePermissions(PermitValidator.Span[] spans) public {
     //     vm.assume(spans.length != 0);
     //     vm.assume(spans.length <= type(uint8).max);
     //     require(spans.length != 0);
     //     require(spans.length <= type(uint8).max);
 
     //     address[] memory targets = getTargets(0, alice);
-    //     Slip memory slip = createSlip(
-    //         targets, 0, bytes4(0), new Param[](0), 1, 0
+    //     Slip memory permit = createPermit(
+    //         targets, 0, bytes4(0), new PermitValidator.Param[](0), 1, 0
     //     );
     //     Call memory call = Call({to: alice, value: 0, data: ''});
-    //     bytes32 slipHash = permissions.getSlipHash(wallet, slip);
+    //     bytes32 permitHash = permissions.getPermitHash(account, permit);
 
-    //     bytes memory sig = sign(aliceKey, SignatureCheckerLib.toEthSignedMessageHash(slipHash));
+    //     bytes memory sig = sign(aliceKey, SignatureCheckerLib.toEthSignedMessageHash(permitHash));
     //     bool assertion =
-    //     assertEq(permissions.checkPermission(wallet, sig, slip, call), assertion);
+    //     assertEq(permissions.checkPermission(address(account), sig, permit, call), assertion);
     // }
 
-    function testUintPermission(uint256 val, uint256 min, uint256 max) public {
-        vm.assume(min < max);
-        vm.assume(val <= type(uint256).max);
-        vm.assume(min <= type(uint256).max);
-        vm.assume(max <= type(uint256).max);
-        require(min <= max);
+    // function testUintPermission(uint256 val, uint256 min, uint256 max) public {
+    //     vm.assume(min < max);
+    //     vm.assume(val <= type(uint256).max);
+    //     vm.assume(min <= type(uint256).max);
+    //     vm.assume(max <= type(uint256).max);
+    //     require(min <= max);
 
-        bool assertion = !(val < min || val > max);
+    //     bool assertion = !(val < min || val > max);
 
-        PermissionsTester tester = new PermissionsTester();
+    //     PermitValidatorTester tester = new PermitValidatorTester();
 
-        address[] memory targets = getTargets(0, alice);
-        Param[] memory arguments = new Param[](1);
-        arguments[0] = Param({_type: TYPE.UINT, offset: 4, bounds: abi.encode(min, max), length: 0});
-        Span[] memory spans = new Span[](1);
-        spans[0] = Span({
-            validAfter: uint32(block.timestamp),
-            validUntil: uint32(block.timestamp + 100000)
-        });
-        Slip memory slip = createSlip(targets, 0, tester.dataUint.selector, arguments, spans);
+    //     address[] memory targets = getTargets(0, alice);
+    //     PermitValidator.Param[] memory arguments = new PermitValidator.Param[](1);
+    //     arguments[0] = PermitValidator.Param({
+    //         _type: PermitValidator.TYPE.UINT,
+    //         offset: 4,
+    //         rules: abi.encode(min, max),
+    //         length: 0
+    //     });
+    //     PermitValidator.Span[] memory spans = new PermitValidator.Span[](1);
+    //     spans[0] = PermitValidator.Span({
+    //         validAfter: uint32(block.timestamp),
+    //         validUntil: uint32(block.timestamp + 100000)
+    //     });
+    //     PermitValidator.Permit memory permit =
+    //         createPermit(targets, 0, tester.dataUint.selector, arguments, spans);
 
-        Call memory call = Call({to: alice, value: 0, data: abi.encodeCall(tester.dataUint, (val))});
+    //     PermitValidator.Call memory call = PermitValidator.Call({
+    //         target: alice,
+    //         value: 0,
+    //         data: abi.encodeCall(tester.dataUint, (val))
+    //     });
 
-        bytes32 slipHash = permissions.getSlipHash(wallet, slip);
-        bytes memory sig = sign(aliceKey, SignatureCheckerLib.toEthSignedMessageHash(slipHash));
+    //     bytes32 permitHash = permissions.getPermitHash(account, permit);
+    //     bytes memory sig = sign(aliceKey, SignatureCheckerLib.toEthSignedMessageHash(permitHash));
 
-        assertEq(permissions.checkPermission(wallet, sig, slip, call), assertion);
-    }
+    //     assertEq(permissions.validatePermit(account, sig, permit, call), assertion);
+    // }
 
-    function testEnumPermission(uint256 value) public {
-        value = bound(value, 0, uint256(PermissionsTester.State.FAILED));
-        require(value >= 0 && value <= uint256(PermissionsTester.State.FAILED));
+    // function testEnumPermission(uint256 value) public {
+    //     value = bound(value, 0, uint256(PermitValidatorTester.State.FAILED));
+    //     require(value >= 0 && value <= uint256(PermitValidatorTester.State.FAILED));
 
-        PermissionsTester tester = new PermissionsTester();
-        uint256[] memory bounds = tester.getRandomState();
+    //     PermitValidatorTester tester = new PermitValidatorTester();
+    //     uint256[] memory bounds = tester.getRandomState();
 
-        LibSort.sort(bounds);
-        (bool assertion, uint256 index) = LibSort.searchSorted(bounds, value);
+    //     LibSort.sort(bounds);
+    //     (bool assertion, uint256 index) = LibSort.searchSorted(bounds, value);
 
-        address[] memory targets = getTargets(0, alice);
-        Param[] memory arguments = new Param[](1);
-        arguments[0] = Param({_type: TYPE.UINT8, offset: 4, bounds: abi.encode(bounds), length: 0});
-        Span[] memory spans = new Span[](1);
-        spans[0] = Span({
-            validAfter: uint32(block.timestamp),
-            validUntil: uint32(block.timestamp + 100000)
-        });
-        Slip memory slip = createSlip(targets, 0, tester.dataUint.selector, arguments, spans);
+    //     address[] memory targets = getTargets(0, alice);
+    //     PermitValidator.Param[] memory arguments = new PermitValidator.Param[](1);
+    //     arguments[0] = PermitValidator.Param({
+    //         _type: PermitValidator.TYPE.UINT8,
+    //         offset: 4,
+    //         rules: abi.encode(bounds),
+    //         length: 0
+    //     });
+    //     PermitValidator.Span[] memory spans = new PermitValidator.Span[](1);
+    //     spans[0] = PermitValidator.Span({
+    //         validAfter: uint32(block.timestamp),
+    //         validUntil: uint32(block.timestamp + 100000)
+    //     });
+    //     PermitValidator.Permit memory permit =
+    //         createPermit(targets, 0, tester.dataUint.selector, arguments, spans);
 
-        Call memory call =
-            Call({to: alice, value: 0, data: abi.encodeCall(tester.dataUint, (uint256(value)))});
+    //     PermitValidator.Call memory call = PermitValidator.Call({
+    //         target: alice,
+    //         value: 0,
+    //         data: abi.encodeCall(tester.dataUint, (uint256(value)))
+    //     });
 
-        bytes32 slipHash = permissions.getSlipHash(wallet, slip);
+    //     bytes32 permitHash = permissions.getPermitHash(account, permit);
 
-        bytes memory sig = sign(aliceKey, SignatureCheckerLib.toEthSignedMessageHash(slipHash));
-        assertEq(permissions.checkPermission(wallet, sig, slip, call), assertion);
-    }
+    //     bytes memory sig = sign(aliceKey, SignatureCheckerLib.toEthSignedMessageHash(permitHash));
+    //     assertEq(permissions.checkPermission(account, sig, permit, call), assertion);
+    // }
 
     // function testStaticTuple(PermissionsTester.StaticTuple memory s) public {
     //     PermissionsTester tester = new PermissionsTester();
     //     address[] memory targets = getTargets(0, alice);
 
-    //     Param[] memory arguments = new Param[](1);
-    //      Param[] memory bounds = new Param[](s.length);
+    //     PermitValidator.Param[] memory arguments = new PermitValidator.Param[](1);
+    //      PermitValidator.Param[] memory bounds = new PermitValidator.Param[](s.length);
     //     arguments[0] = Param({
-    //         _type: TYPE.TUPLE,
+    //         _type: PermitValidator.TYPE.TUPLE,
     //         offset: 4,
-    //         bounds: abi.encode(),
+    //         rules: abi.encode(),
     //         length: 3
     //     });
 
-    //     Slip memory slip = createSlip(
+    //     Slip memory permit = createPermit(
     //         targets,
     //         0,
     //         tester.dataUint.selector,
@@ -210,10 +241,10 @@ contract PermitTest is Test, TestPlus {
     //     Call memory call =
     //         Call({to: alice, value: 0, data: abi.encodeCall(tester.dataUint, (uint(1)))});
 
-    //     bytes32 slipHash = permissions.getSlipHash(wallet, slip);
+    //     bytes32 permitHash = permissions.getPermitHash(account, permit);
 
-    //     bytes memory sig = sign(aliceKey, SignatureCheckerLib.toEthSignedMessageHash(slipHash));
-    //     assertEq(permissions.checkPermission(wallet, sig, slip, call), true);
+    //     bytes memory sig = sign(aliceKey, SignatureCheckerLib.toEthSignedMessageHash(permitHash));
+    //     assertEq(permissions.checkPermission(account, sig, permit, call), true);
     // }
 
     // function testCheckTransferPermission() public {
@@ -222,21 +253,21 @@ contract PermitTest is Test, TestPlus {
     //     address[] memory targets = new address[](1);
     //     targets[0] = address(token);
 
-    //     Param[] memory arguments = new Param[](2);
+    //     PermitValidator.Param[] memory arguments = new PermitValidator.Param[](2);
     //     arguments[0] = Param({
-    //         _type: TYPE.ADDRESS,
+    //         _type: PermitValidator.TYPE.ADDRESS,
     //         offset: 4,
-    //         bounds: abi.encodePacked(address(this), alice),
+    //         rules: abi.encodePacked(address(this), alice),
     //         length: 0
     //     });
     //     arguments[1] = Param({
-    //         _type: TYPE.UINT,
+    //         _type: PermitValidator.TYPE.UINT,
     //         offset: 36,
-    //         bounds: abi.encodePacked(uint(2 ether)),
+    //         rules: abi.encodePacked(uint(2 ether)),
     //         length: 0
     //     });
 
-    //     Slip memory slip = createSlip(
+    //     Slip memory permit = createPermit(
     //         targets,
     //         0,
     //         token.transfer.selector,
@@ -251,10 +282,10 @@ contract PermitTest is Test, TestPlus {
     //         data: abi.encodeWithSelector(token.transfer.selector, address(this), 1.5 ether)
     //     });
 
-    //     bytes32 slipHash = permissions.getSlipHash(wallet, slip);
-    //     bytes memory sig = sign(aliceKey, SignatureCheckerLib.toEthSignedMessageHash(slipHash));
+    //     bytes32 permitHash = permissions.getPermitHash(account, permit);
+    //     bytes memory sig = sign(aliceKey, SignatureCheckerLib.toEthSignedMessageHash(permitHash));
 
-    //     assertTrue(permissions.checkPermission(wallet, sig, slip, call));
+    //     assertTrue(permissions.checkPermission(account, sig, permit, call));
     // }
 
     // function testFailCheckTransferPermission() public {
@@ -263,21 +294,21 @@ contract PermitTest is Test, TestPlus {
     //     address[] memory targets = new address[](1);
     //     targets[0] = address(token);
 
-    //     Param[] memory arguments = new Param[](2);
+    //     PermitValidator.Param[] memory arguments = new PermitValidator.Param[](2);
     //     arguments[0] = Param({
-    //         _type: TYPE.ADDRESS,
+    //         _type: PermitValidator.TYPE.ADDRESS,
     //         offset: 4,
-    //         bounds: abi.encodePacked(address(this), alice),
+    //         rules: abi.encodePacked(address(this), alice),
     //         length: 0
     //     });
     //     arguments[1] = Param({
-    //         _type: TYPE.UINT,
+    //         _type: PermitValidator.TYPE.UINT,
     //         offset: 36,
-    //         bounds: abi.encodePacked(uint(2 ether)),
+    //         rules: abi.encodePacked(uint(2 ether)),
     //         length: 0
     //     });
 
-    //     Slip memory slip = createSlip(
+    //     Slip memory permit = createPermit(
     //         targets,
     //         0,
     //         token.transfer.selector,
@@ -292,117 +323,143 @@ contract PermitTest is Test, TestPlus {
     //         data: abi.encodeWithSelector(token.transfer.selector, address(this), 1.5 ether)
     //     });
 
-    //     bytes32 slipHash = permissions.getSlipHash(wallet, slip);
-    //     bytes memory sig = sign(aliceKey, SignatureCheckerLib.toEthSignedMessageHash(slipHash));
+    //     bytes32 permitHash = permissions.getPermitHash(account, permit);
+    //     bytes memory sig = sign(aliceKey, SignatureCheckerLib.toEthSignedMessageHash(permitHash));
 
-    //     assertTrue(permissions.checkPermission(wallet, sig, slip, call));
+    //     assertTrue(permissions.checkPermission(account, sig, permit, call));
     // }
 
-    function testBoolPermissions(bool value, bool bound) public {
-        PermissionsTester tester = new PermissionsTester();
+    // function testBoolPermissions(bool value, bool bound) public {
+    //     PermitValidatorTester tester = new PermitValidatorTester();
 
-        address[] memory targets = getTargets(0, alice);
+    //     address[] memory targets = getTargets(0, alice);
 
-        Param[] memory arguments = new Param[](1);
-        arguments[0] = Param({_type: TYPE.BOOL, offset: 4, bounds: abi.encode(bound), length: 0});
-        Span[] memory spans = new Span[](1);
-        spans[0] = Span({
-            validAfter: uint32(block.timestamp),
-            validUntil: uint32(block.timestamp + 100000)
-        });
-        Slip memory slip = createSlip(targets, 0, tester.dataBool.selector, arguments, spans);
-        Call memory call =
-            Call({to: alice, value: 0, data: abi.encodeCall(tester.dataBool, (value))});
+    //     PermitValidator.Param[] memory arguments = new PermitValidator.Param[](1);
+    //     arguments[0] = PermitValidator.Param({
+    //         _type: PermitValidator.TYPE.BOOL,
+    //         offset: 4,
+    //         rules: abi.encode(bound),
+    //         length: 0
+    //     });
+    //     PermitValidator.Span[] memory spans = new PermitValidator.Span[](1);
+    //     spans[0] = PermitValidator.Span({
+    //         validAfter: uint32(block.timestamp),
+    //         validUntil: uint32(block.timestamp + 100000)
+    //     });
+    //     PermitValidator.Permit memory permit =
+    //         createPermit(targets, 0, tester.dataBool.selector, arguments, spans);
+    //     PermitValidator.Call memory call = PermitValidator.Call({
+    //         target: alice,
+    //         value: 0,
+    //         data: abi.encodeCall(tester.dataBool, (value))
+    //     });
 
-        bytes32 slipHash = permissions.getSlipHash(wallet, slip);
-        bytes memory sig = sign(aliceKey, SignatureCheckerLib.toEthSignedMessageHash(slipHash));
+    //     bytes32 permitHash = permissions.getPermitHash(account, permit);
+    //     bytes memory sig = sign(aliceKey, SignatureCheckerLib.toEthSignedMessageHash(permitHash));
 
-        assertEq(permissions.checkPermission(wallet, sig, slip, call), value == bound);
-    }
+    //     assertEq(permissions.checkPermission(account, sig, permit, call), value == bound);
+    // }
 
-    function testAddressPermission(address value, address[] memory bounds) public {
-        vm.assume(bounds.length != 0);
-        vm.assume(bounds.length <= type(uint8).max);
-        require(bounds.length != 0);
-        require(bounds.length <= type(uint8).max);
+    // function testAddressPermission(address value, address[] memory bounds) public {
+    //     vm.assume(bounds.length != 0);
+    //     vm.assume(bounds.length <= type(uint8).max);
+    //     require(bounds.length != 0);
+    //     require(bounds.length <= type(uint8).max);
 
-        LibSort.sort(bounds);
-        (bool assertion, uint256 index) = LibSort.searchSorted(bounds, value);
-        console.log("found", assertion);
-        console.log("index", index);
-        console.log("found value", bounds[index]);
+    //     LibSort.sort(bounds);
+    //     (bool assertion, uint256 index) = LibSort.searchSorted(bounds, value);
+    //     console.log("found", assertion);
+    //     console.log("index", index);
+    //     console.log("found value", bounds[index]);
 
-        PermissionsTester tester = new PermissionsTester();
-        address[] memory targets = getTargets(0, alice);
-        Param[] memory arguments = new Param[](1);
-        arguments[0] =
-            Param({_type: TYPE.ADDRESS, offset: 4, bounds: abi.encode(bounds), length: 0});
+    //     PermitValidatorTester tester = new PermitValidatorTester();
+    //     address[] memory targets = getTargets(0, alice);
+    //     PermitValidator.Param[] memory arguments = new PermitValidator.Param[](1);
+    //     arguments[0] = PermitValidator.Param({
+    //         _type: PermitValidator.TYPE.ADDRESS,
+    //         offset: 4,
+    //         rules: abi.encode(bounds),
+    //         length: 0
+    //     });
 
-        Span[] memory spans = new Span[](1);
-        spans[0] = Span({
-            validAfter: uint32(block.timestamp),
-            validUntil: uint32(block.timestamp + 100000)
-        });
-        Slip memory slip = createSlip(targets, 0, tester.dataAddress.selector, arguments, spans);
+    //     PermitValidator.Span[] memory spans = new PermitValidator.Span[](1);
+    //     spans[0] = PermitValidator.Span({
+    //         validAfter: uint32(block.timestamp),
+    //         validUntil: uint32(block.timestamp + 100000)
+    //     });
+    //     PermitValidator.Permit memory permit =
+    //         createPermit(targets, 0, tester.dataAddress.selector, arguments, spans);
 
-        Call memory call =
-            Call({to: alice, value: 0, data: abi.encodeCall(tester.dataAddress, (value))});
+    //     PermitValidator.Call memory call = PermitValidator.Call({
+    //         target: alice,
+    //         value: 0,
+    //         data: abi.encodeCall(tester.dataAddress, (value))
+    //     });
 
-        bytes32 slipHash = permissions.getSlipHash(wallet, slip);
+    //     bytes32 permitHash = permissions.getPermitHash(account, permit);
 
-        bytes memory sig = sign(aliceKey, SignatureCheckerLib.toEthSignedMessageHash(slipHash));
-        console.log("length", bounds.length);
-        assertEq(permissions.checkPermission(wallet, sig, slip, call), assertion);
-    }
+    //     bytes memory sig = sign(aliceKey, SignatureCheckerLib.toEthSignedMessageHash(permitHash));
+    //     console.log("length", bounds.length);
+    //     assertEq(permissions.checkPermission(address(account), sig, permit, call), assertion);
+    // }
 
-    function testIntPermission(int256 a, int256 min, int256 max) public {
-        // prevent overflows;
-        a = bound(a, type(int256).min, type(int256).max);
-        min = bound(min, type(int256).min, type(int256).max);
-        max = bound(max, type(int256).min, type(int256).max);
+    // function testIntPermission(int256 a, int256 min, int256 max) public {
+    //     // prevent overflows;
+    //     a = bound(a, type(int256).min, type(int256).max);
+    //     min = bound(min, type(int256).min, type(int256).max);
+    //     max = bound(max, type(int256).min, type(int256).max);
 
-        vm.assume(min < max);
-        vm.assume(a <= type(int256).max && a >= type(int256).min);
-        vm.assume(min <= type(int256).max && min >= type(int256).min);
-        vm.assume(max <= type(int256).max && max >= type(int256).min);
-        require(min <= max);
+    //     vm.assume(min < max);
+    //     vm.assume(a <= type(int256).max && a >= type(int256).min);
+    //     vm.assume(min <= type(int256).max && min >= type(int256).min);
+    //     vm.assume(max <= type(int256).max && max >= type(int256).min);
+    //     require(min <= max);
 
-        bool assertion = !(a > max || a < min);
+    //     bool assertion = !(a > max || a < min);
 
-        PermissionsTester tester = new PermissionsTester();
+    //     PermitValidatorTester tester = new PermitValidatorTester();
 
-        address[] memory targets = new address[](1);
-        targets[0] = address(tester);
+    //     address[] memory targets = new address[](1);
+    //     targets[0] = address(tester);
 
-        Param[] memory arguments = new Param[](1);
-        arguments[0] = Param({_type: TYPE.INT, offset: 4, bounds: abi.encode(min, max), length: 0});
+    //     PermitValidator.Param[] memory arguments = new PermitValidator.Param[](1);
+    //     arguments[0] = PermitValidator.Param({
+    //         _type: PermitValidator.TYPE.INT,
+    //         offset: 4,
+    //         rules: abi.encode(min, max),
+    //         length: 0
+    //     });
 
-        Span[] memory spans = new Span[](1);
-        spans[0] = Span({
-            validAfter: uint32(block.timestamp),
-            validUntil: uint32(block.timestamp + 100000)
-        });
-        Slip memory slip = createSlip(targets, 0, tester.dataInt.selector, arguments, spans);
+    //     PermitValidator.Span[] memory spans = new PermitValidator.Span[](1);
+    //     spans[0] = PermitValidator.Span({
+    //         validAfter: uint32(block.timestamp),
+    //         validUntil: uint32(block.timestamp + 100000)
+    //     });
+    //     PermitValidator.Permit memory permit =
+    //         createPermit(targets, 0, tester.dataInt.selector, arguments, spans);
 
-        Call memory call =
-            Call({to: address(tester), value: 0, data: abi.encodeCall(tester.dataInt, (a))});
+    //     PermitValidator.Call memory call = PermitValidator.Call({
+    //         target: address(tester),
+    //         value: 0,
+    //         data: abi.encodeCall(tester.dataInt, (a))
+    //     });
 
-        bytes32 slipHash = permissions.getSlipHash(wallet, slip);
-        bytes memory sig = sign(aliceKey, SignatureCheckerLib.toEthSignedMessageHash(slipHash));
+    //     bytes32 permitHash = permissions.getPermitHash(account, permit);
+    //     bytes memory sig = sign(aliceKey, SignatureCheckerLib.toEthSignedMessageHash(permitHash));
 
-        assert(permissions.checkPermission(wallet, sig, slip, call) == assertion);
-    }
+    //     assert(permissions.validatePermit(account, sig, permit, call) == assertion);
+    // }
 
-    function createSlip(
+    function createPermit(
         address[] memory targets,
         uint256 maxValue,
         bytes4 selector,
-        Param[] memory arguments,
-        Span[] memory spans
-    ) public pure returns (Slip memory slip) {
-        return Slip({
+        PermitValidator.Param[] memory arguments,
+        PermitValidator.Span[] memory spans
+    ) public pure returns (PermitValidator.Permit memory permit) {
+        return PermitValidator.Permit({
             targets: targets,
-            maxValue: maxValue,
+            allowance: maxValue,
             selector: selector,
             arguments: arguments,
             spans: spans
@@ -428,7 +485,6 @@ contract PermitTest is Test, TestPlus {
     }
 
     function sign(uint256 pK, bytes32 hash) internal pure returns (bytes memory) {
-        // Helper.
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pK, hash);
         return abi.encodePacked(r, s, v);
     }

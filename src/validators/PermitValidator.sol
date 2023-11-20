@@ -3,262 +3,294 @@ pragma solidity ^0.8.19;
 
 import {ECDSA} from "@solady/src/utils/ECDSA.sol";
 import {EIP712} from "@solady/src/utils/EIP712.sol";
-import {ERC4337} from "@solady/test/utils/mocks/MockERC4337.sol";
-import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 import {LibSort} from "@solady/src/utils/LibSort.sol";
+import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 
-import "@forge/Test.sol";
+// N01 - Value exceeds allowance
 
-/*
-Examples
-- Send 0.1 ETH to 0x1234...5678 at any time but not after 2024-01-01.
-- Swap between 1-2 WETH for DAI every 3 days.
-- Vote no on every proposal 
-*/
-
-enum TYPE
-// uint<M>: unsigned integer type of M bits, 0 < M <= 256, M % 8 == 0
-{
-    UINT,
-    UINT8,
-    // int<M>: two’s complement signed integer type of M bits, 0 < M <= 256, M % 8 == 0.
-    INT,
-    // equivalent to uint160, except for the assumed interpretation and language typing. For computing the function selector, address is used.
-    ADDRESS,
-    // equivalent to uint8 restricted to the values 0 and 1. For computing the function selector, bool is used.
-    BOOL,
-    // bytes<M>: binary type of M bytes, 0 < M <= 32
-    // bytes: dynamic sized byte sequence
-    BYTES,
-    // string: dynamic sized unicode string assumed to be UTF-8 encoded.
-    STRING,
-    TUPLE
-}
-// FUNCTION
-// <type>[]: a variable-length array of elements of the given type.
-// (T1,T2,...,Tn): tuple consisting of the types T1, …, Tn, n >= 0
-
-struct Param {
-    TYPE _type; // type of the parameter
-    uint8 offset; // location of the parameter in the calldata
-    // the true location in calldata for dynamic types like bytes, string,
-    uint256 length; // in case of bytes, string arrays, tuples, the length of the type
-    bytes bounds; // rules for this parameter type
-        // tuple - encode Params[]
+/// @notice Executor interface.
+interface IExecutor {
+    function execute(address target, uint256 value, bytes calldata data)
+        external
+        payable
+        returns (bytes memory result);
 }
 
-struct Span {
-    uint32 validAfter;
-    uint32 validUntil;
-}
+/// @notice Simple executor permit validator for smart accounts.
+/// Examples:
+/// - Send 0.1 ETH to 0x123...789 on 2024-01-01.
+/// - Swap between 1-2 WETH for DAI every 3 days.
+/// - Vote yes on every proposal made by nani.eth.
+contract PermitValidator is EIP712 {
+    /// ======================= CUSTOM ERRORS ======================= ///
 
-struct Slip {
-    address[] targets;
-    uint256 maxValue;
-    bytes4 selector;
-    // uint128 uses;
-    // uint32 interval;
-    // uint32 validAfter;
-    // uint32 validUntil;
-    Span[] spans;
-    Param[] arguments;
-}
+    error InvalidCall();
 
-/**
- * @title Permissions
- * @dev Permissions contract
- */
-contract Permissions is EIP712 {
-    error InvalidPayload();
+    /// =========================== EVENTS =========================== ///
 
-    mapping(bytes32 slipHash => uint256 use) public use;
-    mapping(bytes32 slipHash => Slip) public slips;
+    /// @dev Logs the new authorizers for an account.
+    event AuthorizersSet(address indexed account, address[] authorizers);
 
+    /// ========================== STRUCTS ========================== ///
+
+    /// @dev The ERC4337 user operation (userOp) struct.
+    struct UserOperation {
+        address sender;
+        uint256 nonce;
+        bytes initCode;
+        bytes callData;
+        uint256 callGasLimit;
+        uint256 verificationGasLimit;
+        uint256 preVerificationGas;
+        uint256 maxFeePerGas;
+        uint256 maxPriorityFeePerGas;
+        bytes paymasterAndData;
+        bytes signature;
+    }
+
+    /// @dev Permit data struct.
+    struct Permit {
+        address[] targets;
+        uint256 allowance;
+        bytes4 selector;
+        // uint128 uses;
+        // uint32 interval;
+        // uint32 validAfter;
+        // uint32 validUntil;
+        Span[] spans;
+        Param[] arguments;
+    }
+
+    /// @dev Calldata types.
+    enum Type {
+        UINT,
+        INT,
+        ADDRESS,
+        BOOL,
+        UINT8,
+        BYTES,
+        STRING,
+        TUPLE
+    }
+
+    /// @dev Calldata precision.
+    struct Param {
+        Type _type;
+        uint8 offset;
+        uint256 length;
+        bytes rules;
+    }
+
+    /// @dev Permit timespan.
+    struct Span {
+        uint32 validAfter;
+        uint32 validUntil;
+    }
+
+    /// @dev Call struct.
+    struct Call {
+        address target;
+        uint256 value;
+        bytes data;
+    }
+
+    /// ========================== STORAGE ========================== ///
+
+    /// @dev Stores mappings of authorizers to accounts.
+    mapping(address => address[]) internal _authorizers;
+
+    /// @dev Stores mappings of permit hashes to usage.
+    mapping(bytes32 permitHash => uint256) public uses;
+
+    /// @dev Stores mappings of permit hashes to structs.
+    mapping(bytes32 permitHash => Permit) public permits;
+
+    /// @dev Returns domain name
+    /// & version of implementation.
     function _domainNameAndVersion()
         internal
         pure
+        virtual
         override
-        returns (string memory name, string memory version)
+        returns (string memory, string memory)
     {
-        name = "Permissions";
-        version = "1";
+        return ("PermitValidator", "0.0.0");
     }
 
-    function validateUserOp(
-        ERC4337.UserOperation calldata userOp,
+    /// =================== VALIDATION OPERATIONS =================== ///
+
+    function validateUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint256)
+        external
+        payable
+        virtual
+        returns (uint256 validationData)
+    {
+        // Extract permit hash and signature from `userOp`.
+        (bytes32 permitHash, bytes memory signature) =
+            abi.decode(userOp.signature, (bytes32, bytes));
+        // Ensure `userOpHash` is signed by an account authorizer.
+        address[] memory authorizers = _authorizers[userOp.sender];
+        for (uint256 i; i < authorizers.length;) {
+            if (SignatureCheckerLib.isValidSignatureNow(authorizers[i], userOpHash, signature)) {
+                break;
+            }
+            unchecked {
+                ++i;
+            }
+        }
+        // Get permit for userOp from hash pointer.
+        Permit memory permit = permits[permitHash];
+        unchecked {
+            uint256 uses = uses[permitHash]++;
+            if (uses == permit.spans.length) return 0x01;
+            // Return validation data for permit.
+            validationData = validatePermit(
+                permit.spans[uses], permit, userOp.callData, userOpHash, signature, msg.sender
+            );
+        }
+    }
+
+    function validatePermit(
+        Span memory span,
+        Permit memory permit,
+        bytes calldata callData,
         bytes32 userOpHash,
-        uint256 missingAccountFunds
-    ) external payable returns (uint256 validationData) {
-        // extract first four bytes of userOp.callData
-       
-        if (ERC4337.execute.selector != bytes4(userOp.callData[:4])) revert InvalidPayload();
-        (address target, uint256 value, bytes memory data) = abi.decode(userOp.callData[4:], (address, uint256, bytes));
-      
-        // extract slipHash
-        (bytes32 slipHash, bytes memory sig) = abi.decode(userOp.signature, (bytes32, bytes));
-
-        
-        return uint256(checkPermission(
-            userOp.sender,
-            userOp.signature,
-            slips[slipHash],
-            ERC4337.Call(target, value, data)
-        ));
-    }
-
-    function checkPermission(
-        ERC4337 wallet,
-        bytes calldata sig,
-        Slip calldata slip,
-        ERC4337.Call calldata call
-    ) public returns (bool) {
-        require(slip.targets.length != 0, "Permissions: no targets");
-        require(slip.spans.length != 0, "Permissions: no uses");
-
-        bytes32 slipHash = getSlipHash(wallet, slip);
-        // check if the slip is authorized
-        if (!SignatureCheckerLib.isValidERC1271SignatureNowCalldata(address(wallet), slipHash, sig))
-        {
-            return false;
-        }
-
+        bytes memory signature,
+        address account
+    ) public view virtual returns (uint256 validationData) {
+        // Extract executory details.
+        (bytes4 selector, address target, uint256 value, bytes memory data) =
+            abi.decode(callData, (bytes4, address, uint256, bytes));
+        // Ensure executory intent.
+        if (selector != IExecutor.execute.selector) revert InvalidCall();
+        // Ensure the permit is within the authorized bounds.
         unchecked {
-            if (
-                slip.spans[use[slipHash]].validAfter != 0
-                    && block.timestamp < slip.spans[use[slipHash]].validAfter
-            ) return false;
-            if (
-                slip.spans[use[slipHash]].validUntil != 0
-                    && block.timestamp > slip.spans[use[slipHash]].validUntil
-            ) return false;
-            use[slipHash]++;
-        }
-
-        // check if call target is authorized
-        unchecked {
-            for (uint256 i; i < slip.targets.length; ++i) {
-                if (slip.targets[i] == call.target) break;
-                if (i == slip.targets.length - 1) return false;
+            // Ensure the permit is within the valid timespan.
+            if (span.validAfter != 0 && block.timestamp < span.validAfter) return 0x01;
+            if (span.validUntil != 0 && block.timestamp > span.validUntil) return 0x01;
+            // Ensure the call `target` is authorized.
+            for (uint256 i; i < permit.targets.length; ++i) {
+                if (permit.targets[i] == target) break;
+                if (i == permit.targets.length - 1) return 0x01;
             }
+            // Ensure the call `value` is within allowance.
+            if (value > permit.allowance) revert InvalidCall();
         }
+        // Check the `callData` against the permit data and bounds.
+        if (permit.selector.length != 0 && data.length != 0) {
+            // Check the permit selector against the call.
+            if (bytes4(data) != permit.selector) return 0x01;
+            // Ensure the call params are within permitted bounds.
+            Param memory param;
+            unchecked {
+                for (uint256 i; i < permit.arguments.length; ++i) {
+                    param = permit.arguments[i];
+                    bytes memory _data = callData[param.offset:param.offset + 32];
+                    if (param._type == Type.UINT) {
+                        if (_validateUint(abi.decode(_data, (uint256)), param.rules)) break;
+                        return 0x01;
+                    } else if (param._type == Type.INT) {
+                        if (_validateInt(abi.decode(_data, (int256)), param.rules)) break;
+                        return 0x01;
+                    } else if (param._type == Type.ADDRESS) {
+                        if (_validateAddress(abi.decode(_data, (address)), param.rules)) break;
+                        return 0x01;
+                    } else if (param._type == Type.BOOL) {
+                        if (_validateBool(abi.decode(_data, (bool)), param.rules)) break;
+                        return 0x01;
+                    } else if (param._type == Type.UINT8) {
+                        if (_validateEnum(abi.decode(_data, (uint8)), param.rules)) break;
+                        return 0x01;
+                        // else if (param._type == Type.BYTES) {
+                        //     bytes memory bound = abi.decode(param.rules, (bytes));
+                        //     bytes memory value = abi.decode(call.data[param.offset:], (bytes));
 
-        // check if the call is within value bounds
-        if (call.value > slip.maxValue) return false;
+                        //     if (bound != value) return 1;
+                        // } else if (param._type == Type.STRING) {
+                        //     string memory bound = abi.decode(param.rules, (string));
+                        //     string memory value = abi.decode(call.data[param.offset:], (string));
 
-        // check selector
-        if (slip.selector.length != 0 && call.data.length != 0) {
-            if (bytes4(call.data[:4]) != bytes4(slip.selector)) return false;
-
-            // check if the call is within data bounds
-            for (uint256 i; i < slip.arguments.length; i++) {
-                Param calldata param = slip.arguments[i];
-
-                if (param._type == TYPE.UINT) {
-                    if (
-                        _validateUint(
-                            abi.decode(call.data[param.offset:param.offset + 32], (uint256)),
-                            param.bounds
-                        )
-                    ) break;
-                    return false;
-                } else if (param._type == TYPE.UINT8) {
-                    console.log(i, "param is uint8");
-                    if (
-                        _validateEnum(
-                            abi.decode(call.data[param.offset:param.offset + 32], (uint256)),
-                            param.bounds
-                        )
-                    ) break;
-                    return false;
-                } else if (param._type == TYPE.INT) {
-                    console.log(i, "param is int");
-                    if (
-                        _validateInt(
-                            abi.decode(call.data[param.offset:param.offset + 32], (int256)),
-                            param.bounds
-                        )
-                    ) break;
-                    return false;
-                } else if (param._type == TYPE.ADDRESS) {
-                    console.log(i, "param is address");
-                    if (
-                        _validateAddress(
-                            abi.decode(call.data[param.offset:param.offset + 32], (address)),
-                            param.bounds
-                        )
-                    ) break;
-                    return false;
-                } else if (param._type == TYPE.BOOL) {
-                    console.log(i, "param is bool");
-                    if (
-                        _validateBool(
-                            abi.decode(call.data[param.offset:param.offset + 32], (bool)),
-                            param.bounds
-                        )
-                    ) break;
-                    return false;
-                }
-                // else if (param._type == TYPE.BYTES) {
-                //     bytes memory bound = abi.decode(param.bounds, (bytes));
-                //     bytes memory value = abi.decode(call.data[param.offset:], (bytes));
-
-                //     if (bound != value) return false;
-                // } else if (param._type == TYPE.STRING) {
-                //     string memory bound = abi.decode(param.bounds, (string));
-                //     string memory value = abi.decode(call.data[param.offset:], (string));
-
-                //     if (bound != value) return false;
-                // }
-                else if (param._type == TYPE.TUPLE) {
-                    console.log(i, "param is tuple");
-                    if (_validateTuple(call.data, param.bounds, param.offset, param.length)) break;
-                    return false;
+                        //     if (bound != value) return 1;
+                        // }
+                    } else if (param._type == Type.TUPLE) {
+                        if (_validateTuple(_data, param.rules, param.offset, param.length)) {
+                            break;
+                        }
+                        return 0x01;
+                    }
                 }
             }
         }
-
-        return true;
+        return 0;
     }
 
-    function getSlipHash(ERC4337 wallet, Slip calldata slip) public view returns (bytes32) {
-        return _hashTypedData(keccak256(abi.encode(wallet, slip)));
+    /// ===================== VALIDATION HELPERS ===================== ///
+
+    function getPermitHash(address account, Permit memory permit)
+        public
+        view
+        virtual
+        returns (bytes32)
+    {
+        return _hashTypedData(keccak256(abi.encode(account, permit)));
     }
 
-    function _validateUint(uint256 value, bytes memory bounds) internal pure returns (bool found) {
+    function _validateUint(uint256 value, bytes memory bounds)
+        internal
+        pure
+        virtual
+        returns (bool)
+    {
         (uint256 min, uint256 max) = abi.decode(bounds, (uint256, uint256));
         return value >= min && value <= max;
     }
 
-    function _validateEnum(uint256 value, bytes memory bounds) internal pure returns (bool found) {
-        (uint256[] memory bound) = abi.decode(bounds, (uint256[]));
-        LibSort.sort(bound);
-        (found,) = LibSort.searchSorted(bound, value);
-        return found;
-    }
-
-    function _validateInt(int256 value, bytes memory bounds) internal pure returns (bool found) {
+    function _validateInt(int256 value, bytes memory bounds) internal pure virtual returns (bool) {
         (int256 min, int256 max) = abi.decode(bounds, (int256, int256));
         return value >= min && value <= max;
     }
 
-    function _validateAddress(address value, bytes memory bounds)
+    function _validateAddress(address value, bytes memory rules)
         internal
         view
+        virtual
         returns (bool found)
     {
-        (address[] memory bound) = abi.decode(bounds, (address[]));
-        LibSort.sort(bound);
-        (found,) = LibSort.searchSorted(bound, value);
-        return found;
+        (found,) = LibSort.searchSorted(abi.decode(rules, (address[])), value);
     }
 
-    function _validateBool(bool value, bytes memory bounds) internal pure returns (bool) {
+    function _validateBool(bool value, bytes memory bounds) internal pure virtual returns (bool) {
         return value == abi.decode(bounds, (bool));
+    }
+
+    function _validateEnum(uint256 value, bytes memory bounds)
+        internal
+        pure
+        virtual
+        returns (bool found)
+    {
+        (found,) = LibSort.searchSorted(abi.decode(bounds, (uint256[])), value);
     }
 
     function _validateTuple(bytes memory data, bytes memory bounds, uint8 offset, uint256 length)
         internal
         pure
+        virtual
         returns (bool)
     {}
+
+    /// @dev Returns the authorizers for an account.
+    function get(address account) public view virtual returns (address[] memory) {
+        return _authorizers[account];
+    }
+
+    /// @dev Installs the new authorizers for an account.
+    function install(address[] calldata authorizers) public payable virtual {
+        emit AuthorizersSet(msg.sender, (_authorizers[msg.sender] = authorizers));
+    }
+
+    /// @dev Uninstalls the authorizers for an account.
+    function uninstall() public payable virtual {
+        emit AuthorizersSet(msg.sender, (_authorizers[msg.sender] = new address[](0)));
+    }
 }
