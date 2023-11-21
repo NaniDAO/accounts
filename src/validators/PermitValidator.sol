@@ -133,21 +133,21 @@ contract PermitValidator is EIP712 {
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
         for (uint256 i; i < authorizers.length;) {
             if (SignatureCheckerLib.isValidSignatureNow(authorizers[i], hash, signature)) {
+                validationData = 0x01;
                 break;
             }
             unchecked {
                 ++i;
             }
         }
+        if (validationData == 0x00) return 0x01;
         // Get permit for userOp from hash pointer.
         Permit memory permit = permits[permitHash];
         unchecked {
             uint256 count = uses[permitHash]++;
             if (count == permit.spans.length) return 0x01;
             // Return validation data for permit.
-            validationData = validatePermit(
-                permit.spans[count], permit, userOp.callData, userOpHash, signature, msg.sender
-            );
+            validationData = validatePermit(permit.spans[count], permit, userOp.callData);
         }
     }
 
@@ -162,14 +162,12 @@ contract PermitValidator is EIP712 {
         return _hashTypedData(keccak256(abi.encode(account, permit)));
     }
 
-    function validatePermit(
-        Span memory span,
-        Permit memory permit,
-        bytes calldata callData,
-        bytes32 userOpHash,
-        bytes memory signature,
-        address account
-    ) public view virtual returns (uint256 validationData) {
+    function validatePermit(Span memory span, Permit memory permit, bytes calldata callData)
+        public
+        view
+        virtual
+        returns (uint256 validationData)
+    {
         // Extract executory details.
         (bytes4 selector, address target, uint256 value, bytes memory data) =
             abi.decode(callData, (bytes4, address, uint256, bytes));
@@ -187,7 +185,7 @@ contract PermitValidator is EIP712 {
                 if (i == permit.targets.length - 1) return 0x01;
             }
             // Ensure the call `value` is within allowance.
-            if (value > permit.allowance) revert InvalidCall();
+            if (value > permit.allowance) revert InvalidExecute();
         }
         // Check the `callData` against the permit data and bounds.
         if (permit.selector.length != 0 && data.length != 0) {
@@ -216,12 +214,14 @@ contract PermitValidator is EIP712 {
                         return 0x01;
                     } else if (param._type == Type.BYTES) {
                         bytes memory bound = abi.decode(param.rules, (bytes));
-                        bytes memory value = abi.decode(call.data[param.offset:], (bytes));
-                        if (bound != value) return 0x01;
+                        bytes memory object = abi.decode(_data, (bytes));
+                        if (keccak256(bound) != keccak256(object)) return 0x01;
                     } else if (param._type == Type.STRING) {
                         string memory bound = abi.decode(param.rules, (string));
-                        string memory value = abi.decode(call.data[param.offset:], (string));
-                        if (bound != value) return 0x01;
+                        string memory object = abi.decode(_data, (string));
+                        if (keccak256(abi.encode(bound)) != keccak256(abi.encode(object))) {
+                            return 0x01;
+                        }
                     } else if (param._type == Type.TUPLE) {
                         if (_validateTuple(_data, param.rules, param.offset, param.length)) {
                             break;
