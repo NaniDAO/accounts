@@ -16,14 +16,14 @@ contract RecoveryValidator {
 
     /// =========================== EVENTS =========================== ///
 
-    /// @dev Logs the new deadline for an account.
+    /// @dev Logs the new deadline for an account to renew custody.
     event DeadlineSet(address indexed account, uint256 deadline);
 
     /// @dev Logs the new authorizers' threshold for an account.
     event ThresholdSet(address indexed account, uint256 threshold);
 
-    /// @dev Logs the new userOp hash for an account.
-    event UserOpHashSet(address indexed account, bytes32 userOpHash);
+    /// @dev Logs the new calldata hash for an account.
+    event CalldataHashSet(address indexed account, bytes32 calldataHash);
 
     /// @dev Logs the new authorizers for an account.
     event AuthorizersSet(address indexed account, address[] authorizers);
@@ -53,8 +53,8 @@ contract RecoveryValidator {
     /// @dev Stores mappings of thresholds to accounts.
     mapping(address => uint256) internal _thresholds;
 
-    /// @dev Stores mappings of userOp hashes to accounts.
-    mapping(address => bytes32) internal _userOpHashes;
+    /// @dev Stores mappings of calldata hashes to accounts.
+    mapping(address => bytes32) internal _calldataHashes;
 
     /// @dev Stores mappings of authorizers to accounts.
     mapping(address => address[]) internal _authorizers;
@@ -68,7 +68,7 @@ contract RecoveryValidator {
     /// =================== VALIDATION OPERATIONS =================== ///
 
     /// @dev Validates ERC4337 userOp with additional auth logic flow among authorizers.
-    /// Generally, this should be used to execute `transferOwnership` to backup owner.
+    /// Generally, this should be used to execute `transferOwnership` to backup owners.
     function validateUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint256)
         external
         payable
@@ -77,16 +77,18 @@ contract RecoveryValidator {
     {
         bool success;
         uint256 deadline = _deadlines[msg.sender];
-        bool validAfter = (block.timestamp > deadline);
-        uint256 threshold = _thresholds[userOp.sender];
-        bytes[] memory sigs = _splitSignature(userOp.signature);
-        address[] memory authorizers = _authorizers[userOp.sender];
+        bool validAfter = block.timestamp > deadline;
+        uint256 threshold = _thresholds[msg.sender];
+        address[] memory authorizers = _authorizers[msg.sender];
+        bytes[] memory signatures = _splitSignature(userOp.signature);
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
-        if (sigs.length < threshold) revert InvalidSetting();
+        if (signatures.length < threshold) revert InvalidSetting();
         for (uint256 i; i < threshold;) {
             unchecked {
                 for (uint256 j; j < authorizers.length;) {
-                    if (SignatureCheckerLib.isValidSignatureNow(authorizers[j], hash, sigs[i])) {
+                    if (
+                        SignatureCheckerLib.isValidSignatureNow(authorizers[j], hash, signatures[i])
+                    ) {
                         ++i;
                         break;
                     } else {
@@ -101,15 +103,15 @@ contract RecoveryValidator {
         assembly {
             validationData := iszero(and(success, validAfter))
         }
-        // If authorizers validated the userOp and `userOpHash` is stored
-        // for the caller, assert and check this matches the validated.
-        // This effectively ensures only countersigned userOp executes.
+        // If authorizers validated the userOp and `calldataHash` is stored
+        // for the caller, assert and check this matches the validated call.
+        // This effectively ensures only countersigned userOp data executes.
         if (validationData == 0) {
-            if (_userOpHashes[msg.sender] != bytes32(0)) {
-                assert(userOpHash == _userOpHashes[msg.sender]);
+            if (_calldataHashes[msg.sender] != bytes32(0)) {
+                assert(keccak256(userOp.callData) == _calldataHashes[msg.sender]);
             }
         }
-        uninstall(); // Uninstall the recovery settings.
+        uninstall(); // Uninstall the recovery settings to end recovery.
     }
 
     /// @dev Returns bytes array from split signature.
@@ -117,14 +119,14 @@ contract RecoveryValidator {
         internal
         view
         virtual
-        returns (bytes[] memory sigs)
+        returns (bytes[] memory signatures)
     {
         unchecked {
             if (signature.length % 65 != 0) revert InvalidSetting();
-            sigs = new bytes[](signature.length / 65);
+            signatures = new bytes[](signature.length / 65);
             uint256 pos;
-            for (uint256 i; i < sigs.length;) {
-                sigs[i] = signature[pos:pos += 65];
+            for (uint256 i; i < signatures.length;) {
+                signatures[i] = signature[pos:pos += 65];
                 ++i;
             }
         }
@@ -133,7 +135,7 @@ contract RecoveryValidator {
     /// =================== AUTHORIZER OPERATIONS =================== ///
 
     /// @dev Returns the validation deadline for an account,
-    /// threshold, userOp hash, as well as the authorizers.
+    /// threshold, calldata hash, as well as the authorizers.
     function getSettings(address account)
         public
         view
@@ -141,12 +143,15 @@ contract RecoveryValidator {
         returns (
             uint256 deadline,
             uint256 threshold,
-            bytes32 userOpHash,
+            bytes32 calldataHash,
             address[] memory authorizers
         )
     {
         return (
-            _deadlines[account], _thresholds[account], _userOpHashes[account], _authorizers[account]
+            _deadlines[account],
+            _thresholds[account],
+            _calldataHashes[account],
+            _authorizers[account]
         );
     }
 
@@ -161,9 +166,9 @@ contract RecoveryValidator {
         emit ThresholdSet(msg.sender, (_thresholds[msg.sender] = threshold));
     }
 
-    /// @dev Sets the new userOp hash for an account.
-    function setUserOpHash(bytes32 userOpHash) public payable virtual {
-        emit UserOpHashSet(msg.sender, (_userOpHashes[msg.sender] = userOpHash));
+    /// @dev Sets the new calldata hash for an account.
+    function setCalldataHash(bytes32 calldataHash) public payable virtual {
+        emit CalldataHashSet(msg.sender, (_calldataHashes[msg.sender] = calldataHash));
     }
 
     /// @dev Sets the new authorizers for an account.
@@ -177,19 +182,19 @@ contract RecoveryValidator {
     /// ================== INSTALLATION OPERATIONS ================== ///
 
     /// @dev Installs the validation deadline for an account,
-    /// threshold, userOp hash, as well as the authorizers.
+    /// threshold, calldata hash, as well as the authorizers.
     function install(
         uint256 deadline,
         uint256 threshold,
-        bytes32 userOpHash,
+        bytes32 calldataHash,
         address[] memory authorizers
     ) public payable virtual {
         if (deadline != 0) emit DeadlineSet(msg.sender, (_deadlines[msg.sender] = deadline));
         if (authorizers.length >= threshold) {
             emit ThresholdSet(msg.sender, (_thresholds[msg.sender] = threshold));
         }
-        if (userOpHash != bytes32(0)) {
-            emit UserOpHashSet(msg.sender, (_userOpHashes[msg.sender] = userOpHash));
+        if (calldataHash != bytes32(0)) {
+            emit CalldataHashSet(msg.sender, (_calldataHashes[msg.sender] = calldataHash));
         }
         if (authorizers.length != 0) {
             LibSort.sort(authorizers);
@@ -199,11 +204,11 @@ contract RecoveryValidator {
     }
 
     /// @dev Uninstalls the validation deadline for an account,
-    /// threshold, userOp hash, as well as the authorizers.
+    /// threshold, calldata hash, as well as the authorizers.
     function uninstall() public payable virtual {
         emit DeadlineSet(msg.sender, (_deadlines[msg.sender] = 0));
         emit ThresholdSet(msg.sender, (_thresholds[msg.sender] = 0));
-        emit UserOpHashSet(msg.sender, (_userOpHashes[msg.sender] = bytes32(0)));
+        emit CalldataHashSet(msg.sender, (_calldataHashes[msg.sender] = bytes32(0)));
         emit AuthorizersSet(msg.sender, (_authorizers[msg.sender] = new address[](0)));
     }
 }
