@@ -8,26 +8,10 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 
 /// @notice Executor interface.
 interface IExecutor {
-    struct Call {
-        address target;
-        uint256 value;
-        bytes data;
-    }
-
     function execute(address target, uint256 value, bytes calldata data)
         external
         payable
         returns (bytes memory result);
-
-    function delegateExecute(address target, bytes calldata data)
-        external
-        payable
-        returns (bytes memory result);
-
-    function executeBatch(Call[] calldata calls)
-        external
-        payable
-        returns (bytes[] memory results);
 }
 
 /// @notice Simple executor permit validator for smart accounts.
@@ -145,13 +129,12 @@ contract PermitValidator is EIP712 {
             }
         }
         if (validationData == 0x00) return 0x01;
-        // Get permit for userOp from hash pointer.
+        // Return validation data for permit.
         Permit memory permit = permits[permitHash];
         unchecked {
             uint256 count = uses[permitHash]++;
             if (count == permit.spans.length) return 0x01;
-            // Return validation data for permit.
-            validationData = validatePermit(permit.spans[count], permit, userOp.callData);
+            validationData = validatePermit(permit, permit.spans[count], userOp.callData);
         }
     }
 
@@ -166,19 +149,17 @@ contract PermitValidator is EIP712 {
         return _hashTypedData(keccak256(abi.encode(account, permit)));
     }
 
-    function validatePermit(Span memory span, Permit memory permit, bytes calldata callData)
+    function validatePermit(Permit memory permit, Span memory span, bytes calldata callData)
         public
         view
         virtual
         returns (uint256 validationData)
     {
-        // Extract executory details.
+        // Extract executory details under IExecutor.
         (bytes4 selector, address target, uint256 value, bytes memory data) =
             abi.decode(callData, (bytes4, address, uint256, bytes));
         // Ensure executory intent.
         if (selector != IExecutor.execute.selector) revert InvalidExecute();
-        if (selector != IExecutor.delegateExecute.selector) revert InvalidExecute();
-        if (selector != IExecutor.executeBatch.selector) revert InvalidExecute();
         // Ensure the permit is within the authorized bounds.
         unchecked {
             // Ensure the permit is within the valid timespan.
