@@ -90,7 +90,7 @@ contract PermitValidatorTest is Test, TestPlus {
         address[] memory _authorized = getTargets(8, alice);
         vm.startPrank(account);
         permissions.install(_authorized);
-        address[] memory authorized = permissions.get(account);
+        address[] memory authorized = permissions.getAuthorizers(account);
         assertEq(authorized.length, _authorized.length);
         for (uint256 i = 0; i < authorized.length; i++) {
             assertEq(authorized[i], _authorized[i]);

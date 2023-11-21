@@ -6,18 +6,22 @@ import {EIP712} from "@solady/src/utils/EIP712.sol";
 import {LibSort} from "@solady/src/utils/LibSort.sol";
 import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 
-// N01 - Value exceeds allowance
-
 /// @notice Executor interface.
 interface IExecutor {
     function execute(address target, uint256 value, bytes calldata data)
         external
         payable
         returns (bytes memory result);
+
+    function delegateExecute(address target, bytes calldata data)
+        external
+        payable
+        returns (bytes memory result);
 }
 
 /// @notice Simple executor permit validator for smart accounts.
-/// Examples:
+/// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/validators/PermitValidator.sol)
+/// @dev Examples:
 /// - Send 0.1 ETH to 0x123...789 on 2024-01-01.
 /// - Swap between 1-2 WETH for DAI every 3 days.
 /// - Vote yes on every proposal made by nani.eth.
@@ -53,10 +57,6 @@ contract PermitValidator is EIP712 {
         address[] targets;
         uint256 allowance;
         bytes4 selector;
-        // uint128 uses;
-        // uint32 interval;
-        // uint32 validAfter;
-        // uint32 validUntil;
         Span[] spans;
         Param[] arguments;
     }
@@ -224,7 +224,7 @@ contract PermitValidator is EIP712 {
         return 0;
     }
 
-    /// ===================== VALIDATION HELPERS ===================== ///
+    /// ===================== PERMIT OPERATIONS ===================== ///
 
     function getPermitHash(address account, Permit memory permit)
         public
@@ -279,8 +279,10 @@ contract PermitValidator is EIP712 {
         returns (bool)
     {}
 
+    /// ================== INSTALLATION OPERATIONS ================== ///
+
     /// @dev Returns the authorizers for an account.
-    function get(address account) public view virtual returns (address[] memory) {
+    function getAuthorizers(address account) public view virtual returns (address[] memory) {
         return _authorizers[account];
     }
 
