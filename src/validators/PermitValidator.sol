@@ -130,8 +130,9 @@ contract PermitValidator is EIP712 {
             abi.decode(userOp.signature, (bytes32, bytes));
         // Ensure `userOpHash` is signed by an account authorizer.
         address[] memory authorizers = _authorizers[userOp.sender];
+        bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
         for (uint256 i; i < authorizers.length;) {
-            if (SignatureCheckerLib.isValidSignatureNow(authorizers[i], userOpHash, signature)) {
+            if (SignatureCheckerLib.isValidSignatureNow(authorizers[i], hash, signature)) {
                 break;
             }
             unchecked {
@@ -141,11 +142,11 @@ contract PermitValidator is EIP712 {
         // Get permit for userOp from hash pointer.
         Permit memory permit = permits[permitHash];
         unchecked {
-            uint256 uses = uses[permitHash]++;
-            if (uses == permit.spans.length) return 0x01;
+            uint256 count = uses[permitHash]++;
+            if (count == permit.spans.length) return 0x01;
             // Return validation data for permit.
             validationData = validatePermit(
-                permit.spans[uses], permit, userOp.callData, userOpHash, signature, msg.sender
+                permit.spans[count], permit, userOp.callData, userOpHash, signature, msg.sender
             );
         }
     }
@@ -174,6 +175,7 @@ contract PermitValidator is EIP712 {
             abi.decode(callData, (bytes4, address, uint256, bytes));
         // Ensure executory intent.
         if (selector != IExecutor.execute.selector) revert InvalidExecute();
+        if (selector != IExecutor.delegateExecute.selector) revert InvalidExecute();
         // Ensure the permit is within the authorized bounds.
         unchecked {
             // Ensure the permit is within the valid timespan.
