@@ -4,10 +4,26 @@ pragma solidity ^0.8.19;
 import {LibSort} from "@solady/src/utils/LibSort.sol";
 import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 
+/// @notice Simple thresholded-ownership validator for smart accounts.
+/// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/validators/MultisigValidator.sol)
 contract MultisigValidator {
-    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
-    /*                          STRUCTS                           */
-    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+    /// ======================= CUSTOM ERRORS ======================= ///
+
+    /// @dev The caller is not authorized to call the function.
+    error Unauthorized();
+
+    /// @dev Authorizers or threshold are invalid for a setting.
+    error InvalidSetting();
+
+    /// =========================== EVENTS =========================== ///
+
+    /// @dev Logs the new authorizers' threshold for an account.
+    event ThresholdSet(address indexed account, uint256 threshold);
+
+    /// @dev Logs the new authorizers for an account.
+    event AuthorizersSet(address indexed account, address[] authorizers);
+
+    /// ========================== STRUCTS ========================== ///
 
     /// @dev A basic multisignature struct.
     struct Signature {
@@ -30,29 +46,7 @@ contract MultisigValidator {
         bytes signature;
     }
 
-    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
-    /*                       CUSTOM ERRORS                        */
-    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
-
-    /// @dev The caller is not authorized to call the function.
-    error Unauthorized();
-
-    /// @dev Authorizers or threshold are invalid for a setting.
-    error InvalidSetting();
-
-    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
-    /*                           EVENTS                           */
-    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
-
-    /// @dev Logs the new authorizers' threshold for an account.
-    event ThresholdSet(address indexed account, uint256 threshold);
-
-    /// @dev Logs the new authorizers for an account.
-    event AuthorizersSet(address indexed account, address[] authorizers);
-
-    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
-    /*                          STORAGE                           */
-    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+    /// ========================== STORAGE ========================== ///
 
     /// @dev Stores mappings of thresholds to accounts.
     mapping(address => uint256) internal _thresholds;
@@ -60,17 +54,13 @@ contract MultisigValidator {
     /// @dev Stores mappings of authorizers to accounts.
     mapping(address => address[]) internal _authorizers;
 
-    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
-    /*                        CONSTRUCTOR                         */
-    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+    /// ======================== CONSTRUCTOR ======================== ///
 
     /// @dev Constructs
     /// this implementation.
     constructor() payable {}
 
-    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
-    /*                   VALIDATION OPERATIONS                    */
-    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+    /// =================== VALIDATION OPERATIONS =================== ///
 
     /// @dev Validates ERC4337 userOp with additional auth logic flow among signers.
     function validateUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint256)
@@ -123,9 +113,7 @@ contract MultisigValidator {
         }
     }
 
-    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
-    /*                    AUTHORIZER OPERATIONS                   */
-    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+    /// =================== AUTHORIZER OPERATIONS =================== ///
 
     /// @dev Sets the new authorizers' threshold for an account.
     function setThreshold(uint256 threshold) public payable virtual {
@@ -141,9 +129,7 @@ contract MultisigValidator {
         emit AuthorizersSet(msg.sender, (_authorizers[msg.sender] = authorizers));
     }
 
-    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
-    /*                   AUTHORIZER INSTALLATION                  */
-    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+    /// ================== INSTALLATION OPERATIONS ================== ///
 
     /// @dev Installs the validation threshold and authorizers for an account.
     function install(uint256 threshold, address[] calldata authorizers) public payable virtual {

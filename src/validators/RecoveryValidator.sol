@@ -9,16 +9,12 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 /// multisig singleton by allowing accounts to program authorizers
 /// and thresholds for such authorizers to validate user operations.
 contract RecoveryValidator {
-    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
-    /*                       CUSTOM ERRORS                        */
-    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+    /// ======================= CUSTOM ERRORS ======================= ///
 
     /// @dev Authorizers or threshold are invalid for a setting.
     error InvalidSetting();
 
-    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
-    /*                           EVENTS                           */
-    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+    /// =========================== EVENTS =========================== ///
 
     /// @dev Logs the new deadline for an account.
     event DeadlineSet(address indexed account, uint256 deadline);
@@ -32,9 +28,7 @@ contract RecoveryValidator {
     /// @dev Logs the new authorizers for an account.
     event AuthorizersSet(address indexed account, address[] authorizers);
 
-    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
-    /*                          STRUCTS                           */
-    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+    /// ========================== STRUCTS ========================== ///
 
     /// @dev The ERC4337 user operation (userOp) struct.
     struct UserOperation {
@@ -51,9 +45,7 @@ contract RecoveryValidator {
         bytes signature;
     }
 
-    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
-    /*                          STORAGE                           */
-    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+    /// ========================== STORAGE ========================== ///
 
     /// @dev Stores mappings of deadlines to accounts.
     mapping(address => uint256) internal _deadlines;
@@ -67,17 +59,13 @@ contract RecoveryValidator {
     /// @dev Stores mappings of authorizers to accounts.
     mapping(address => address[]) internal _authorizers;
 
-    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
-    /*                        CONSTRUCTOR                         */
-    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+    /// ======================== CONSTRUCTOR ======================== ///
 
     /// @dev Constructs
     /// this implementation.
     constructor() payable {}
 
-    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
-    /*                   VALIDATION OPERATIONS                    */
-    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+    /// =================== VALIDATION OPERATIONS =================== ///
 
     /// @dev Validates ERC4337 userOp with additional auth logic flow among authorizers.
     /// Generally, this should be used to execute `transferOwnership` to backup owner.
@@ -142,9 +130,7 @@ contract RecoveryValidator {
         }
     }
 
-    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
-    /*                    AUTHORIZER OPERATIONS                   */
-    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+    /// =================== AUTHORIZER OPERATIONS =================== ///
 
     /// @dev Returns the validation deadline for an account,
     /// threshold, userOp hash, as well as the authorizers.
@@ -188,9 +174,7 @@ contract RecoveryValidator {
         emit AuthorizersSet(msg.sender, (_authorizers[msg.sender] = authorizers));
     }
 
-    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
-    /*                   AUTHORIZER INSTALLATION                  */
-    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+    /// ================== INSTALLATION OPERATIONS ================== ///
 
     /// @dev Installs the validation deadline for an account,
     /// threshold, userOp hash, as well as the authorizers.
