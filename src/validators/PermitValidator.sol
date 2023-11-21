@@ -8,7 +8,7 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 
 /// @notice Executor interface.
 interface IExecutor {
-    struct Call {⚡
+    struct Call {
         address target;
         uint256 value;
         bytes data;
