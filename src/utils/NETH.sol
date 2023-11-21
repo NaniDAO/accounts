@@ -4,20 +4,14 @@ pragma solidity ^0.8.19;
 /// @notice Simple wrapped ether ERC20 optimized for extended yield and paymaster functions.
 /// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/utils/NETH.sol)
 contract NETH {
-    /// ========================= IMMUTABLES ========================= ///
-
     /// @dev Holds an immutable owner.
     address internal immutable _OWNER;
-
-    /// ======================== CONSTRUCTOR ======================== ///
 
     /// @dev Constructs this wrapper for delegated deposit functions.
     /// Additionally, sets owner account for peripheral concerns.
     constructor() payable {
         _OWNER = msg.sender;
     }
-
-    /// ================== DELEGATE OPERATIONS ==================== ///
 
     /// @dev Tracks mappings of selectors to executors the owner has delegated to.
     function get(bytes4 selector) public view virtual returns (address executor) {
