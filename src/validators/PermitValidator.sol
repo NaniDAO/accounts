@@ -28,7 +28,7 @@ interface IExecutor {
 contract PermitValidator is EIP712 {
     /// ======================= CUSTOM ERRORS ======================= ///
 
-    error InvalidCall();
+    error InvalidExecute();
 
     /// =========================== EVENTS =========================== ///
 
@@ -150,6 +150,17 @@ contract PermitValidator is EIP712 {
         }
     }
 
+    /// ===================== PERMIT OPERATIONS ===================== ///
+
+    function getPermitHash(address account, Permit memory permit)
+        public
+        view
+        virtual
+        returns (bytes32)
+    {
+        return _hashTypedData(keccak256(abi.encode(account, permit)));
+    }
+
     function validatePermit(
         Span memory span,
         Permit memory permit,
@@ -162,7 +173,7 @@ contract PermitValidator is EIP712 {
         (bytes4 selector, address target, uint256 value, bytes memory data) =
             abi.decode(callData, (bytes4, address, uint256, bytes));
         // Ensure executory intent.
-        if (selector != IExecutor.execute.selector) revert InvalidCall();
+        if (selector != IExecutor.execute.selector) revert InvalidExecute();
         // Ensure the permit is within the authorized bounds.
         unchecked {
             // Ensure the permit is within the valid timespan.
@@ -201,17 +212,14 @@ contract PermitValidator is EIP712 {
                     } else if (param._type == Type.UINT8) {
                         if (_validateEnum(abi.decode(_data, (uint8)), param.rules)) break;
                         return 0x01;
-                        // else if (param._type == Type.BYTES) {
-                        //     bytes memory bound = abi.decode(param.rules, (bytes));
-                        //     bytes memory value = abi.decode(call.data[param.offset:], (bytes));
-
-                        //     if (bound != value) return 1;
-                        // } else if (param._type == Type.STRING) {
-                        //     string memory bound = abi.decode(param.rules, (string));
-                        //     string memory value = abi.decode(call.data[param.offset:], (string));
-
-                        //     if (bound != value) return 1;
-                        // }
+                    } else if (param._type == Type.BYTES) {
+                        bytes memory bound = abi.decode(param.rules, (bytes));
+                        bytes memory value = abi.decode(call.data[param.offset:], (bytes));
+                        if (bound != value) return 0x01;
+                    } else if (param._type == Type.STRING) {
+                        string memory bound = abi.decode(param.rules, (string));
+                        string memory value = abi.decode(call.data[param.offset:], (string));
+                        if (bound != value) return 0x01;
                     } else if (param._type == Type.TUPLE) {
                         if (_validateTuple(_data, param.rules, param.offset, param.length)) {
                             break;
@@ -221,18 +229,7 @@ contract PermitValidator is EIP712 {
                 }
             }
         }
-        return 0;
-    }
-
-    /// ===================== PERMIT OPERATIONS ===================== ///
-
-    function getPermitHash(address account, Permit memory permit)
-        public
-        view
-        virtual
-        returns (bytes32)
-    {
-        return _hashTypedData(keccak256(abi.encode(account, permit)));
+        return 0x00;
     }
 
     function _validateUint(uint256 value, bytes memory bounds)
