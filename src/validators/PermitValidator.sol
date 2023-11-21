@@ -8,6 +8,12 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 
 /// @notice Executor interface.
 interface IExecutor {
+    struct Call {⚡
+        address target;
+        uint256 value;
+        bytes data;
+    }
+
     function execute(address target, uint256 value, bytes calldata data)
         external
         payable
@@ -17,6 +23,11 @@ interface IExecutor {
         external
         payable
         returns (bytes memory result);
+
+    function executeBatch(Call[] calldata calls)
+        external
+        payable
+        returns (bytes[] memory results);
 }
 
 /// @notice Simple executor permit validator for smart accounts.
@@ -85,13 +96,6 @@ contract PermitValidator is EIP712 {
     struct Span {
         uint32 validAfter;
         uint32 validUntil;
-    }
-
-    /// @dev Call struct.
-    struct Call {
-        address target;
-        uint256 value;
-        bytes data;
     }
 
     /// ========================== STORAGE ========================== ///
@@ -174,6 +178,7 @@ contract PermitValidator is EIP712 {
         // Ensure executory intent.
         if (selector != IExecutor.execute.selector) revert InvalidExecute();
         if (selector != IExecutor.delegateExecute.selector) revert InvalidExecute();
+        if (selector != IExecutor.executeBatch.selector) revert InvalidExecute();
         // Ensure the permit is within the authorized bounds.
         unchecked {
             // Ensure the permit is within the valid timespan.
