@@ -99,19 +99,16 @@ contract RecoveryValidator {
                 success = true;
             }
         }
+        // If `calldataHash` is stored for the caller,
+        // ensure only countersigned userOp executes.
+        if (_calldataHashes[msg.sender] != bytes32(0)) {
+            assert(keccak256(userOp.callData) == _calldataHashes[msg.sender]);
+        }
         /// @solidity memory-safe-assembly
         assembly {
             validationData := iszero(and(success, validAfter))
         }
-        // If authorizers validated the userOp and `calldataHash` is stored
-        // for the caller, assert and check this matches the validated call.
-        // This effectively ensures only countersigned userOp data executes.
-        if (validationData == 0) {
-            if (_calldataHashes[msg.sender] != bytes32(0)) {
-                assert(keccak256(userOp.callData) == _calldataHashes[msg.sender]);
-            }
-        }
-        uninstall(); // Uninstall the recovery settings to end recovery.
+        uninstall(); // Uninstall the recovery settings.
     }
 
     /// @dev Returns bytes array from split signature.
