@@ -23,6 +23,7 @@ interface IExecutor {
 contract PermitValidator is EIP712 {
     /// ======================= CUSTOM ERRORS ======================= ///
 
+    /// @dev Calldata method is invalid for an execution.
     error InvalidExecute();
 
     /// =========================== EVENTS =========================== ///

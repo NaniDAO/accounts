@@ -8,7 +8,7 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 contract JointValidator {
     /// =========================== EVENTS =========================== ///
 
-    /// @dev Logs the new authorizers for an account.
+    /// @dev Logs new authorizers for an account.
     event AuthorizersSet(address indexed account, address[] authorizers);
 
     /// ========================== STRUCTS ========================== ///
@@ -76,12 +76,12 @@ contract JointValidator {
         return _authorizers[account];
     }
 
-    /// @dev Installs the new authorizers for an account.
+    /// @dev Installs new authorizers for the caller account.
     function install(address[] calldata authorizers) public payable virtual {
         emit AuthorizersSet(msg.sender, (_authorizers[msg.sender] = authorizers));
     }
 
-    /// @dev Uninstalls the authorizers for an account.
+    /// @dev Uninstalls the authorizers for the caller account.
     function uninstall() public payable virtual {
         emit AuthorizersSet(msg.sender, (_authorizers[msg.sender] = new address[](0)));
     }

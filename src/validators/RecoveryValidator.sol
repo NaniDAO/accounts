@@ -11,19 +11,25 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 contract RecoveryValidator {
     /// ======================= CUSTOM ERRORS ======================= ///
 
-    /// @dev Authorizers or threshold are invalid for a setting.
+    /// @dev Inputs are invalid for a setting.
     error InvalidSetting();
 
+    /// @dev Calldata method is invalid for an execution.
+    error InvalidExecute();
+
+    /// @dev The caller is not authorized to call the function.
+    error Unauthorized();
+
     /// =========================== EVENTS =========================== ///
+
+    /// @dev Logs the new delay for an account to renew custody.
+    event DelaySet(address indexed account, uint256 deadline);
 
     /// @dev Logs the new deadline for an account to renew custody.
     event DeadlineSet(address indexed account, uint256 deadline);
 
     /// @dev Logs the new authorizers' threshold for an account.
     event ThresholdSet(address indexed account, uint256 threshold);
-
-    /// @dev Logs the new calldata hash for an account.
-    event CalldataHashSet(address indexed account, bytes32 calldataHash);
 
     /// @dev Logs the new authorizers for an account.
     event AuthorizersSet(address indexed account, address[] authorizers);
@@ -47,14 +53,14 @@ contract RecoveryValidator {
 
     /// ========================== STORAGE ========================== ///
 
+    /// @dev Stores mappings of delays to accounts.
+    mapping(address => uint256) internal _delays;
+
     /// @dev Stores mappings of deadlines to accounts.
     mapping(address => uint256) internal _deadlines;
 
     /// @dev Stores mappings of thresholds to accounts.
     mapping(address => uint256) internal _thresholds;
-
-    /// @dev Stores mappings of calldata hashes to accounts.
-    mapping(address => bytes32) internal _calldataHashes;
 
     /// @dev Stores mappings of authorizers to accounts.
     mapping(address => address[]) internal _authorizers;
@@ -77,12 +83,15 @@ contract RecoveryValidator {
     {
         bool success;
         uint256 deadline = _deadlines[msg.sender];
+        if (deadline == 0) revert Unauthorized();
         bool validAfter = block.timestamp > deadline;
         uint256 threshold = _thresholds[msg.sender];
         address[] memory authorizers = _authorizers[msg.sender];
         bytes[] memory signatures = _splitSignature(userOp.signature);
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
-        if (signatures.length < threshold) revert InvalidSetting();
+        //if (bytes4(userOp.callData[:]) != bytes4(keccak256("transferOwnership(address)"))) {
+        //    revert InvalidExecute();
+        //}
         for (uint256 i; i < threshold;) {
             unchecked {
                 for (uint256 j; j < authorizers.length;) {
@@ -98,11 +107,6 @@ contract RecoveryValidator {
                 }
                 success = true;
             }
-        }
-        // If `calldataHash` is stored for the caller,
-        // ensure only countersigned userOp executes.
-        if (_calldataHashes[msg.sender] != bytes32(0)) {
-            assert(keccak256(userOp.callData) == _calldataHashes[msg.sender]);
         }
         /// @solidity memory-safe-assembly
         assembly {
@@ -131,44 +135,30 @@ contract RecoveryValidator {
 
     /// =================== AUTHORIZER OPERATIONS =================== ///
 
-    /// @dev Returns the validation deadline for an account,
-    /// threshold, calldata hash, as well as the authorizers.
+    /// @dev Returns the validation time status,
+    /// threshold, as well as the authorizers
+    /// of the registered account.
     function getSettings(address account)
         public
         view
         virtual
-        returns (
-            uint256 deadline,
-            uint256 threshold,
-            bytes32 calldataHash,
-            address[] memory authorizers
-        )
+        returns (uint256 delay, uint256 deadline, uint256 threshold, address[] memory authorizers)
     {
-        return (
-            _deadlines[account],
-            _thresholds[account],
-            _calldataHashes[account],
-            _authorizers[account]
-        );
+        return (_delays[account], _deadlines[account], _thresholds[account], _authorizers[account]);
     }
 
-    /// @dev Sets the new authorizer validation deadline for an account.
-    function setDeadline(uint256 deadline) public payable virtual {
-        emit DeadlineSet(msg.sender, (_deadlines[msg.sender] = deadline));
+    /// @dev Sets new authorizer validation delay for the caller account.
+    function setDelay(uint256 delay) public payable virtual {
+        emit DelaySet(msg.sender, (_delays[msg.sender] = delay));
     }
 
-    /// @dev Sets the new authorizers' threshold for an account.
+    /// @dev Sets new authorizers' threshold for the caller account.
     function setThreshold(uint256 threshold) public payable virtual {
         if (threshold > _authorizers[msg.sender].length) revert InvalidSetting();
         emit ThresholdSet(msg.sender, (_thresholds[msg.sender] = threshold));
     }
 
-    /// @dev Sets the new calldata hash for an account.
-    function setCalldataHash(bytes32 calldataHash) public payable virtual {
-        emit CalldataHashSet(msg.sender, (_calldataHashes[msg.sender] = calldataHash));
-    }
-
-    /// @dev Sets the new authorizers for an account.
+    /// @dev Sets new authorizers for the caller account.
     function setAuthorizers(address[] memory authorizers) public payable virtual {
         LibSort.sort(authorizers);
         LibSort.uniquifySorted(authorizers);
@@ -176,22 +166,41 @@ contract RecoveryValidator {
         emit AuthorizersSet(msg.sender, (_authorizers[msg.sender] = authorizers));
     }
 
+    /// @dev Initiates an authorizer handover for the account.
+    /// This function can only be called by an authorizer and
+    /// sets a new deadline for the account to cancel request.
+    function requestOwnershipHandover(address account) public payable virtual {
+        address[] memory authorizers = _authorizers[account];
+        bool isAuthorizer;
+        for (uint256 i; i < authorizers.length;) {
+            if (msg.sender == authorizers[i]) {
+                isAuthorizer = true;
+                break;
+            }
+            unchecked {
+                ++i;
+            }
+        }
+        if (!isAuthorizer) revert Unauthorized();
+        emit DeadlineSet(account, _deadlines[account] = block.timestamp + _delays[account]);
+    }
+
+    /// @dev Cancels authorizer handovers for the caller account.
+    function cancelOwnershipHandover() public payable virtual {
+        emit DeadlineSet(msg.sender, _deadlines[msg.sender] = 0);
+    }
+
     /// ================== INSTALLATION OPERATIONS ================== ///
 
-    /// @dev Installs the validation deadline for an account,
-    /// threshold, calldata hash, as well as the authorizers.
-    function install(
-        uint256 deadline,
-        uint256 threshold,
-        bytes32 calldataHash,
-        address[] memory authorizers
-    ) public payable virtual {
-        if (deadline != 0) emit DeadlineSet(msg.sender, (_deadlines[msg.sender] = deadline));
+    /// @dev Installs the validator settings for the caller account.
+    function install(uint256 delay, uint256 threshold, address[] memory authorizers)
+        public
+        payable
+        virtual
+    {
+        if (delay != 0) emit DelaySet(msg.sender, (_delays[msg.sender] = delay));
         if (authorizers.length >= threshold) {
             emit ThresholdSet(msg.sender, (_thresholds[msg.sender] = threshold));
-        }
-        if (calldataHash != bytes32(0)) {
-            emit CalldataHashSet(msg.sender, (_calldataHashes[msg.sender] = calldataHash));
         }
         if (authorizers.length != 0) {
             LibSort.sort(authorizers);
@@ -200,12 +209,11 @@ contract RecoveryValidator {
         }
     }
 
-    /// @dev Uninstalls the validation deadline for an account,
-    /// threshold, calldata hash, as well as the authorizers.
+    /// @dev Uninstalls the validator settings for the registered caller account.
     function uninstall() public payable virtual {
+        emit DelaySet(msg.sender, (_delays[msg.sender] = 0));
         emit DeadlineSet(msg.sender, (_deadlines[msg.sender] = 0));
         emit ThresholdSet(msg.sender, (_thresholds[msg.sender] = 0));
-        emit CalldataHashSet(msg.sender, (_calldataHashes[msg.sender] = bytes32(0)));
         emit AuthorizersSet(msg.sender, (_authorizers[msg.sender] = new address[](0)));
     }
 }
