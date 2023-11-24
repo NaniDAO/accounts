@@ -3,7 +3,6 @@ pragma solidity ^0.8.19;
 
 import {LibSort} from "@solady/src/utils/LibSort.sol";
 import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
-import "@solady/test/utils/SoladyTest.sol";
 
 /// @notice Simple social recovery validator for smart accounts.
 /// @dev Operationally this validator works as a one-time recovery
@@ -88,8 +87,6 @@ contract RecoveryValidator {
         if (bytes4(userOp.callData[132:136]) != 0xf2fde38b) revert();
         bytes[] memory signatures = _splitSignature(userOp.signature);
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
-
-        console.logBytes32(hash);
         for (uint256 i; i < settings.threshold;) {
             unchecked {
                 for (uint256 j; j < settings.authorizers.length;) {
@@ -98,16 +95,9 @@ contract RecoveryValidator {
                             settings.authorizers[j], hash, signatures[i]
                         )
                     ) {
-                        console.log("valid signature");
-                        console.log(settings.authorizers[j]);
-                        console.logBytes(signatures[i]);
                         ++i;
                         break;
                     } else {
-                        console.log("invalid signature");
-                        console.log(settings.authorizers[j]);
-                        console.logBytes(signatures[i]);
-
                         if (j == (settings.authorizers.length - 1)) return 0x01; // Return digit on failure.
                         ++j;
                     }
@@ -175,7 +165,7 @@ contract RecoveryValidator {
     /// This function can only be called by an authorizer and
     /// sets a new deadline for the account to cancel request.
     function requestOwnershipHandover(address account) public payable virtual {
-        address[] memory authorizers = _settings[msg.sender].authorizers;
+        address[] memory authorizers = _settings[account].authorizers;
         bool isAuthorizer;
         for (uint256 i; i < authorizers.length;) {
             if (msg.sender == authorizers[i]) {

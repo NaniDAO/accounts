@@ -155,21 +155,23 @@ contract RecoveryValidatorTest is Test {
         assertEq(guardianThree, _guardian3);
     }
 
-    /*function testSocialRecovery() public {
+    function testSocialRecovery() public {
         uint192 key = type(uint192).max;
+        address _guardian1 = guardian1;
         address _guardian2 = guardian2;
+        address _guardian3 = guardian3;
 
         address[] memory guardians = new address[](2);
         guardians[0] = _guardian2;
-        guardians[1] = guardian3;
+        guardians[1] = _guardian3;
 
-        account.initialize(guardian1);
+        account.initialize(_guardian1);
 
         NaniAccount.Call[] memory calls = new NaniAccount.Call[](2);
         calls[0].target = address(socialRecoveryValidator);
         calls[0].value = 0 ether;
         calls[0].data =
-            abi.encodeWithSelector(socialRecoveryValidator.install.selector, 0, 2, guardians);
+            abi.encodeWithSelector(socialRecoveryValidator.install.selector, 2 days, 2, guardians);
 
         calls[1].target = address(account);
         calls[1].value = 0 ether;
@@ -178,7 +180,7 @@ contract RecoveryValidatorTest is Test {
             bytes32(abi.encodePacked(key)),
             bytes32(abi.encodePacked(address(socialRecoveryValidator)))
         );
-        vm.startPrank(guardian1);
+        vm.startPrank(_guardian1);
         account.executeBatch(calls);
 
         bytes memory stored = account.execute(
@@ -204,22 +206,22 @@ contract RecoveryValidatorTest is Test {
             _sign(guardian3key, _toEthSignedMessageHash(userOpHash))
         );
 
-        
         vm.startPrank(_guardian2);
         socialRecoveryValidator.requestOwnershipHandover(address(account));
 
+        // 3 days later with no owner cancellation...
+        vm.warp(3 days);
         vm.startPrank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
-
         if (validationData == 0) {
             console.log("validationData is 0");
+            vm.startPrank(_ENTRY_POINT);
             account.execute(
                 address(account),
                 0 ether,
                 abi.encodeWithSelector(account.transferOwnership.selector, _guardian2)
             );
         }
-
         assertEq(account.owner(), _guardian2);
     }
 
@@ -237,7 +239,7 @@ contract RecoveryValidatorTest is Test {
         calls[0].target = address(socialRecoveryValidator);
         calls[0].value = 0 ether;
         calls[0].data =
-            abi.encodeWithSelector(socialRecoveryValidator.install.selector, 0, 2, guardians);
+            abi.encodeWithSelector(socialRecoveryValidator.install.selector, 2 days, 2, guardians);
 
         calls[1].target = address(account);
         calls[1].value = 0 ether;
@@ -270,10 +272,15 @@ contract RecoveryValidatorTest is Test {
         userOp.signature =
             abi.encodePacked(_sign(guardian2key, _toEthSignedMessageHash(userOpHash)));
 
+        vm.startPrank(_guardian2);
+        socialRecoveryValidator.requestOwnershipHandover(address(account));
+
+        // 3 days later with no owner cancellation...
+        vm.warp(3 days);
         vm.startPrank(_ENTRY_POINT);
-        vm.expectRevert();
-        account.validateUserOp(userOp, userOpHash, 0);
-    }*/
+        uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
+        assertEq(validationData, 1);
+    }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -310,8 +317,7 @@ contract RecoveryValidatorTest is Test {
     function _sign(uint256 pK, bytes32 hash) internal view returns (bytes memory) {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pK, hash);
         console.logBytes32(hash);
-        console.logBytes(abi.encodePacked(r, v, s));
-
+        console.logBytes(abi.encodePacked(r, s, v));
         return abi.encodePacked(r, s, v);
     }
 }
