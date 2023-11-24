@@ -8,6 +8,7 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 /// @dev Operationally this validator works as a one-time recovery
 /// multisig singleton by allowing accounts to program authorizers
 /// and thresholds for such authorizers to validate user operations.
+/// @custom:version 0.0.0
 contract RecoveryValidator {
     /// ======================= CUSTOM ERRORS ======================= ///
 
@@ -59,6 +60,12 @@ contract RecoveryValidator {
         address[] authorizers;
     }
 
+    /// @dev The authorizer signing struct.
+    struct Authorizer {
+        address signer;
+        bool matched;
+    }
+
     /// ========================== STORAGE ========================== ///
 
     /// @dev Stores mappings of settings to accounts.
@@ -80,34 +87,38 @@ contract RecoveryValidator {
         virtual
         returns (uint256 validationData)
     {
-        bool success;
         Settings storage settings = _settings[msg.sender];
         if (settings.deadline == 0) revert Unauthorized();
-        bool validAfter = block.timestamp > settings.deadline;
-        if (bytes4(userOp.callData[132:136]) != 0xf2fde38b) revert();
+        if (block.timestamp < settings.deadline) revert Unauthorized();
         bytes[] memory signatures = _splitSignature(userOp.signature);
+        if (signatures.length < settings.threshold) revert Unauthorized();
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
-        for (uint256 i; i < settings.threshold;) {
-            unchecked {
-                for (uint256 j; j < settings.authorizers.length;) {
+        if (bytes4(userOp.callData[132:]) != 0xf2fde38b) revert InvalidExecute();
+        Authorizer[] memory authorizers = new Authorizer[](settings.authorizers.length);
+        unchecked {
+            for (uint256 i; i < authorizers.length;) {
+                authorizers[i].signer = settings.authorizers[i];
+                ++i;
+            }
+            for (uint256 i; i < settings.threshold;) {
+                for (uint256 j; j < authorizers.length;) {
                     if (
-                        SignatureCheckerLib.isValidSignatureNow(
-                            settings.authorizers[j], hash, signatures[i]
-                        )
+                        !authorizers[j].matched
+                            && SignatureCheckerLib.isValidSignatureNow(
+                                authorizers[j].signer, hash, signatures[i]
+                            )
                     ) {
+                        authorizers[j].matched = true;
                         ++i;
                         break;
                     } else {
-                        if (j == (settings.authorizers.length - 1)) return 0x01; // Return digit on failure.
                         ++j;
+                        if (j == authorizers.length) {
+                            return 0x01;
+                        }
                     }
                 }
-                success = true;
             }
-        }
-        /// @solidity memory-safe-assembly
-        assembly {
-            validationData := iszero(and(success, validAfter))
         }
         uninstall(); // Uninstall the recovery settings.
     }
@@ -144,6 +155,7 @@ contract RecoveryValidator {
 
     /// @dev Sets new authorizer validation delay for the caller account.
     function setDelay(uint32 delay) public payable virtual {
+        if (delay == 0) revert InvalidSetting();
         emit DelaySet(msg.sender, (_settings[msg.sender].delay = delay));
     }
 
@@ -154,7 +166,7 @@ contract RecoveryValidator {
     }
 
     /// @dev Sets new authorizers for the caller account.
-    function setAuthorizers(address[] memory authorizers) public payable virtual {
+    function setAuthorizers(address[] calldata authorizers) public payable virtual {
         LibSort.sort(authorizers);
         LibSort.uniquifySorted(authorizers);
         if (_settings[msg.sender].threshold > authorizers.length) revert InvalidSetting();
@@ -191,27 +203,26 @@ contract RecoveryValidator {
     /// ================== INSTALLATION OPERATIONS ================== ///
 
     /// @dev Installs the validator settings for the caller account.
-    function install(uint32 delay, uint192 threshold, address[] memory authorizers)
+    function install(uint32 delay, uint192 threshold, address[] calldata authorizers)
         public
         payable
         virtual
     {
-        if (delay != 0) emit DelaySet(msg.sender, (_settings[msg.sender].delay = delay));
-        if (authorizers.length >= threshold) {
-            emit ThresholdSet(msg.sender, (_settings[msg.sender].threshold = threshold));
-        }
-        if (authorizers.length != 0) {
-            LibSort.sort(authorizers);
-            LibSort.uniquifySorted(authorizers);
-            emit AuthorizersSet(msg.sender, (_settings[msg.sender].authorizers = authorizers));
-        }
+        LibSort.sort(authorizers);
+        LibSort.uniquifySorted(authorizers);
+        if (delay == 0) revert InvalidSetting();
+        if (authorizers.length < threshold) revert InvalidSetting();
+        emit DelaySet(msg.sender, (_settings[msg.sender].delay = delay));
+        emit ThresholdSet(msg.sender, (_settings[msg.sender].threshold = threshold));
+        emit AuthorizersSet(msg.sender, (_settings[msg.sender].authorizers = authorizers));
     }
 
-    /// @dev Uninstalls the validator settings for the registered caller account.
+    /// @dev Uninstalls the validator settings for the caller account.
     function uninstall() public payable virtual {
-        emit DelaySet(msg.sender, (_settings[msg.sender].delay = 0));
-        emit DeadlineSet(msg.sender, (_settings[msg.sender].deadline = 0));
-        emit ThresholdSet(msg.sender, (_settings[msg.sender].threshold = 0));
-        emit AuthorizersSet(msg.sender, (_settings[msg.sender].authorizers = new address[](0)));
+        delete _settings[msg.sender];
+        emit DelaySet(msg.sender, 0);
+        emit DeadlineSet(msg.sender, 0);
+        emit ThresholdSet(msg.sender, 0);
+        emit AuthorizersSet(msg.sender, new address[](0));
     }
 }
