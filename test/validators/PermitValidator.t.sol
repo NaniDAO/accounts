@@ -31,7 +31,7 @@ contract PermitValidatorTester {
 
     constructor() payable {}
 
-    function getRandomState() public view returns (uint256[] memory) {
+    function getRandomState() public pure returns (uint256[] memory) {
         uint256[] memory randomStates = new uint256[](7);
         for (uint256 i = 0; i < 7; i++) {
             randomStates[i] = uint256(State(i));

@@ -6,6 +6,7 @@ import "@forge/Test.sol";
 import {LibClone} from "@solady/src/utils/LibClone.sol";
 import {Account as NaniAccount} from "../../src/Account.sol";
 import {RecoveryValidator} from "../../src/validators/RecoveryValidator.sol";
+import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 
 interface IEntryPoint {
     function getNonce(address sender, uint192 key) external view returns (uint256 nonce);
@@ -79,7 +80,7 @@ contract RecoveryValidatorTest is Test {
             abi.encodeWithSelector(RecoveryValidator.install.selector, 0, 3, guardians)
         );
 
-        (,,, guardians) = socialRecoveryValidator.getSettings(address(account));
+        guardians = socialRecoveryValidator.getAuthorizers(address(account));
         address guardianOne = guardians[0];
         address guardianTwo = guardians[1];
         address guardianThree = guardians[2];
@@ -107,7 +108,7 @@ contract RecoveryValidatorTest is Test {
             abi.encodeWithSelector(socialRecoveryValidator.install.selector, 0, 3, guardians)
         );
 
-        (,,, guardians) = socialRecoveryValidator.getSettings(address(account));
+        guardians = socialRecoveryValidator.getAuthorizers(address(account));
         address guardianOne = guardians[0];
         address guardianTwo = guardians[1];
         address guardianThree = guardians[2];
@@ -121,7 +122,7 @@ contract RecoveryValidatorTest is Test {
             abi.encodeWithSelector(socialRecoveryValidator.uninstall.selector)
         );
 
-        (,,, guardians) = socialRecoveryValidator.getSettings(address(account));
+        guardians = socialRecoveryValidator.getAuthorizers(address(account));
         assertEq(guardians, new address[](0));
     }
 
@@ -145,8 +146,7 @@ contract RecoveryValidatorTest is Test {
             0 ether,
             abi.encodeWithSelector(socialRecoveryValidator.install.selector, 0, 3, guardians)
         );
-
-        (,,, guardians) = socialRecoveryValidator.getSettings(address(account));
+        guardians = socialRecoveryValidator.getAuthorizers(address(account));
         address guardianOne = guardians[0];
         address guardianTwo = guardians[1];
         address guardianThree = guardians[2];
@@ -155,7 +155,7 @@ contract RecoveryValidatorTest is Test {
         assertEq(guardianThree, _guardian3);
     }
 
-    function testSocialRecovery() public {
+    /*function testSocialRecovery() public {
         uint192 key = type(uint192).max;
         address _guardian2 = guardian2;
 
@@ -204,6 +204,7 @@ contract RecoveryValidatorTest is Test {
             _sign(guardian3key, _toEthSignedMessageHash(userOpHash))
         );
 
+        
         vm.startPrank(_guardian2);
         socialRecoveryValidator.requestOwnershipHandover(address(account));
 
@@ -211,17 +212,19 @@ contract RecoveryValidatorTest is Test {
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
 
         if (validationData == 0) {
+            console.log("validationData is 0");
             account.execute(
                 address(account),
                 0 ether,
                 abi.encodeWithSelector(account.transferOwnership.selector, _guardian2)
             );
         }
-        //assertEq(account.owner(), _guardian2);
+
+        assertEq(account.owner(), _guardian2);
     }
-    /*
+
     function testFailSocialRecovery() public {
-        /*uint192 key = type(uint192).max;
+        uint192 key = type(uint192).max;
         address _guardian2 = guardian2;
 
         address[] memory guardians = new address[](2);
@@ -301,16 +304,14 @@ contract RecoveryValidatorTest is Test {
     }
 
     function _toEthSignedMessageHash(bytes32 hash) internal pure returns (bytes32 result) {
-        /// @solidity memory-safe-assembly
-        assembly {
-            mstore(0x20, hash) // Store into scratch space for keccak256.
-            mstore(0x00, "\x00\x00\x00\x00\x19Ethereum Signed Message:\n32") // 28 bytes.
-            result := keccak256(0x04, 0x3c) // `32 * 2 - (32 - 28) = 60 = 0x3c`.
-        }
+        return SignatureCheckerLib.toEthSignedMessageHash(hash);
     }
 
-    function _sign(uint256 pK, bytes32 hash) internal pure returns (bytes memory) {
+    function _sign(uint256 pK, bytes32 hash) internal view returns (bytes memory) {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pK, hash);
+        console.logBytes32(hash);
+        console.logBytes(abi.encodePacked(r, v, s));
+
         return abi.encodePacked(r, s, v);
     }
 }

@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import {LibSort} from "@solady/src/utils/LibSort.sol";
 import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
+import "@solady/test/utils/SoladyTest.sol";
 
 /// @notice Simple social recovery validator for smart accounts.
 /// @dev Operationally this validator works as a one-time recovery
@@ -23,15 +24,15 @@ contract RecoveryValidator {
     /// =========================== EVENTS =========================== ///
 
     /// @dev Logs the new delay for an account to renew custody.
-    event DelaySet(address indexed account, uint256 deadline);
+    event DelaySet(address indexed account, uint32 delay);
 
     /// @dev Logs the new deadline for an account to renew custody.
-    event DeadlineSet(address indexed account, uint256 deadline);
+    event DeadlineSet(address indexed account, uint32 deadline);
 
     /// @dev Logs the new authorizers' threshold for an account.
-    event ThresholdSet(address indexed account, uint256 threshold);
+    event ThresholdSet(address indexed account, uint192 threshold);
 
-    /// @dev Logs the new authorizers for an account.
+    /// @dev Logs the new authorizers for an account (i.e., 'multisig').
     event AuthorizersSet(address indexed account, address[] authorizers);
 
     /// ========================== STRUCTS ========================== ///
@@ -51,19 +52,18 @@ contract RecoveryValidator {
         bytes signature;
     }
 
+    /// @dev The validator settings struct.
+    struct Settings {
+        uint32 delay;
+        uint32 deadline;
+        uint192 threshold;
+        address[] authorizers;
+    }
+
     /// ========================== STORAGE ========================== ///
 
-    /// @dev Stores mappings of delays to accounts.
-    mapping(address => uint256) internal _delays;
-
-    /// @dev Stores mappings of deadlines to accounts.
-    mapping(address => uint256) internal _deadlines;
-
-    /// @dev Stores mappings of thresholds to accounts.
-    mapping(address => uint256) internal _thresholds;
-
-    /// @dev Stores mappings of authorizers to accounts.
-    mapping(address => address[]) internal _authorizers;
+    /// @dev Stores mappings of settings to accounts.
+    mapping(address => Settings) internal _settings;
 
     /// ======================== CONSTRUCTOR ======================== ///
 
@@ -74,7 +74,7 @@ contract RecoveryValidator {
     /// =================== VALIDATION OPERATIONS =================== ///
 
     /// @dev Validates ERC4337 userOp with additional auth logic flow among authorizers.
-    /// Generally, this should be used to execute `transferOwnership` to backup owners.
+    /// This must be used to execute `transferOwnership` to backup decided by threshold.
     function validateUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint256)
         external
         payable
@@ -82,26 +82,33 @@ contract RecoveryValidator {
         returns (uint256 validationData)
     {
         bool success;
-        uint256 deadline = _deadlines[msg.sender];
-        if (deadline == 0) revert Unauthorized();
-        bool validAfter = block.timestamp > deadline;
-        uint256 threshold = _thresholds[msg.sender];
-        address[] memory authorizers = _authorizers[msg.sender];
+        Settings storage settings = _settings[msg.sender];
+        if (settings.deadline == 0) revert Unauthorized();
+        bool validAfter = block.timestamp > settings.deadline;
+        if (bytes4(userOp.callData[132:136]) != 0xf2fde38b) revert();
         bytes[] memory signatures = _splitSignature(userOp.signature);
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
-        //if (bytes4(userOp.callData[:]) != bytes4(keccak256("transferOwnership(address)"))) {
-        //    revert InvalidExecute();
-        //}
-        for (uint256 i; i < threshold;) {
+
+        console.logBytes32(hash);
+        for (uint256 i; i < settings.threshold;) {
             unchecked {
-                for (uint256 j; j < authorizers.length;) {
+                for (uint256 j; j < settings.authorizers.length;) {
                     if (
-                        SignatureCheckerLib.isValidSignatureNow(authorizers[j], hash, signatures[i])
+                        SignatureCheckerLib.isValidSignatureNow(
+                            settings.authorizers[j], hash, signatures[i]
+                        )
                     ) {
+                        console.log("valid signature");
+                        console.log(settings.authorizers[j]);
+                        console.logBytes(signatures[i]);
                         ++i;
                         break;
                     } else {
-                        if (j == (authorizers.length - 1)) return 0x01; // Return digit on failure.
+                        console.log("invalid signature");
+                        console.log(settings.authorizers[j]);
+                        console.logBytes(signatures[i]);
+
+                        if (j == (settings.authorizers.length - 1)) return 0x01; // Return digit on failure.
                         ++j;
                     }
                 }
@@ -135,42 +142,40 @@ contract RecoveryValidator {
 
     /// =================== AUTHORIZER OPERATIONS =================== ///
 
-    /// @dev Returns the validation time status,
-    /// threshold, as well as the authorizers
-    /// of the registered account.
-    function getSettings(address account)
-        public
-        view
-        virtual
-        returns (uint256 delay, uint256 deadline, uint256 threshold, address[] memory authorizers)
-    {
-        return (_delays[account], _deadlines[account], _thresholds[account], _authorizers[account]);
+    /// @dev Returns the account settings.
+    function getSettings(address account) public view virtual returns (Settings memory) {
+        return _settings[account];
+    }
+
+    /// @dev Returns the authorizers for the account.
+    function getAuthorizers(address account) public view virtual returns (address[] memory) {
+        return _settings[account].authorizers;
     }
 
     /// @dev Sets new authorizer validation delay for the caller account.
-    function setDelay(uint256 delay) public payable virtual {
-        emit DelaySet(msg.sender, (_delays[msg.sender] = delay));
+    function setDelay(uint32 delay) public payable virtual {
+        emit DelaySet(msg.sender, (_settings[msg.sender].delay = delay));
     }
 
     /// @dev Sets new authorizers' threshold for the caller account.
-    function setThreshold(uint256 threshold) public payable virtual {
-        if (threshold > _authorizers[msg.sender].length) revert InvalidSetting();
-        emit ThresholdSet(msg.sender, (_thresholds[msg.sender] = threshold));
+    function setThreshold(uint192 threshold) public payable virtual {
+        if (threshold > _settings[msg.sender].authorizers.length) revert InvalidSetting();
+        emit ThresholdSet(msg.sender, (_settings[msg.sender].threshold = threshold));
     }
 
     /// @dev Sets new authorizers for the caller account.
     function setAuthorizers(address[] memory authorizers) public payable virtual {
         LibSort.sort(authorizers);
         LibSort.uniquifySorted(authorizers);
-        if (_thresholds[msg.sender] > authorizers.length) revert InvalidSetting();
-        emit AuthorizersSet(msg.sender, (_authorizers[msg.sender] = authorizers));
+        if (_settings[msg.sender].threshold > authorizers.length) revert InvalidSetting();
+        emit AuthorizersSet(msg.sender, (_settings[msg.sender].authorizers = authorizers));
     }
 
     /// @dev Initiates an authorizer handover for the account.
     /// This function can only be called by an authorizer and
     /// sets a new deadline for the account to cancel request.
     function requestOwnershipHandover(address account) public payable virtual {
-        address[] memory authorizers = _authorizers[account];
+        address[] memory authorizers = _settings[msg.sender].authorizers;
         bool isAuthorizer;
         for (uint256 i; i < authorizers.length;) {
             if (msg.sender == authorizers[i]) {
@@ -182,38 +187,41 @@ contract RecoveryValidator {
             }
         }
         if (!isAuthorizer) revert Unauthorized();
-        emit DeadlineSet(account, _deadlines[account] = block.timestamp + _delays[account]);
+        emit DeadlineSet(
+            account,
+            (_settings[account].deadline = uint32(block.timestamp) + _settings[account].delay)
+        );
     }
 
     /// @dev Cancels authorizer handovers for the caller account.
     function cancelOwnershipHandover() public payable virtual {
-        emit DeadlineSet(msg.sender, _deadlines[msg.sender] = 0);
+        emit DeadlineSet(msg.sender, _settings[msg.sender].deadline = 0);
     }
 
     /// ================== INSTALLATION OPERATIONS ================== ///
 
     /// @dev Installs the validator settings for the caller account.
-    function install(uint256 delay, uint256 threshold, address[] memory authorizers)
+    function install(uint32 delay, uint192 threshold, address[] memory authorizers)
         public
         payable
         virtual
     {
-        if (delay != 0) emit DelaySet(msg.sender, (_delays[msg.sender] = delay));
+        if (delay != 0) emit DelaySet(msg.sender, (_settings[msg.sender].delay = delay));
         if (authorizers.length >= threshold) {
-            emit ThresholdSet(msg.sender, (_thresholds[msg.sender] = threshold));
+            emit ThresholdSet(msg.sender, (_settings[msg.sender].threshold = threshold));
         }
         if (authorizers.length != 0) {
             LibSort.sort(authorizers);
             LibSort.uniquifySorted(authorizers);
-            emit AuthorizersSet(msg.sender, (_authorizers[msg.sender] = authorizers));
+            emit AuthorizersSet(msg.sender, (_settings[msg.sender].authorizers = authorizers));
         }
     }
 
     /// @dev Uninstalls the validator settings for the registered caller account.
     function uninstall() public payable virtual {
-        emit DelaySet(msg.sender, (_delays[msg.sender] = 0));
-        emit DeadlineSet(msg.sender, (_deadlines[msg.sender] = 0));
-        emit ThresholdSet(msg.sender, (_thresholds[msg.sender] = 0));
-        emit AuthorizersSet(msg.sender, (_authorizers[msg.sender] = new address[](0)));
+        emit DelaySet(msg.sender, (_settings[msg.sender].delay = 0));
+        emit DeadlineSet(msg.sender, (_settings[msg.sender].deadline = 0));
+        emit ThresholdSet(msg.sender, (_settings[msg.sender].threshold = 0));
+        emit AuthorizersSet(msg.sender, (_settings[msg.sender].authorizers = new address[](0)));
     }
 }
