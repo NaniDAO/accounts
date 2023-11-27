@@ -131,7 +131,7 @@ contract PermitValidatorTest is Test, TestPlus {
     }
 
     function testTimePermissions() public {
-        // spans 
+        // spans
         PermitValidator.Span[] memory spans = new PermitValidator.Span[](3);
         spans[0] = PermitValidator.Span({
             validAfter: uint32(block.timestamp),
@@ -171,7 +171,9 @@ contract PermitValidatorTest is Test, TestPlus {
                 permissions.validatePermit(
                     permit,
                     spans[count],
-                    abi.encodeWithSelector(NaniAccount(account).execute.selector, alice, 0, hex"0000")
+                    abi.encodeWithSelector(
+                        NaniAccount(account).execute.selector, alice, 0, hex"0000"
+                    )
                 ),
                 0
             );
