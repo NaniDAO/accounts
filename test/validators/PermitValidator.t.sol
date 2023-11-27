@@ -61,12 +61,6 @@ contract PermitValidatorTester {
 }
 
 contract PermitValidatorTest is Test, TestPlus {
-    struct Call {
-        address target;
-        uint256 value;
-        bytes data;
-    }
-
     PermitValidator permissions;
 
     address payable erc4337;
@@ -95,48 +89,94 @@ contract PermitValidatorTest is Test, TestPlus {
         for (uint256 i = 0; i < authorized.length; i++) {
             assertEq(authorized[i], _authorized[i]);
         }
-
         permissions.uninstall();
     }
 
-    // function testValuePermission(uint256 value, uint256 maxValue) public {
-    //     vm.assume(value <= type(uint128).max);
-    //     vm.assume(maxValue <= type(uint128).max);
-    //     address[] memory targets = getTargets(0, alice);
-    //     console.log(targets[0]);
-    //     PermitValidator.Span[] memory spans = new PermitValidator.Span[](1);
-    //     spans[0] = PermitValidator.Span({
-    //         validAfter: uint32(block.timestamp),
-    //         validUntil: uint32(block.timestamp + 100000)
-    //     });
-    //     PermitValidator.Permit memory permit =
-    //         createPermit(targets, maxValue, bytes4(0), new PermitValidator.Param[](0), spans);
-    //     PermitValidator.Call memory call =
-    //         PermitValidator.Call({target: alice, value: value, data: hex"00"});
-    //     bytes32 permitHash = permissions.getPermitHash(account, permit);
+    function testValuePermission(uint256 value, uint256 maxValue) public {
+        vm.assume(value <= type(uint128).max);
+        vm.assume(value <= maxValue);
+        vm.assume(maxValue <= type(uint128).max);
+        if (value > maxValue) {
+            return;
+        }
+        address[] memory targets = getTargets(0, alice);
+        console.log(targets[0]);
+        PermitValidator.Span[] memory spans = new PermitValidator.Span[](1);
+        spans[0] = PermitValidator.Span({
+            validAfter: uint32(block.timestamp),
+            validUntil: uint32(block.timestamp + 100000)
+        });
+        string memory intent = "send money";
+        PermitValidator.Permit memory permit = createPermit(
+            targets,
+            uint192(maxValue),
+            uint32(0),
+            bytes4(0),
+            intent,
+            spans,
+            new PermitValidator.Arg[](0)
+        );
+        uint256 assertion = value <= permit.allowance ? 0 : 1;
 
-    //     bytes memory sig = sign(aliceKey, SignatureCheckerLib.toEthSignedMessageHash(permitHash));
-    //     bool assertion = value <= permit.allowance;
-    //     assertEq(permissions.validatePermit(spans, permit, abi.encodeCall(NaniAccount.execute, call.target, call.value, call.data), sig, account));
-    // }
+        assertEq(
+            permissions.validatePermit(
+                permit,
+                spans[0],
+                abi.encodeWithSelector(
+                    NaniAccount(account).execute.selector, alice, value, hex"0000"
+                )
+            ),
+            assertion
+        );
+    }
 
-    // function testTimePermissions(PermitValidator.Span[] spans) public {
-    //     vm.assume(spans.length != 0);
-    //     vm.assume(spans.length <= type(uint8).max);
-    //     require(spans.length != 0);
-    //     require(spans.length <= type(uint8).max);
+    function testTimePermissions() public {
+        // spans 
+        PermitValidator.Span[] memory spans = new PermitValidator.Span[](3);
+        spans[0] = PermitValidator.Span({
+            validAfter: uint32(block.timestamp),
+            validUntil: uint32(block.timestamp + 100000)
+        });
+        spans[1] = PermitValidator.Span({
+            validAfter: uint32(block.timestamp + 100000),
+            validUntil: uint32(block.timestamp + 200000)
+        });
+        spans[2] = PermitValidator.Span({
+            validAfter: uint32(block.timestamp + 200000),
+            validUntil: uint32(block.timestamp + 300000)
+        });
+        // count should be a random value between 0-2
+        uint256 count = uint256(block.timestamp) % 3;
 
-    //     address[] memory targets = getTargets(0, alice);
-    //     Slip memory permit = createPermit(
-    //         targets, 0, bytes4(0), new PermitValidator.Param[](0), 1, 0
-    //     );
-    //     Call memory call = Call({to: alice, value: 0, data: ''});
-    //     bytes32 permitHash = permissions.getPermitHash(account, permit);
+        address[] memory targets = getTargets(0, alice);
+        string memory intent = "ping alice";
 
-    //     bytes memory sig = sign(aliceKey, SignatureCheckerLib.toEthSignedMessageHash(permitHash));
-    //     bool assertion =
-    //     assertEq(permissions.checkPermission(address(account), sig, permit, call), assertion);
-    // }
+        PermitValidator.Permit memory permit = createPermit(
+            targets, uint192(0), uint32(0), bytes4(0), intent, spans, new PermitValidator.Arg[](0)
+        );
+
+        uint256 assertion = (
+            spans[count].validAfter > block.timestamp && spans[count].validUntil < block.timestamp
+        ) ? 0 : 1;
+
+        if (assertion == 1) {
+            vm.expectRevert();
+            permissions.validatePermit(
+                permit,
+                spans[count],
+                abi.encodeWithSelector(NaniAccount(account).execute.selector, alice, 0, hex"0000")
+            );
+        } else {
+            assertEq(
+                permissions.validatePermit(
+                    permit,
+                    spans[count],
+                    abi.encodeWithSelector(NaniAccount(account).execute.selector, alice, 0, hex"0000")
+                ),
+                0
+            );
+        }
+    }
 
     // function testUintPermission(uint256 val, uint256 min, uint256 max) public {
     //     vm.assume(min < max);
@@ -452,17 +492,21 @@ contract PermitValidatorTest is Test, TestPlus {
 
     function createPermit(
         address[] memory targets,
-        uint256 maxValue,
+        uint192 allowance,
+        uint32 timesUsed,
         bytes4 selector,
-        PermitValidator.Param[] memory arguments,
-        PermitValidator.Span[] memory spans
+        string memory intent,
+        PermitValidator.Span[] memory spans,
+        PermitValidator.Arg[] memory args
     ) public pure returns (PermitValidator.Permit memory permit) {
         return PermitValidator.Permit({
             targets: targets,
-            allowance: maxValue,
+            allowance: allowance,
+            timesUsed: timesUsed,
             selector: selector,
-            arguments: arguments,
-            spans: spans
+            intent: intent,
+            spans: spans,
+            args: args
         });
     }
 

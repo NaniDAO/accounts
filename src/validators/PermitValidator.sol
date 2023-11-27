@@ -1,18 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.19;
 
-import {ECDSA} from "@solady/src/utils/ECDSA.sol";
 import {EIP712} from "@solady/src/utils/EIP712.sol";
 import {LibSort} from "@solady/src/utils/LibSort.sol";
 import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
-
-/// @notice Executor interface.
-interface IExecutor {
-    function execute(address target, uint256 value, bytes calldata data)
-        external
-        payable
-        returns (bytes memory result);
-}
+import "@forge/Test.sol";
 
 /// @notice Simple executor permit validator for smart accounts.
 /// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/validators/PermitValidator.sol)
@@ -24,7 +16,10 @@ contract PermitValidator is EIP712 {
     /// ======================= CUSTOM ERRORS ======================= ///
 
     /// @dev Calldata method is invalid for an execution.
-    error InvalidExecute();
+    error InvalidSelector();
+
+    /// @dev Permit usage limit reached by an authorizer.
+    error PermitLimited();
 
     /// =========================== EVENTS =========================== ///
 
@@ -51,36 +46,37 @@ contract PermitValidator is EIP712 {
     /// @dev Permit data struct.
     struct Permit {
         address[] targets;
-        uint256 allowance;
+        uint192 allowance;
+        uint32 timesUsed;
         bytes4 selector;
+        string intent;
         Span[] spans;
-        Param[] arguments;
-    }
-
-    /// @dev Calldata types.
-    enum Type {
-        UINT,
-        INT,
-        ADDRESS,
-        BOOL,
-        UINT8,
-        BYTES,
-        STRING,
-        TUPLE
-    }
-
-    /// @dev Calldata precision.
-    struct Param {
-        Type _type;
-        uint8 offset;
-        uint256 length;
-        bytes rules;
+        Arg[] args;
     }
 
     /// @dev Permit timespan.
     struct Span {
-        uint32 validAfter;
-        uint32 validUntil;
+        uint128 validAfter;
+        uint128 validUntil;
+    }
+
+    /// @dev Calldata precision.
+    struct Arg {
+        Type _type;
+        uint248 offset;
+        bytes bounds;
+    }
+
+    /// @dev Calldata types.
+    enum Type {
+        Uint,
+        Int,
+        Address,
+        Bool,
+        Uint8,
+        Bytes,
+        String,
+        Tuple
     }
 
     /// ========================== STORAGE ========================== ///
@@ -88,11 +84,8 @@ contract PermitValidator is EIP712 {
     /// @dev Stores mappings of authorizers to accounts.
     mapping(address => address[]) internal _authorizers;
 
-    /// @dev Stores mappings of permit hashes to usage.
-    mapping(bytes32 permitHash => uint256) public uses;
-
-    /// @dev Stores mappings of permit hashes to structs.
-    mapping(bytes32 permitHash => Permit) public permits;
+    /// @dev Stores mappings of permit hashes to permit data.
+    mapping(bytes32 permitHash => Permit) internal _permits;
 
     /// @dev Returns domain name
     /// & version of implementation.
@@ -108,17 +101,16 @@ contract PermitValidator is EIP712 {
 
     /// =================== VALIDATION OPERATIONS =================== ///
 
+    /// @dev Validates ERC4337 userOp with additional auth logic flow among authorizers.
     function validateUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint256)
         external
         payable
         virtual
         returns (uint256 validationData)
     {
-        // Extract permit hash and signature from `userOp`.
         (bytes32 permitHash, bytes memory signature) =
             abi.decode(userOp.signature, (bytes32, bytes));
-        // Ensure `userOpHash` is signed by an account authorizer.
-        address[] memory authorizers = _authorizers[userOp.sender];
+        address[] memory authorizers = _authorizers[msg.sender];
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
         for (uint256 i; i < authorizers.length;) {
             if (SignatureCheckerLib.isValidSignatureNow(authorizers[i], hash, signature)) {
@@ -130,18 +122,26 @@ contract PermitValidator is EIP712 {
             }
         }
         if (validationData == 0x00) return 0x01;
-        // Return validation data for permit.
-        Permit memory permit = permits[permitHash];
+        Permit memory permit = _permits[permitHash];
         unchecked {
-            uint256 count = uses[permitHash]++;
-            if (count == permit.spans.length) return 0x01;
+            uint256 count = permit.timesUsed++;
+            if (count >= permit.spans.length) {
+                delete _permits[permitHash];
+                return 0x01;
+            }
             validationData = validatePermit(permit, permit.spans[count], userOp.callData);
         }
     }
 
     /// ===================== PERMIT OPERATIONS ===================== ///
 
-    function getPermitHash(address account, Permit memory permit)
+    /// @dev Returns the permit for a permit hash.
+    function getPermit(bytes32 permitHash) public view virtual returns (Permit memory) {
+        return _permits[permitHash];
+    }
+
+    /// @dev Returns the permit hash for an account and permit.
+    function getPermitHash(address account, Permit calldata permit)
         public
         view
         virtual
@@ -150,120 +150,155 @@ contract PermitValidator is EIP712 {
         return _hashTypedData(keccak256(abi.encode(account, permit)));
     }
 
+    /// @dev Sets the permit for a permit hash given by the caller.
+    function setPermitHash(Permit calldata permit) public payable virtual {
+        _permits[_hashTypedData(keccak256(abi.encode(msg.sender, permit)))] = permit;
+    }
+
+    /// @dev Validates a permit for a given span and call data.
     function validatePermit(Permit memory permit, Span memory span, bytes calldata callData)
         public
         view
         virtual
         returns (uint256 validationData)
     {
-        // Extract executory details under IExecutor.
-        (bytes4 selector, address target, uint256 value, bytes memory data) =
-            abi.decode(callData, (bytes4, address, uint256, bytes));
-        // Ensure executory intent.
-        if (selector != IExecutor.execute.selector) revert InvalidExecute();
-        // Ensure the permit is within the authorized bounds.
+        console.log("validatePermit");
+        // Ensure the permit is in valid `span`.
+        if (span.validAfter != 0 && block.timestamp < span.validAfter) revert PermitLimited();
+        if (span.validUntil != 0 && block.timestamp > span.validUntil) revert PermitLimited();
+        console.log("within time bounds");
+        // Extract executory details for the suggested `callData`.
+        bytes4 selector = bytes4(callData[0:4]);
+        console.logBytes4(selector);
+        (address target, uint256 value, bytes memory data) =
+            abi.decode(callData[4:], (address, uint256, bytes));
+        console.log("extracted");
+        console.logAddress(target);
+        console.logUint(value);
+        console.logBytes(data);
+        // Ensure executory intent for the permit.
+        if (selector != IExecutor.execute.selector) revert InvalidSelector();
+        console.log("execute");
+        // Ensure the permit `target` is authorized.
+        (bool found,) = LibSort.searchSorted(permit.targets, target);
+        if (!found) revert PermitLimited();
+        console.log("found");
+        // Decrement the allowance for any `value`.
+        if (value != 0) permit.allowance -= uint192(value);
+        // Check the permit selector against the call.
+        console.logBytes4(permit.selector);
+        if (bytes4(data) != permit.selector) revert InvalidSelector();
+        // Ensure the `args` are within permitted bounds.
         unchecked {
-            // Ensure the permit is within the valid timespan.
-            if (span.validAfter != 0 && block.timestamp < span.validAfter) return 0x01;
-            if (span.validUntil != 0 && block.timestamp > span.validUntil) return 0x01;
-            // Ensure the call `target` is authorized.
-            for (uint256 i; i < permit.targets.length; ++i) {
-                if (permit.targets[i] == target) break;
-                if (i == permit.targets.length - 1) return 0x01;
-            }
-            // Ensure the call `value` is within allowance.
-            if (value > permit.allowance) revert InvalidExecute();
-        }
-        // Check the `callData` against the permit data and bounds.
-        if (permit.selector.length != 0 && data.length != 0) {
-            // Check the permit selector against the call.
-            if (bytes4(data) != permit.selector) return 0x01;
-            // Ensure the call params are within permitted bounds.
-            Param memory param;
-            unchecked {
-                for (uint256 i; i < permit.arguments.length; ++i) {
-                    param = permit.arguments[i];
-                    bytes memory _data = callData[param.offset:param.offset + 32];
-                    if (param._type == Type.UINT) {
-                        if (_validateUint(abi.decode(_data, (uint256)), param.rules)) break;
-                        return 0x01;
-                    } else if (param._type == Type.INT) {
-                        if (_validateInt(abi.decode(_data, (int256)), param.rules)) break;
-                        return 0x01;
-                    } else if (param._type == Type.ADDRESS) {
-                        if (_validateAddress(abi.decode(_data, (address)), param.rules)) break;
-                        return 0x01;
-                    } else if (param._type == Type.BOOL) {
-                        if (_validateBool(abi.decode(_data, (bool)), param.rules)) break;
-                        return 0x01;
-                    } else if (param._type == Type.UINT8) {
-                        if (_validateEnum(abi.decode(_data, (uint8)), param.rules)) break;
-                        return 0x01;
-                    } else if (param._type == Type.BYTES) {
-                        bytes memory bound = abi.decode(param.rules, (bytes));
-                        bytes memory object = abi.decode(_data, (bytes));
-                        if (keccak256(bound) != keccak256(object)) return 0x01;
-                    } else if (param._type == Type.STRING) {
-                        string memory bound = abi.decode(param.rules, (string));
-                        string memory object = abi.decode(_data, (string));
-                        if (keccak256(abi.encode(bound)) != keccak256(abi.encode(object))) {
-                            return 0x01;
-                        }
-                    } else if (param._type == Type.TUPLE) {
-                        if (_validateTuple(_data, param.rules, param.offset, param.length)) {
-                            break;
-                        }
-                        return 0x01;
-                    }
-                }
+            for (uint256 i; i < permit.args.length; ++i) {
+                validationData = _validateArg(permit.args[i], callData);
             }
         }
-        return 0x00;
     }
 
-    function _validateUint(uint256 value, bytes memory bounds)
+    /// @dev Validates a permit argument for a given call data.
+    function _validateArg(Arg memory arg, bytes calldata callData)
+        internal
+        view
+        virtual
+        returns (uint256 validationData)
+    {
+        unchecked {
+            bytes memory _data = callData[arg.offset:arg.offset + 32];
+            if (arg._type == Type.Uint) {
+                if (_validateUint(abi.decode(_data, (uint256)), arg.bounds)) return 0x00;
+                return 0x01;
+            } else if (arg._type == Type.Int) {
+                if (_validateInt(abi.decode(_data, (int256)), arg.bounds)) return 0x00;
+                return 0x01;
+            } else if (arg._type == Type.Address) {
+                if (_validateAddress(abi.decode(_data, (address)), arg.bounds)) return 0x00;
+                return 0x01;
+            } else if (arg._type == Type.Bool) {
+                if (_validateBool(abi.decode(_data, (bool)), arg.bounds)) return 0x00;
+                return 0x01;
+            } else if (arg._type == Type.Uint8) {
+                if (_validateEnum(abi.decode(_data, (uint8)), arg.bounds)) return 0x00;
+                return 0x01;
+            } else if (arg._type == Type.Bytes) {
+                if (_validateData(_data, arg.bounds)) return 0x00;
+                return 0x01;
+            } else if (arg._type == Type.String) {
+                if (_validateData(_data, arg.bounds)) return 0x00;
+                return 0x01;
+            } else if (arg._type == Type.Tuple) {
+                if (_validateTuple(abi.decode(_data, (uint8)), arg.bounds)) return 0x00;
+                return 0x01;
+            }
+        }
+    }
+
+    /// @dev Validates an uint256 `object` against given `bounds`.
+    function _validateUint(uint256 object, bytes memory bounds)
         internal
         pure
         virtual
         returns (bool)
     {
         (uint256 min, uint256 max) = abi.decode(bounds, (uint256, uint256));
-        return value >= min && value <= max;
+        return object >= min && object <= max;
     }
 
-    function _validateInt(int256 value, bytes memory bounds) internal pure virtual returns (bool) {
+    /// @dev Validates an int256 `object` against given `bounds`.
+    function _validateInt(int256 object, bytes memory bounds)
+        internal
+        pure
+        virtual
+        returns (bool)
+    {
         (int256 min, int256 max) = abi.decode(bounds, (int256, int256));
-        return value >= min && value <= max;
+        return object >= min && object <= max;
     }
 
-    function _validateAddress(address value, bytes memory rules)
+    /// @dev Validates an address `object` against given `bounds`.
+    function _validateAddress(address object, bytes memory bounds)
         internal
         view
         virtual
         returns (bool found)
     {
-        (found,) = LibSort.searchSorted(abi.decode(rules, (address[])), value);
+        (found,) = LibSort.searchSorted(abi.decode(bounds, (address[])), object);
     }
 
-    function _validateBool(bool value, bytes memory bounds) internal pure virtual returns (bool) {
-        return value == abi.decode(bounds, (bool));
+    /// @dev Validates a bool `object` against given `bounds`.
+    function _validateBool(bool object, bytes memory bounds) internal pure virtual returns (bool) {
+        return object == abi.decode(bounds, (bool));
     }
 
-    function _validateEnum(uint256 value, bytes memory bounds)
+    /// @dev Validates a data `object` against given `bounds`.
+    function _validateEnum(uint256 object, bytes memory bounds)
         internal
         pure
         virtual
         returns (bool found)
     {
-        (found,) = LibSort.searchSorted(abi.decode(bounds, (uint256[])), value);
+        (found,) = LibSort.searchSorted(abi.decode(bounds, (uint256[])), object);
     }
 
-    function _validateTuple(bytes memory data, bytes memory bounds, uint8 offset, uint256 length)
+    /// @dev Validates a data `object` against given `bounds`.
+    function _validateData(bytes memory object, bytes memory bounds)
         internal
         pure
         virtual
         returns (bool)
-    {}
+    {
+        return keccak256(object) == keccak256(bounds);
+    }
+
+    /// @dev Validates a data `object` against given search `bounds`.
+    function _validateTuple(uint256 object, bytes memory bounds)
+        internal
+        pure
+        virtual
+        returns (bool found)
+    {
+        (found,) = LibSort.searchSorted(abi.decode(bounds, (uint256[])), object);
+    }
 
     /// ================== INSTALLATION OPERATIONS ================== ///
 
@@ -272,13 +307,21 @@ contract PermitValidator is EIP712 {
         return _authorizers[account];
     }
 
-    /// @dev Installs the new authorizers for an account.
+    /// @dev Installs new authorizers for the caller account.
     function install(address[] calldata authorizers) public payable virtual {
         emit AuthorizersSet(msg.sender, (_authorizers[msg.sender] = authorizers));
     }
 
-    /// @dev Uninstalls the authorizers for an account.
+    /// @dev Uninstalls the authorizers for the caller account.
     function uninstall() public payable virtual {
         emit AuthorizersSet(msg.sender, (_authorizers[msg.sender] = new address[](0)));
     }
+}
+
+/// @notice Executor interface.
+interface IExecutor {
+    function execute(address target, uint256 value, bytes calldata data)
+        external
+        payable
+        returns (bytes memory result);
 }

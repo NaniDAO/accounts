@@ -5,6 +5,7 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 
 /// @notice Simple joint ownership validator for smart accounts.
 /// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/validators/JointValidator.sol)
+/// @custom:version 0.0.0
 contract JointValidator {
     /// =========================== EVENTS =========================== ///
 
