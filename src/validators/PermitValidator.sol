@@ -4,7 +4,6 @@ pragma solidity ^0.8.19;
 import {EIP712} from "@solady/src/utils/EIP712.sol";
 import {LibSort} from "@solady/src/utils/LibSort.sol";
 import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
-import "@forge/Test.sol";
 
 /// @notice Simple executor permit validator for smart accounts.
 /// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/validators/PermitValidator.sol)
@@ -151,6 +150,7 @@ contract PermitValidator is EIP712 {
     }
 
     /// @dev Sets the permit for a permit hash given by the caller.
+    /// note: Ensure `timesUsed` is zero unless a rewrite is preferred.
     function setPermitHash(Permit calldata permit) public payable virtual {
         _permits[_hashTypedData(keccak256(abi.encode(msg.sender, permit)))] = permit;
     }
@@ -162,33 +162,16 @@ contract PermitValidator is EIP712 {
         virtual
         returns (uint256 validationData)
     {
-        console.log("validatePermit");
-        // Ensure the permit is in valid `span`.
         if (span.validAfter != 0 && block.timestamp < span.validAfter) revert PermitLimited();
         if (span.validUntil != 0 && block.timestamp > span.validUntil) revert PermitLimited();
-        console.log("within time bounds");
-        // Extract executory details for the suggested `callData`.
         bytes4 selector = bytes4(callData[0:4]);
-        console.logBytes4(selector);
         (address target, uint256 value, bytes memory data) =
             abi.decode(callData[4:], (address, uint256, bytes));
-        console.log("extracted");
-        console.logAddress(target);
-        console.logUint(value);
-        console.logBytes(data);
-        // Ensure executory intent for the permit.
         if (selector != IExecutor.execute.selector) revert InvalidSelector();
-        console.log("execute");
-        // Ensure the permit `target` is authorized.
         (bool found,) = LibSort.searchSorted(permit.targets, target);
         if (!found) revert PermitLimited();
-        console.log("found");
-        // Decrement the allowance for any `value`.
         if (value != 0) permit.allowance -= uint192(value);
-        // Check the permit selector against the call.
-        console.logBytes4(permit.selector);
         if (bytes4(data) != permit.selector) revert InvalidSelector();
-        // Ensure the `args` are within permitted bounds.
         unchecked {
             for (uint256 i; i < permit.args.length; ++i) {
                 validationData = _validateArg(permit.args[i], callData);
@@ -227,7 +210,7 @@ contract PermitValidator is EIP712 {
                 if (_validateData(_data, arg.bounds)) return 0x00;
                 return 0x01;
             } else if (arg._type == Type.Tuple) {
-                if (_validateTuple(abi.decode(_data, (uint8)), arg.bounds)) return 0x00;
+                if (_validateEnum(abi.decode(_data, (uint256)), arg.bounds)) return 0x00;
                 return 0x01;
             }
         }
@@ -288,16 +271,6 @@ contract PermitValidator is EIP712 {
         returns (bool)
     {
         return keccak256(object) == keccak256(bounds);
-    }
-
-    /// @dev Validates a data `object` against given search `bounds`.
-    function _validateTuple(uint256 object, bytes memory bounds)
-        internal
-        pure
-        virtual
-        returns (bool found)
-    {
-        (found,) = LibSort.searchSorted(abi.decode(bounds, (uint256[])), object);
     }
 
     /// ================== INSTALLATION OPERATIONS ================== ///
