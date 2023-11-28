@@ -64,6 +64,7 @@ contract PermitValidator is EIP712 {
         Type _type;
         uint248 offset;
         bytes bounds;
+        uint256 length;
     }
 
     /// @dev Calldata types.
@@ -164,7 +165,7 @@ contract PermitValidator is EIP712 {
     {
         if (span.validAfter != 0 && block.timestamp < span.validAfter) revert PermitLimited();
         if (span.validUntil != 0 && block.timestamp > span.validUntil) revert PermitLimited();
-        bytes4 selector = bytes4(callData[0:4]);
+        bytes4 selector = bytes4(callData[:4]);
         (address target, uint256 value, bytes memory data) =
             abi.decode(callData[4:], (address, uint256, bytes));
         if (selector != IExecutor.execute.selector) revert InvalidSelector();
@@ -174,43 +175,45 @@ contract PermitValidator is EIP712 {
         if (bytes4(data) != permit.selector) revert InvalidSelector();
         unchecked {
             for (uint256 i; i < permit.args.length; ++i) {
-                validationData = _validateArg(permit.args[i], callData);
+                bytes memory call =
+                    callData[permit.args[i].offset:permit.args[i].offset + permit.args[i].length];
+                validationData = _validateArg(permit.args[i], call);
             }
         }
     }
 
     /// @dev Validates a permit argument for a given call data.
-    function _validateArg(Arg memory arg, bytes calldata callData)
+    function _validateArg(Arg memory arg, bytes memory callData)
         internal
         view
         virtual
         returns (uint256 validationData)
     {
         unchecked {
-            bytes memory _data = callData[arg.offset:arg.offset + 32];
+            // bytes memory _data = callData[arg.offset:arg.offset + 32];
             if (arg._type == Type.Uint) {
-                if (_validateUint(abi.decode(_data, (uint256)), arg.bounds)) return 0x00;
+                if (_validateUint(abi.decode(callData, (uint256)), arg.bounds)) return 0x00;
                 return 0x01;
             } else if (arg._type == Type.Int) {
-                if (_validateInt(abi.decode(_data, (int256)), arg.bounds)) return 0x00;
+                if (_validateInt(abi.decode(callData, (int256)), arg.bounds)) return 0x00;
                 return 0x01;
             } else if (arg._type == Type.Address) {
-                if (_validateAddress(abi.decode(_data, (address)), arg.bounds)) return 0x00;
+                if (_validateAddress(abi.decode(callData, (address)), arg.bounds)) return 0x00;
                 return 0x01;
             } else if (arg._type == Type.Bool) {
-                if (_validateBool(abi.decode(_data, (bool)), arg.bounds)) return 0x00;
+                if (_validateBool(abi.decode(callData, (bool)), arg.bounds)) return 0x00;
                 return 0x01;
             } else if (arg._type == Type.Uint8) {
-                if (_validateEnum(abi.decode(_data, (uint8)), arg.bounds)) return 0x00;
+                if (_validateEnum(abi.decode(callData, (uint8)), arg.bounds)) return 0x00;
                 return 0x01;
             } else if (arg._type == Type.Bytes) {
-                if (_validateData(_data, arg.bounds)) return 0x00;
+                if (_validateData(callData, arg.bounds)) return 0x00;
                 return 0x01;
             } else if (arg._type == Type.String) {
-                if (_validateData(_data, arg.bounds)) return 0x00;
+                if (_validateData(callData, arg.bounds)) return 0x00;
                 return 0x01;
             } else if (arg._type == Type.Tuple) {
-                if (_validateEnum(abi.decode(_data, (uint256)), arg.bounds)) return 0x00;
+                if (_validateTuple(callData, arg.bounds)) return 0x00;
                 return 0x01;
             }
         }
@@ -219,7 +222,7 @@ contract PermitValidator is EIP712 {
     /// @dev Validates an uint256 `object` against given `bounds`.
     function _validateUint(uint256 object, bytes memory bounds)
         internal
-        pure
+        view
         virtual
         returns (bool)
     {
@@ -245,7 +248,8 @@ contract PermitValidator is EIP712 {
         virtual
         returns (bool found)
     {
-        (found,) = LibSort.searchSorted(abi.decode(bounds, (address[])), object);
+        address[] memory addresses = abi.decode(bounds, (address[]));
+        (found,) = LibSort.searchSorted(addresses, object);
     }
 
     /// @dev Validates a bool `object` against given `bounds`.
@@ -253,7 +257,7 @@ contract PermitValidator is EIP712 {
         return object == abi.decode(bounds, (bool));
     }
 
-    /// @dev Validates a data `object` against given `bounds`.
+    /// @dev Validates an enum `object` against given `bounds`.
     function _validateEnum(uint256 object, bytes memory bounds)
         internal
         pure
@@ -271,6 +275,24 @@ contract PermitValidator is EIP712 {
         returns (bool)
     {
         return keccak256(object) == keccak256(bounds);
+    }
+
+    /// @dev Validates a tuple `object` against given `bounds`.
+    function _validateTuple(bytes memory object, bytes memory bounds)
+        internal
+        view
+        virtual
+        returns (bool)
+    {
+        Arg[] memory args = abi.decode(bounds, (Arg[]));
+        for (uint256 i; i < args.length;) {
+            unchecked {
+                ++i;
+            }
+            if (_validateArg(args[i], object) == 0) break;
+            return false;
+        }
+        return true;
     }
 
     /// ================== INSTALLATION OPERATIONS ================== ///

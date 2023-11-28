@@ -6,6 +6,7 @@ import "@solady/test/utils/TestPlus.sol";
 
 import {LibSort} from "@solady/src/utils/LibSort.sol";
 import {LibClone} from "@solady/src/utils/LibClone.sol";
+import {ERC4337} from "@solady/src/accounts/ERC4337.sol";
 import {MockERC20} from "@solady/test/utils/mocks/MockERC20.sol";
 import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 
@@ -61,6 +62,8 @@ contract PermitValidatorTester {
 }
 
 contract PermitValidatorTest is Test, TestPlus {
+    address internal constant _ENTRY_POINT = 0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789;
+
     PermitValidator permissions;
 
     address payable erc4337;
@@ -71,13 +74,19 @@ contract PermitValidatorTest is Test, TestPlus {
     address bob;
     uint256 bobKey;
 
+    MockERC20 mockERC20;
+    PermitValidatorTester tester;
+
     function setUp() public payable {
         (alice, aliceKey) = makeAddrAndKey("alice");
         (bob, bobKey) = makeAddrAndKey("bob");
         permissions = new PermitValidator();
         erc4337 = payable(address(new NaniAccount()));
         account = payable(address(LibClone.deployERC1967(erc4337)));
+        mockERC20 = new MockERC20("Token", "TKN", 18);
+        mockERC20.mint(account, 10 ether);
         NaniAccount(account).initialize(alice);
+        tester = new PermitValidatorTester();
     }
 
     function testInstall() public {
@@ -100,7 +109,6 @@ contract PermitValidatorTest is Test, TestPlus {
             return;
         }
         address[] memory targets = getTargets(0, alice);
-        console.log(targets[0]);
         PermitValidator.Span[] memory spans = new PermitValidator.Span[](1);
         spans[0] = PermitValidator.Span({
             validAfter: uint32(block.timestamp),
@@ -131,7 +139,6 @@ contract PermitValidatorTest is Test, TestPlus {
     }
 
     function testTimePermissions() public {
-        // spans
         PermitValidator.Span[] memory spans = new PermitValidator.Span[](3);
         spans[0] = PermitValidator.Span({
             validAfter: uint32(block.timestamp),
@@ -180,82 +187,324 @@ contract PermitValidatorTest is Test, TestPlus {
         }
     }
 
-    // function testUintPermission(uint256 val, uint256 min, uint256 max) public {
-    //     vm.assume(min < max);
-    //     vm.assume(val <= type(uint256).max);
-    //     vm.assume(min <= type(uint256).max);
-    //     vm.assume(max <= type(uint256).max);
-    //     require(min <= max);
+    function testUintPermission(uint256 amt, uint256 min, uint256 max) public {
+        vm.assume(amt > min || amt < max);
+        if ((amt < min) || (amt > max)) return;
+        if (amt == 0) return;
+        uint256 assertion = (amt >= min && amt <= max) ? 0 : 1;
 
-    //     bool assertion = !(val < min || val > max);
+        address[] memory targets = new address[](1);
+        targets[0] = address(tester);
 
-    //     PermitValidatorTester tester = new PermitValidatorTester();
+        PermitValidator.Span[] memory spans = new PermitValidator.Span[](1);
+        spans[0] = PermitValidator.Span({
+            validAfter: uint32(block.timestamp),
+            validUntil: uint32(block.timestamp + 100000)
+        });
 
-    //     address[] memory targets = getTargets(0, alice);
-    //     PermitValidator.Param[] memory arguments = new PermitValidator.Param[](1);
-    //     arguments[0] = PermitValidator.Param({
-    //         _type: PermitValidator.TYPE.UINT,
-    //         offset: 4,
-    //         rules: abi.encode(min, max),
-    //         length: 0
-    //     });
-    //     PermitValidator.Span[] memory spans = new PermitValidator.Span[](1);
-    //     spans[0] = PermitValidator.Span({
-    //         validAfter: uint32(block.timestamp),
-    //         validUntil: uint32(block.timestamp + 100000)
-    //     });
-    //     PermitValidator.Permit memory permit =
-    //         createPermit(targets, 0, tester.dataUint.selector, arguments, spans);
+        string memory intent = "";
 
-    //     PermitValidator.Call memory call = PermitValidator.Call({
-    //         target: alice,
-    //         value: 0,
-    //         data: abi.encodeCall(tester.dataUint, (val))
-    //     });
+        PermitValidator.Arg[] memory args = new PermitValidator.Arg[](1);
+        args[0]._type = PermitValidator.Type.Uint;
+        args[0].offset = 4 + 32 + 32 + 32 + 32 + 4;
+        args[0].bounds = abi.encode(min, max);
+        args[0].length = 32;
+        PermitValidator.Permit memory permit = createPermit(
+            targets, uint192(0), uint32(0), tester.dataUint.selector, intent, spans, args
+        );
 
-    //     bytes32 permitHash = permissions.getPermitHash(account, permit);
-    //     bytes memory sig = sign(aliceKey, SignatureCheckerLib.toEthSignedMessageHash(permitHash));
+        bytes memory callData = abi.encodeWithSelector(tester.dataUint.selector, (amt));
 
-    //     assertEq(permissions.validatePermit(account, sig, permit, call), assertion);
-    // }
+        vm.warp(42);
 
-    // function testEnumPermission(uint256 value) public {
-    //     value = bound(value, 0, uint256(PermitValidatorTester.State.FAILED));
-    //     require(value >= 0 && value <= uint256(PermitValidatorTester.State.FAILED));
+        assertEq(
+            permissions.validatePermit(
+                permit,
+                spans[0],
+                abi.encodeWithSelector(
+                    NaniAccount(account).execute.selector, targets[0], 0, callData
+                )
+            ),
+            assertion
+        );
+    }
 
-    //     PermitValidatorTester tester = new PermitValidatorTester();
-    //     uint256[] memory bounds = tester.getRandomState();
+    function testEnumPermission(uint256 num) public {
+        num = bound(num, 0, uint8(PermitValidatorTester.State.FAILED));
 
-    //     LibSort.sort(bounds);
-    //     (bool assertion, uint256 index) = LibSort.searchSorted(bounds, value);
+        uint256[] memory n = new uint256[](1);
+        n[0] = num;
 
-    //     address[] memory targets = getTargets(0, alice);
-    //     PermitValidator.Param[] memory arguments = new PermitValidator.Param[](1);
-    //     arguments[0] = PermitValidator.Param({
-    //         _type: PermitValidator.TYPE.UINT8,
-    //         offset: 4,
-    //         rules: abi.encode(bounds),
-    //         length: 0
-    //     });
-    //     PermitValidator.Span[] memory spans = new PermitValidator.Span[](1);
-    //     spans[0] = PermitValidator.Span({
-    //         validAfter: uint32(block.timestamp),
-    //         validUntil: uint32(block.timestamp + 100000)
-    //     });
-    //     PermitValidator.Permit memory permit =
-    //         createPermit(targets, 0, tester.dataUint.selector, arguments, spans);
+        address[] memory targets = new address[](1);
+        targets[0] = address(tester);
 
-    //     PermitValidator.Call memory call = PermitValidator.Call({
-    //         target: alice,
-    //         value: 0,
-    //         data: abi.encodeCall(tester.dataUint, (uint256(value)))
-    //     });
+        PermitValidator.Span[] memory spans = new PermitValidator.Span[](1);
+        spans[0] = PermitValidator.Span({
+            validAfter: uint32(block.timestamp),
+            validUntil: uint32(block.timestamp + 100000)
+        });
 
-    //     bytes32 permitHash = permissions.getPermitHash(account, permit);
+        string memory intent = "";
 
-    //     bytes memory sig = sign(aliceKey, SignatureCheckerLib.toEthSignedMessageHash(permitHash));
-    //     assertEq(permissions.checkPermission(account, sig, permit, call), assertion);
-    // }
+        PermitValidator.Arg[] memory args = new PermitValidator.Arg[](1);
+        args[0]._type = PermitValidator.Type.Uint8;
+        args[0].offset = 4 + 32 + 32 + 32 + 32 + 4;
+        args[0].bounds = abi.encode(n);
+        args[0].length = 32;
+
+        PermitValidator.Permit memory permit = createPermit(
+            targets, uint192(0), uint32(0), tester.dataUint.selector, intent, spans, args
+        );
+
+        bytes memory callData = abi.encodeWithSelector(tester.dataUint.selector, (num));
+
+        uint256 assertion = (num <= uint8(PermitValidatorTester.State.FAILED)) ? 0 : 1;
+
+        vm.warp(42);
+
+        assertEq(
+            permissions.validatePermit(
+                permit,
+                spans[0],
+                abi.encodeWithSelector(
+                    NaniAccount(account).execute.selector, targets[0], 0, callData
+                )
+            ),
+            assertion
+        );
+    }
+
+    function testAddressPermission(address addr) public {
+        vm.assume(addr != address(0));
+
+        address[] memory n = new address[](1);
+        n[0] = addr;
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(tester);
+
+        PermitValidator.Span[] memory spans = new PermitValidator.Span[](1);
+        spans[0] = PermitValidator.Span({
+            validAfter: uint32(block.timestamp),
+            validUntil: uint32(block.timestamp + 100000)
+        });
+
+        string memory intent = "";
+
+        PermitValidator.Arg[] memory args = new PermitValidator.Arg[](1);
+        args[0]._type = PermitValidator.Type.Address;
+        args[0].offset = 4 + 32 + 32 + 32 + 32 + 4;
+        args[0].bounds = abi.encode(n);
+        args[0].length = 32;
+
+        PermitValidator.Permit memory permit = createPermit(
+            targets, uint192(0), uint32(0), tester.dataAddress.selector, intent, spans, args
+        );
+
+        bytes memory callData = abi.encodeWithSelector(tester.dataAddress.selector, (addr));
+
+        uint256 assertion = (addr > address(0)) ? 0 : 1;
+
+        vm.warp(42);
+
+        assertEq(
+            permissions.validatePermit(
+                permit,
+                spans[0],
+                abi.encodeWithSelector(
+                    NaniAccount(account).execute.selector, targets[0], 0, callData
+                )
+            ),
+            assertion
+        );
+    }
+
+    function testBoolPermission(bool b) public {
+        address[] memory targets = new address[](1);
+        targets[0] = address(tester);
+
+        PermitValidator.Span[] memory spans = new PermitValidator.Span[](1);
+        spans[0] = PermitValidator.Span({
+            validAfter: uint32(block.timestamp),
+            validUntil: uint32(block.timestamp + 100000)
+        });
+
+        string memory intent = "";
+
+        PermitValidator.Arg[] memory args = new PermitValidator.Arg[](1);
+        args[0]._type = PermitValidator.Type.Bool;
+        args[0].offset = 4 + 32 + 32 + 32 + 32 + 4;
+        args[0].bounds = abi.encode(b);
+        args[0].length = 32;
+
+        PermitValidator.Permit memory permit = createPermit(
+            targets, uint192(0), uint32(0), tester.dataBool.selector, intent, spans, args
+        );
+
+        bytes memory callData = abi.encodeWithSelector(tester.dataBool.selector, (b));
+
+        uint256 assertion = b == b ? 0 : 1;
+
+        vm.warp(42);
+
+        assertEq(
+            permissions.validatePermit(
+                permit,
+                spans[0],
+                abi.encodeWithSelector(
+                    NaniAccount(account).execute.selector, targets[0], 0, callData
+                )
+            ),
+            assertion
+        );
+    }
+
+    function testTransferPermission(address to, uint256 amt, uint256 min, uint256 max) public {
+        vm.assume(to != address(0));
+        vm.assume(amt > min || amt < max);
+        if ((amt < min) || (amt > max)) return;
+        if (amt == 0) return;
+        uint256 assertion = (amt >= min && amt <= max && (to > address(0))) ? 0 : 1;
+
+        address[] memory a = new address[](1);
+        a[0] = to;
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(tester);
+
+        PermitValidator.Span[] memory spans = new PermitValidator.Span[](1);
+        spans[0] = PermitValidator.Span({
+            validAfter: uint32(block.timestamp),
+            validUntil: uint32(block.timestamp + 100000)
+        });
+
+        string memory intent = "";
+
+        PermitValidator.Arg[] memory args = new PermitValidator.Arg[](2);
+        args[0]._type = PermitValidator.Type.Address;
+        args[0].offset = 4 + 32 + 32 + 32 + 32 + 4;
+        args[0].bounds = abi.encode(a);
+        args[0].length = 32;
+
+        args[1]._type = PermitValidator.Type.Uint;
+        args[1].offset = 4 + 32 + 32 + 32 + 32 + 4 + 32;
+        args[1].bounds = abi.encode(min, max);
+        args[1].length = 32;
+
+        PermitValidator.Permit memory permit = createPermit(
+            targets, uint192(0), uint32(0), mockERC20.transfer.selector, intent, spans, args
+        );
+
+        bytes memory callData = abi.encodeWithSelector(mockERC20.transfer.selector, to, amt);
+
+        vm.warp(42);
+
+        assertEq(
+            permissions.validatePermit(
+                permit,
+                spans[0],
+                abi.encodeWithSelector(
+                    NaniAccount(account).execute.selector, targets[0], 0, callData
+                )
+            ),
+            assertion
+        );
+    }
+
+    /*function testTransferPermissionValidation(address to, uint256 amt, uint256 min, uint256 max)
+        public
+    {
+        vm.assume(to != address(0) && amt != 0);
+        vm.assume((amt >= min || amt <= max) && amt <= 10 ether);
+        uint256 assertion = (amt >= min && amt <= max && (to > address(0))) ? 0 : 1;
+
+        address[] memory a = new address[](1);
+        a[0] = to;
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(tester);
+
+        PermitValidator.Span[] memory spans = new PermitValidator.Span[](1);
+        spans[0] = PermitValidator.Span({
+            validAfter: uint32(block.timestamp),
+            validUntil: uint32(block.timestamp + 100000)
+        });
+
+        string memory intent = "";
+
+        PermitValidator.Arg[] memory args = new PermitValidator.Arg[](2);
+        args[0]._type = PermitValidator.Type.Address;
+        args[0].offset = 4 + 32 + 32 + 32 + 32 + 4;
+        args[0].bounds = abi.encode(a);
+
+        args[1]._type = PermitValidator.Type.Uint;
+        args[1].offset = 4 + 32 + 32 + 32 + 32 + 4 + 32;
+        args[1].bounds = abi.encode(min, max);
+
+        PermitValidator.Permit memory permit = createPermit(
+            targets, uint192(0), uint32(0), mockERC20.transfer.selector, intent, spans, args
+        );
+
+        vm.prank(account);
+        permissions.setPermitHash(permit);
+
+        bytes32 permitHash = permissions.getPermitHash(account, permit);
+        uint192 key = type(uint192).max;
+
+        address[] memory authorizers = new address[](1);
+        authorizers[0] = bob;
+
+        NaniAccount.Call[] memory calls = new NaniAccount.Call[](2);
+        calls[0].target = address(permissions);
+        calls[0].value = 0 ether;
+        calls[0].data = abi.encodeWithSelector(permissions.install.selector, authorizers);
+
+        calls[1].target = address(account);
+        calls[1].value = 0 ether;
+        calls[1].data = abi.encodeWithSelector(
+            ERC4337(account).storageStore.selector,
+            bytes32(abi.encodePacked(key)),
+            bytes32(abi.encodePacked(address(permissions)))
+        );
+        vm.startPrank(alice);
+        ERC4337(account).executeBatch(calls);
+
+        bytes memory stored = ERC4337(account).execute(
+            address(account),
+            0 ether,
+            abi.encodeWithSelector(
+                ERC4337(account).storageLoad.selector, bytes32(abi.encodePacked(key))
+            )
+        );
+        assertEq(bytes20(bytes32(stored)), bytes20(address(permissions)));
+
+        NaniAccount.UserOperation memory userOp;
+        userOp.sender = address(account);
+        userOp.callData = abi.encodeWithSelector(
+            ERC4337(account).execute.selector,
+            address(this),
+            0 ether,
+            abi.encodeWithSelector(mockERC20.transfer.selector, to, amt)
+        );
+
+        userOp.nonce = 0 | (uint256(key) << 64);
+        bytes32 userOpHash = hex"00";
+        userOp.signature =
+            abi.encode(permitHash, _sign(bobKey, _toEthSignedMessageHash(userOpHash)));
+
+        vm.warp(42);
+        vm.startPrank(_ENTRY_POINT);
+        uint256 validationData = ERC4337(account).validateUserOp(userOp, userOpHash, 0);
+        if (validationData == 0) {
+            console.log("validationData is 0");
+            vm.startPrank(_ENTRY_POINT);
+            ERC4337(account).execute(
+                address(account),
+                0 ether,
+                abi.encodeWithSelector(mockERC20.transfer.selector, to, amt)
+            );
+        }
+    }*/
 
     // function testStaticTuple(PermissionsTester.StaticTuple memory s) public {
     //     PermissionsTester tester = new PermissionsTester();
@@ -530,8 +779,12 @@ contract PermitValidatorTest is Test, TestPlus {
         }
     }
 
-    function sign(uint256 pK, bytes32 hash) internal pure returns (bytes memory) {
+    function _sign(uint256 pK, bytes32 hash) internal pure returns (bytes memory) {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pK, hash);
         return abi.encodePacked(r, s, v);
+    }
+
+    function _toEthSignedMessageHash(bytes32 hash) internal pure returns (bytes32 result) {
+        return SignatureCheckerLib.toEthSignedMessageHash(hash);
     }
 }
