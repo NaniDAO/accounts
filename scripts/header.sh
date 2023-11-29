@@ -24,4 +24,4 @@ else
     echo "Usage: $0 <header>"
 fi
 
-# ./scripts/header.sh "HEADER"
+# ./scripts/header.sh "DELEGATE SETTINGS"

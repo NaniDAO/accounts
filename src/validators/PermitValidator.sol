@@ -99,6 +99,12 @@ contract PermitValidator is EIP712 {
         return ("PermitValidator", "0.0.0");
     }
 
+    /// ======================== CONSTRUCTOR ======================== ///
+
+    /// @dev Constructs
+    /// this implementation.
+    constructor() payable {}
+
     /// =================== VALIDATION OPERATIONS =================== ///
 
     /// @dev Validates ERC4337 userOp with additional auth logic flow among authorizers.
