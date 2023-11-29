@@ -5,11 +5,41 @@ import "@solady/src/auth/Ownable.sol";
 import "@solady/src/tokens/ERC20.sol";
 import "@solady/src/utils/SafeTransferLib.sol";
 
+/* note: GOALS:
+            Users should be able to get credit for gas using NETH.
+            This means that they can earn NETH or buy it as ERC20.
+            NETH should not be just ETH sitting in entry point.
+            It should earn yield upon minting from ETH staking.
+            Lido is used by default. stETH is minted for ETH.
+            NETH holds the stETH from ETH deposits for users.
+            When users want to pay for entry point user ops,
+            NETH is burned to unlock the underlying stETH,
+            and burn that for enough ETH to pay for tx.
+            The user and NETH owner should earn yield.
+*/
+
 /// @notice Simple wrapped ERC4337 implementation with paymaster and yield functions.
 /// @dev The strategy for ether (ETH) deposits defaults to Lido but can be overridden.
 /// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/utils/NETH.sol)
 /// @custom:version 0.0.0
 contract NETH is Ownable, ERC20 {
+    /// ========================== STRUCTS ========================== ///
+
+    /// @dev The ERC4337 user operation (userOp) struct.
+    struct UserOperation {
+        address sender;
+        uint256 nonce;
+        bytes initCode;
+        bytes callData;
+        uint256 callGasLimit;
+        uint256 verificationGasLimit;
+        uint256 preVerificationGas;
+        uint256 maxFeePerGas;
+        uint256 maxPriorityFeePerGas;
+        bytes paymasterAndData;
+        bytes signature;
+    }
+
     /// ======================= ERC20 METADATA ======================= ///
 
     /// @dev Returns the name of the token.
@@ -54,10 +84,27 @@ contract NETH is Ownable, ERC20 {
         depositTo(msg.sender);
     }
 
-    /// @dev Deposits `msg.value` ETH of the caller and mints `msg.value` NETH to the `to`.
+    /// @dev Deposits `msg.value` ETH of the caller and mints NETH shares to the `to`.
     function depositTo(address to) public payable virtual {
-        SafeTransferLib.safeTransferETH(entryPoint(), msg.value);
-        _mint(to, msg.value);
+        _mint(to, IStETH(strategy()).submit{value: msg.value}(address(0)));
+    }
+
+    /// @dev Returns this paymaster's yield balance in the strategy.
+    function sharesOf() public view returns (uint256 result) {
+        address strat = strategy();
+        /// @solidity memory-safe-assembly
+        assembly {
+            mstore(0x20, address()) // Store the `_account` argument.
+            mstore(0x00, 0xf5eb42dc) // `sharesOf(address)`.
+            result :=
+                mul( // Returns 0 if the strategy does not exist.
+                    mload(0x20),
+                    and( // The arguments of `and` are evaluated from right to left.
+                        gt(returndatasize(), 0x1f), // At least 32 bytes returned.
+                        staticcall(gas(), strat, 0x1c, 0x24, 0x20, 0x20)
+                    )
+                )
+        }
     }
 
     /// ==================== WITHDRAW OPERATIONS ==================== ///
@@ -102,10 +149,38 @@ contract NETH is Ownable, ERC20 {
         NETH(entryPoint()).withdrawStake(withdrawAddress);
     }
 
+    /// =================== VALIDATION OPERATIONS =================== ///
+
+    /// @dev Payment validation: check if paymaster agrees to pay.
+    function validatePaymasterUserOp(
+        UserOperation calldata userOp,
+        bytes32 userOpHash,
+        uint256 maxCost
+    ) public payable virtual returns (bytes memory context, uint256 validationData) {}
+
+    /// @dev Post-operation handler.
+    function postOp(PostOpMode mode, bytes calldata context, uint256 actualGasCost)
+        public
+        payable
+        virtual
+    {}
+
     /// ==================== FALLBACK OPERATIONS ==================== ///
 
     /// @dev Equivalent to `deposit()`.
     receive() external payable virtual {
         deposit();
     }
+}
+
+interface IStETH {
+    function getSharesByPooledEth(uint256) external view returns (uint256);
+    function getPooledEthByShares(uint256) external view returns (uint256);
+    function submit(address) external payable returns (uint256);
+}
+
+enum PostOpMode {
+    opSucceeded,
+    opReverted,
+    postOpReverted
 }
