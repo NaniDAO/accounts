@@ -1,18 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.19;
 
+import "@solady/src/auth/Ownable.sol";
 import "@solady/src/tokens/ERC20.sol";
 import "@solady/src/utils/SafeTransferLib.sol";
 
-/// @notice Simple Wrapped ERC4337 entry point implementation with paymaster functions.
+/// @notice Simple wrapped ERC4337 implementation with paymaster and yield functions.
+/// @dev The strategy for ether (ETH) deposits defaults to Lido but can be overridden.
 /// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/utils/NETH.sol)
 /// @custom:version 0.0.0
-contract NETH is ERC20 {
-    /// ========================= IMMUTABLES ========================= ///
-
-    /// @dev Holds an immutable owner.
-    address internal immutable _OWNER;
-
+contract NETH is Ownable, ERC20 {
     /// ======================= ERC20 METADATA ======================= ///
 
     /// @dev Returns the name of the token.
@@ -29,35 +26,25 @@ contract NETH is ERC20 {
 
     /// @dev Returns the canonical ERC4337 EntryPoint contract.
     /// Override this function to return a different EntryPoint.
-    function entryPoint() public view virtual returns (address) {
-        return 0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789;
+    function entryPoint() public view virtual returns (address payable) {
+        return payable(0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789);
+    }
+
+    /// ========================== STRATEGY ========================== ///
+
+    /// @dev Returns the canonical ETH strategy contract (Lido).
+    /// Override this function to return a different strategy.
+    function strategy() public view virtual returns (address payable) {
+        return payable(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
     }
 
     /// ======================== CONSTRUCTOR ======================== ///
 
-    /// @dev Constructs this wrapper for delegated deposit functions.
-    /// Additionally, sets owner account for peripheral concerns.
+    /// @dev Constructs
+    /// this implementation.
+    /// Owned by tx origin.
     constructor() payable {
-        _OWNER = tx.origin;
-    }
-
-    /// ===================== DELEGATE SETTINGS ===================== ///
-
-    /// @dev Tracks mappings of selectors to executors the owner has delegated to.
-    function get(bytes4 selector) public view virtual returns (address executor) {
-        /// @solidity memory-safe-assembly
-        assembly {
-            executor := sload(selector)
-        }
-    }
-
-    /// @dev Delegates peripheral call concerns. Can only be called by owner.
-    function set(bytes4 selector, address executor) public payable virtual {
-        assert(msg.sender == _OWNER);
-        /// @solidity memory-safe-assembly
-        assembly {
-            sstore(selector, executor)
-        }
+        _setOwner(tx.origin);
     }
 
     /// ===================== DEPOSIT OPERATIONS ===================== ///
@@ -98,34 +85,24 @@ contract NETH is ERC20 {
         }
     }
 
-    /// ==================== FALLBACK OPERATIONS ==================== ///
+    /// ===================== STAKING OPERATIONS ===================== ///
 
-    /// @dev Falls back to delegated calls.
-    fallback() external payable {
-        /// @solidity memory-safe-assembly
-        assembly {
-            calldatacopy(0x00, 0x00, calldatasize())
-            // Forwards the calldata to `executor` via delegatecall.
-            if iszero(
-                delegatecall(
-                    gas(),
-                    /*executor*/
-                    sload( /*selector*/ shl(224, shr(224, calldataload(0)))),
-                    0x00,
-                    calldatasize(),
-                    codesize(),
-                    0x00
-                )
-            ) {
-                // Bubble up the revert if the call reverts.
-                returndatacopy(0x00, 0x00, returndatasize())
-                revert(0x00, returndatasize())
-            }
-            // Copy and return data from successful call.
-            returndatacopy(0x00, 0x00, returndatasize())
-            return(0x00, returndatasize())
-        }
+    /// @dev Add stake for this paymaster. Further sets a staking delay timestamp.
+    function addStake(uint32 unstakeDelaySec) public payable virtual onlyOwner {
+        NETH(entryPoint()).addStake{value: msg.value}(unstakeDelaySec);
     }
+
+    /// @dev Unlock the stake, in order to withdraw it.
+    function unlockStake() public payable virtual onlyOwner {
+        NETH(entryPoint()).unlockStake();
+    }
+
+    /// @dev Withdraw the entire paymaster's stake. Can select a recipient of this withdrawal.
+    function withdrawStake(address payable withdrawAddress) public payable virtual onlyOwner {
+        NETH(entryPoint()).withdrawStake(withdrawAddress);
+    }
+
+    /// ==================== FALLBACK OPERATIONS ==================== ///
 
     /// @dev Equivalent to `deposit()`.
     receive() external payable virtual {
