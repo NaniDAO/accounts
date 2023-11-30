@@ -6,8 +6,13 @@ import "@solady/src/utils/SafeTransferLib.sol";
 import "@solady/src/utils/FixedPointMathLib.sol";
 
 /// @notice Simple wrapped ERC4337 implementation with paymaster and yield functions.
-/// @dev The strategy for ether (ETH) deposits defaults to Lido but can be overridden.
-/// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/utils/NETH.sol)
+/// @dev The strategy for ether (ETH) deposits defaults to Lido for this alpha version.
+/// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/utils/NEETH.sol)
+/// @custom:lex The user agrees that the following terms apply to use:
+///             This smart contract ("NEETH") is being provided as is.
+///             No guarantee, representation or warranty is being made
+///             as to the safety or correctness of NEETH applications.
+///             Users should proceed with care and at their own risks.
 /// @custom:version 0.0.0
 /* note:
     Users should be able to get credit for gas using NEETH.
@@ -21,11 +26,6 @@ import "@solady/src/utils/FixedPointMathLib.sol";
     and uniswap that for enough ETH to pay for tx.
     The user and NEETH owner should earn yield.
 */
-/// @custom:lex The user agrees that the following terms apply to use:
-///             This smart contract ("NEETH") is being provided as is.
-///             No guarantee, representation or warranty is being made
-///             as to the safety or correctness of NEETH applications.
-///             Users should proceed with care and at their own risks.
 contract NEETH is ERC20 {
     /// ======================= CUSTOM ERRORS ======================= ///
 
