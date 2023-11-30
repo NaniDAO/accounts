@@ -140,7 +140,9 @@ contract NEETH is ERC20 {
     function withdrawFrom(address from, address to, uint256 amount) public virtual {
         unchecked {
             if (msg.sender != from) _spendAllowance(from, msg.sender, amount);
-            uint256 share = amount * ERC20(_STRATEGY).balanceOf(address(this)) / totalSupply();
+            uint256 share = FixedPointMathLib.mulDiv(
+                amount, ERC20(_STRATEGY).balanceOf(address(this)), totalSupply()
+            );
             _burn(from, amount); // Burn NEETH.
             _swap(share, to); // Swap stETH for ETH.
         }
@@ -203,10 +205,12 @@ contract NEETH is ERC20 {
     function _getAmountOutInETH(uint256 share) internal view virtual returns (uint256 amountOut) {
         unchecked {
             (uint256 reserve0, uint256 reserve1,) = _POOL.getReserves();
-            uint256 amountInWithFee = share * 997;
-            uint256 numerator = amountInWithFee * reserve0;
-            uint256 denominator = reserve1 * 1000 + amountInWithFee;
-            amountOut = numerator / denominator;
+            return FixedPointMathLib.rawDiv(
+                FixedPointMathLib.rawMul(FixedPointMathLib.rawMul(share, 997), reserve0),
+                FixedPointMathLib.rawAdd(
+                    FixedPointMathLib.rawMul(reserve1, 1000), FixedPointMathLib.rawMul(share, 997)
+                )
+            );
         }
     }
 
@@ -219,10 +223,12 @@ contract NEETH is ERC20 {
     {
         unchecked {
             (uint256 reserve0, uint256 reserve1,) = _POOL.getReserves();
-            uint256 amountInWithFee = amount * 997;
-            uint256 numerator = amountInWithFee * reserve1;
-            uint256 denominator = reserve0 * 1000 + amountInWithFee;
-            amountOut = numerator / denominator;
+            return FixedPointMathLib.rawDiv(
+                FixedPointMathLib.rawMul(FixedPointMathLib.rawMul(amount, 997), reserve1),
+                FixedPointMathLib.rawAdd(
+                    FixedPointMathLib.rawMul(reserve0, 1000), FixedPointMathLib.rawMul(amount, 997)
+                )
+            );
         }
     }
 
