@@ -23,6 +23,14 @@ import "@solady/src/utils/SafeTransferLib.sol";
 /// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/utils/NETH.sol)
 /// @custom:version 0.0.0
 contract NETH is Ownable, ERC20 {
+    /// ======================= CUSTOM ERRORS ======================= ///
+
+    error GasTooLowForPostOp();
+
+    /// ========================= CONSTANTS ========================= ///
+
+    uint256 public constant COST_OF_POST = 15000;
+
     /// ========================== STRUCTS ========================== ///
 
     /// @dev The ERC4337 user operation (userOp) struct.
@@ -89,24 +97,6 @@ contract NETH is Ownable, ERC20 {
         _mint(to, IStETH(strategy()).submit{value: msg.value}(address(0)));
     }
 
-    /// @dev Returns this paymaster's yield balance in the strategy.
-    function sharesOf() public view returns (uint256 result) {
-        address strat = strategy();
-        /// @solidity memory-safe-assembly
-        assembly {
-            mstore(0x20, address()) // Store the `_account` argument.
-            mstore(0x00, 0xf5eb42dc) // `sharesOf(address)`.
-            result :=
-                mul( // Returns 0 if the strategy does not exist.
-                    mload(0x20),
-                    and( // The arguments of `and` are evaluated from right to left.
-                        gt(returndatasize(), 0x1f), // At least 32 bytes returned.
-                        staticcall(gas(), strat, 0x1c, 0x24, 0x20, 0x20)
-                    )
-                )
-        }
-    }
-
     /// ==================== WITHDRAW OPERATIONS ==================== ///
 
     /// @dev Burns `amount` NETH of the caller and sends `amount` ETH to the caller.
@@ -154,16 +144,25 @@ contract NETH is Ownable, ERC20 {
     /// @dev Payment validation: check if paymaster agrees to pay.
     function validatePaymasterUserOp(
         UserOperation calldata userOp,
-        bytes32 userOpHash,
-        uint256 maxCost
-    ) public payable virtual returns (bytes memory context, uint256 validationData) {}
+        bytes32, /*userOpHash*/
+        uint256 /*maxCost*/
+    ) public payable virtual returns (bytes memory context, uint256 validationData) {
+        if (userOp.verificationGasLimit <= COST_OF_POST) revert GasTooLowForPostOp();
+        return (abi.encode(userOp.sender), 0);
+    }
 
     /// @dev Post-operation handler.
-    function postOp(PostOpMode mode, bytes calldata context, uint256 actualGasCost)
+    function postOp(PostOpMode, /*mode*/ bytes calldata context, uint256 actualGasCost)
         public
         payable
         virtual
-    {}
+    {
+        unchecked {
+            uint256 cost = actualGasCost + COST_OF_POST;
+            address sender = abi.decode(context, (address));
+            SafeTransferLib.safeTransferETH(sender, IStETH(strategy()).getPooledEthByShares(cost));
+        }
+    }
 
     /// ==================== FALLBACK OPERATIONS ==================== ///
 
