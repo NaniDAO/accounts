@@ -6,7 +6,7 @@ import {Accounts} from "../src/Accounts.sol";
 
 import "@solady/test/utils/SoladyTest.sol";
 
-contract AccountsTest is Test {
+contract AccountsTest is SoladyTest {
     address internal owner;
     Account internal erc4337;
     Accounts internal accounts;
@@ -39,7 +39,6 @@ contract AccountsTest is Test {
         }
 
         Foo foo = new Foo();
-        console.log("foo", address(foo));
 
         vm.startPrank(owner);
         accounts.set(foo.foo.selector, address(foo));
