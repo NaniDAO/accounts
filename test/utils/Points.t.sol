@@ -97,8 +97,8 @@ contract Signer {
     error Unauthorized();
 
     address internal immutable _OWNER;
-    address payable internal constant _ENTRYPOINT =
-        payable(0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789);
+    address internal constant _ENTRYPOINT =
+        0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789;
 
     constructor(address owner) payable {
         _OWNER = owner;
@@ -166,9 +166,7 @@ contract Signer {
 
     fallback() external payable {
         assembly ("memory-safe") {
-            // If `msg.value` is set, `receive()`.
             if callvalue() { return(0x00, 0x00) }
-            // Or, return `msg.sig` for safe tokens.
             mstore(0x20, shr(224, calldataload(0)))
             return(0x3C, 0x20)
         }
