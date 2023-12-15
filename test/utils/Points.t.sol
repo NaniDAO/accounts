@@ -110,7 +110,19 @@ contract Signer {
         returns (bytes memory result)
     {
         if (msg.sender != _OWNER) if (msg.sender != _ENTRYPOINT) revert Unauthorized();
-        (, result) = target.call{value: value}(data);
+        assembly ("memory-safe") {
+            result := mload(0x40)
+            calldatacopy(result, data.offset, data.length)
+            if iszero(call(gas(), target, value, result, data.length, codesize(), 0x00)) {
+                // Bubble up the revert if the call reverts.
+                returndatacopy(result, 0x00, returndatasize())
+                revert(result, returndatasize())
+            }
+            mstore(result, returndatasize()) // Store the length.
+            let o := add(result, 0x20)
+            returndatacopy(o, 0x00, returndatasize()) // Copy the returndata.
+            mstore(0x40, add(o, returndatasize())) // Allocate the memory.
+        }
     }
 
     function validateUserOp(
@@ -149,6 +161,16 @@ contract Signer {
             mstore(0x20, hash)
             mstore(0x00, "\x00\x00\x00\x00\x19Ethereum Signed Message:\n32")
             result := keccak256(0x04, 0x3c)
+        }
+    }
+
+    fallback() external payable {
+        assembly ("memory-safe") {
+            // If `msg.value` is set, `receive()`.
+            if callvalue() { return(0x00, 0x00) }
+            // Or, return `msg.sig` for safe tokens.
+            mstore(0x20, shr(224, calldataload(0)))
+            return(0x3C, 0x20)
         }
     }
 
