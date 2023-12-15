@@ -97,8 +97,7 @@ contract Signer {
     error Unauthorized();
 
     address internal immutable _OWNER;
-    address internal constant _ENTRYPOINT =
-        0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789;
+    address internal constant _ENTRYPOINT = 0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789;
 
     constructor(address owner) payable {
         _OWNER = owner;
