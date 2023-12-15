@@ -9,7 +9,7 @@ contract Points {
     mapping(address => uint256) public claimed;
 
     constructor(address _owner, uint8 _rate) payable {
-        owner = Points(_owner).owner();
+        owner = _owner;
         rate = _rate;
     }
 
@@ -27,7 +27,7 @@ contract Points {
             v := byte(0, calldataload(add(signature.offset, 0x40)))
         }
         if (
-            owner
+            Points(owner).owner()
                 == ecrecover(
                     _toEthSignedMessageHash(keccak256((abi.encodePacked(user, start, bonus)))), v, r, s
                 )
