@@ -23,9 +23,7 @@ contract Points {
                 == IERC1271(OWNER).isValidSignature(
                     keccak256((abi.encodePacked(user, start, bonus))), signature
                 )
-        ) {
-            score = (bonus + (RATE * (block.timestamp - start))) - claimed[user];
-        }
+        ) score = (bonus + (RATE * (block.timestamp - start))) - claimed[user];
     }
 
     function claim(IERC20 token, uint256 start, uint256 bonus, bytes calldata signature)

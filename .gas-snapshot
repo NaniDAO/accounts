@@ -35,7 +35,7 @@ PermitValidatorTest:testUintPermission(uint256,uint256,uint256) (runs: 256, μ: 
 PermitValidatorTest:testValuePermission(uint256,uint256) (runs: 256, μ: 20505, ~: 20514)
 PermitValidatorTest:test__codesize() (gas: 49608)
 PointsTest:testCheck(uint256) (runs: 256, μ: 24518, ~: 24518)
-PointsTest:testClaim(uint256) (runs: 256, μ: 80715, ~: 80734)
+PointsTest:testClaim(uint256) (runs: 256, μ: 80734, ~: 80734)
 PointsTest:testDeploy() (gas: 323790)
 PointsTest:testFailDoubleClaim(uint256) (runs: 256, μ: 98855, ~: 98855)
 RecoveryValidatorTest:testDeploy() (gas: 1342174)
