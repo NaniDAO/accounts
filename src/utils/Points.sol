@@ -57,7 +57,3 @@ contract Points {
 interface IERC20 {
     function transfer(address, uint256) external returns (bool);
 }
-
-interface IERC1271 {
-    function isValidSignature(bytes32, bytes calldata) external view returns (bytes4);
-}
