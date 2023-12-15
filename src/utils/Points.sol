@@ -18,15 +18,6 @@ contract Points {
         view
         returns (uint256 score)
     {
-        // Parse user starting points and bonus with owner's signature.
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
-        assembly ("memory-safe") {
-            r := calldataload(signature.offset)
-            s := calldataload(add(signature.offset, 0x20))
-            v := byte(0, calldataload(add(signature.offset, 0x40)))
-        }
         if (
             IERC1271.isValidSignature.selector
                 == IERC1271(OWNER).isValidSignature(
