@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.19;
 
-import {MockERC20} from "@solady/test/utils/mocks/MockERC20.sol";
-import {Account as NaniAccount} from "../../src/Account.sol";
-import {IERC20, Points} from "../../src/utils/Points.sol";
 import "@forge/Test.sol";
+
+import {IERC20, Points} from "../../src/utils/Points.sol";
+import {Account as NaniAccount} from "../../src/Account.sol";
+import {MockERC20} from "@solady/test/utils/mocks/MockERC20.sol";
 
 contract PointsTest is Test {
     address alice;
@@ -12,8 +13,8 @@ contract PointsTest is Test {
     address bob;
 
     Points points;
-    address token;
 
+    address token;
     uint256 constant POT = 1_000_000_000;
 
     function setUp() public {
@@ -36,7 +37,7 @@ contract PointsTest is Test {
 
     function testCheck(uint256 bonus) public {
         vm.assume(bonus < POT);
-        uint256 start = 1;
+        uint256 start = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(
             alicePk, _toEthSignedMessageHash(keccak256(abi.encodePacked(bob, start, bonus)))
         );
@@ -47,7 +48,7 @@ contract PointsTest is Test {
 
     function testClaim(uint256 bonus) public {
         vm.assume(bonus < POT);
-        uint256 start = 1;
+        uint256 start = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(
             alicePk, _toEthSignedMessageHash(keccak256(abi.encodePacked(bob, start, bonus)))
         );
@@ -59,7 +60,7 @@ contract PointsTest is Test {
 
     function testFailDoubleClaim(uint256 bonus) public {
         vm.assume(bonus < POT);
-        uint256 start = 1;
+        uint256 start = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(
             alicePk, _toEthSignedMessageHash(keccak256(abi.encodePacked(bob, start, bonus)))
         );
