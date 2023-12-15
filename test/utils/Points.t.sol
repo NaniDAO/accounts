@@ -16,7 +16,7 @@ contract PointsTest is Test {
     function setUp() public {
         (alice, alicePk) = makeAddrAndKey("alice");
         bob = makeAddr("bob");
-        points = new Points(address(new TestSmartAccount(alice)), 1);
+        points = new Points(address(new Signer(alice)), 1);
         token = address(new TestToken(address(points), POT));
     }
 
@@ -91,11 +91,38 @@ contract TestToken {
     }
 }
 
-contract TestSmartAccount {
-    address internal immutable OWNER;
+/// @notice Simple ECDSA-recovered ERC4337 account.
+/// @custom:version 0.0.0
+contract Signer {
+    error Unauthorized();
+    error InvalidSignature();
+
+    address internal immutable _OWNER;
+    address payable internal constant _ENTRYPOINT =
+        payable(0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789);
 
     constructor(address owner) payable {
-        OWNER = owner;
+        _OWNER = owner;
+    }
+
+    function execute(address target, uint256 value, bytes calldata data)
+        public
+        payable
+        returns (bytes memory result)
+    {
+        if (msg.sender != _OWNER) if (msg.sender != _ENTRYPOINT) revert Unauthorized();
+        (, result) = target.call{value: value}(data);
+    }
+
+    function validateUserOp(
+        UserOperation calldata userOp,
+        bytes32 userOpHash,
+        uint256 missingAccountFunds
+    ) external payable returns (uint256 validationData) {
+        if (msg.sender != _ENTRYPOINT) revert Unauthorized();
+        validationData = this.isValidSignature.selector
+            == isValidSignature(_toEthSignedMessageHash(userOpHash), userOp.signature) ? 0 : 1;
+        if (missingAccountFunds != 0) _ENTRYPOINT.transfer(missingAccountFunds);
     }
 
     function isValidSignature(bytes32 hash, bytes calldata signature)
@@ -111,7 +138,29 @@ contract TestSmartAccount {
             s := calldataload(add(signature.offset, 0x20))
             v := byte(0, calldataload(add(signature.offset, 0x40)))
         }
-        if (OWNER == ecrecover(hash, v, r, s)) return this.isValidSignature.selector;
-        else revert("ECDSA_ERROR");
+        if (_OWNER == ecrecover(hash, v, r, s)) return this.isValidSignature.selector;
+        else revert InvalidSignature();
+    }
+
+    function _toEthSignedMessageHash(bytes32 hash) internal pure returns (bytes32 result) {
+        assembly ("memory-safe") {
+            mstore(0x20, hash)
+            mstore(0x00, "\x00\x00\x00\x00\x19Ethereum Signed Message:\n32")
+            result := keccak256(0x04, 0x3c)
+        }
+    }
+
+    struct UserOperation {
+        address sender;
+        uint256 nonce;
+        bytes initCode;
+        bytes callData;
+        uint256 callGasLimit;
+        uint256 verificationGasLimit;
+        uint256 preVerificationGas;
+        uint256 maxFeePerGas;
+        uint256 maxPriorityFeePerGas;
+        bytes paymasterAndData;
+        bytes signature;
     }
 }
