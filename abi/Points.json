@@ -1,0 +1,99 @@
+[
+    {
+      "type": "constructor",
+      "inputs": [
+        {
+          "name": "owner",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "rate",
+          "type": "uint8",
+          "internalType": "uint8"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "check",
+      "inputs": [
+        {
+          "name": "user",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "start",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "bonus",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "signature",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "score",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "claim",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "contract IERC20"
+        },
+        {
+          "name": "start",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "bonus",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "signature",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "claimed",
+      "inputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    }
+  ]
