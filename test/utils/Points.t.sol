@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.19;
 
+import {MockERC4337} from "@solady/test/utils/mocks/MockERC4337.sol";
+import {MockERC20} from "@solady/test/utils/mocks/MockERC20.sol";
 import {IERC20, Points} from "../../src/utils/Points.sol";
 import "@forge/Test.sol";
 
@@ -16,8 +18,11 @@ contract PointsTest is Test {
     function setUp() public {
         (alice, alicePk) = makeAddrAndKey("alice");
         bob = makeAddr("bob");
-        points = new Points(address(new TestSmartAccount(alice)), 1);
-        token = address(new TestToken(address(points), POT));
+        MockERC4337 account;
+        points = new Points(address(account = new MockERC4337()), 1);
+        account.initialize(alice);
+        token = address(new MockERC20("TEST", "TEST", 18));
+        MockERC20(token).mint(address(points), POT);
     }
 
     // -- TESTS
@@ -44,7 +49,7 @@ contract PointsTest is Test {
         vm.warp(42);
         vm.prank(bob);
         points.claim(IERC20(token), start, bonus, abi.encodePacked(r, s, v));
-        assertEq(TestToken(token).balanceOf(bob), bonus + 41);
+        assertEq(MockERC20(token).balanceOf(bob), bonus + 41);
     }
 
     function testFailDoubleClaim(uint256 bonus) public {
@@ -55,63 +60,7 @@ contract PointsTest is Test {
         vm.warp(42);
         vm.prank(bob);
         points.claim(IERC20(token), start, bonus, abi.encodePacked(r, s, v));
-        assertEq(TestToken(token).balanceOf(bob), bonus);
+        assertEq(MockERC20(token).balanceOf(bob), bonus);
         points.claim(IERC20(token), start, bonus, abi.encodePacked(r, s, v));
-    }
-}
-
-contract TestToken {
-    event Approval(address indexed from, address indexed to, uint256 amount);
-    event Transfer(address indexed from, address indexed to, uint256 amount);
-
-    mapping(address => mapping(address => uint256)) public allowance;
-    mapping(address => uint256) public balanceOf;
-    uint256 totalSupply;
-
-    constructor(address owner, uint256 supply) payable {
-        totalSupply = balanceOf[owner] = supply;
-    }
-
-    function transfer(address to, uint256 amount) public returns (bool) {
-        balanceOf[msg.sender] -= amount;
-        unchecked {
-            balanceOf[to] += amount;
-        }
-        emit Transfer(msg.sender, to, amount);
-        return true;
-    }
-
-    function transferFrom(address to, uint256 amount) public returns (bool) {
-        balanceOf[msg.sender] -= amount;
-        unchecked {
-            balanceOf[to] += amount;
-        }
-        emit Transfer(msg.sender, to, amount);
-        return true;
-    }
-}
-
-contract TestSmartAccount {
-    address internal immutable OWNER;
-
-    constructor(address owner) payable {
-        OWNER = owner;
-    }
-
-    function isValidSignature(bytes32 hash, bytes calldata signature)
-        public
-        view
-        returns (bytes4)
-    {
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
-        assembly ("memory-safe") {
-            r := calldataload(signature.offset)
-            s := calldataload(add(signature.offset, 0x20))
-            v := byte(0, calldataload(add(signature.offset, 0x40)))
-        }
-        if (OWNER == ecrecover(hash, v, r, s)) return this.isValidSignature.selector;
-        else revert("ECDSA_ERROR");
     }
 }
