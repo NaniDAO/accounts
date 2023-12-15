@@ -4,13 +4,13 @@ pragma solidity ^0.8.19;
 /// @notice Simple onchain points allocation protocol.
 /// @custom:version 0.0.0
 contract Points {
-    address internal immutable OWNER; // Signatory.
-    uint256 internal immutable RATE; // Issuance.
+    address internal immutable _OWNER; // Signatory.
+    uint256 internal immutable _RATE; // Issuance.
     mapping(address => uint256) public claimed;
 
     constructor(address owner, uint8 rate) payable {
-        OWNER = owner;
-        RATE = rate;
+        _OWNER = owner;
+        _RATE = rate;
     }
 
     function check(address user, uint256 start, uint256 bonus, bytes calldata signature)
@@ -20,10 +20,10 @@ contract Points {
     {
         if (
             IERC1271.isValidSignature.selector
-                == IERC1271(OWNER).isValidSignature(
+                == IERC1271(_OWNER).isValidSignature(
                     keccak256((abi.encodePacked(user, start, bonus))), signature
                 )
-        ) score = (bonus + (RATE * (block.timestamp - start))) - claimed[user];
+        ) score = (bonus + (_RATE * (block.timestamp - start))) - claimed[user];
     }
 
     function claim(IERC20 token, uint256 start, uint256 bonus, bytes calldata signature)

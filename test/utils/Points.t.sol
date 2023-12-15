@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.19;
 
-import {MockERC4337} from "@solady/test/utils/mocks/MockERC4337.sol";
-import {MockERC20} from "@solady/test/utils/mocks/MockERC20.sol";
 import {IERC20, Points} from "../../src/utils/Points.sol";
 import "@forge/Test.sol";
 
@@ -13,17 +11,13 @@ contract PointsTest is Test {
     Points points;
     address token;
 
-    MockERC4337 account;
-
     uint256 constant POT = 1_000_000_000;
 
     function setUp() public {
         (alice, alicePk) = makeAddrAndKey("alice");
         bob = makeAddr("bob");
-        points = new Points(address(account = new MockERC4337()), 1);
-        account.initialize(alice);
-        token = address(new MockERC20("TEST", "TEST", 18));
-        MockERC20(token).mint(address(points), POT);
+        points = new Points(address(new Signer(alice)), 1);
+        token = address(new TestToken(address(points), POT));
     }
 
     // -- TESTS
@@ -35,61 +29,138 @@ contract PointsTest is Test {
     function testCheck(uint256 bonus) public {
         vm.assume(bonus < POT);
         uint256 start = 1;
+        (uint8 v, bytes32 r, bytes32 s) =
+            vm.sign(alicePk, keccak256(abi.encodePacked(bob, start, bonus)));
         vm.warp(42);
-        uint256 bal = points.check(bob, start, bonus, sign(alicePk, bob, start, bonus));
+        uint256 bal = points.check(bob, start, bonus, abi.encodePacked(r, s, v));
         assertEq(bal, bonus + 41);
     }
 
     function testClaim(uint256 bonus) public {
         vm.assume(bonus < POT);
         uint256 start = 1;
+        (uint8 v, bytes32 r, bytes32 s) =
+            vm.sign(alicePk, keccak256(abi.encodePacked(bob, start, bonus)));
         vm.warp(42);
         vm.prank(bob);
-        points.claim(IERC20(token), start, bonus, sign(alicePk, bob, start, bonus));
-        assertEq(MockERC20(token).balanceOf(bob), bonus + 41);
+        points.claim(IERC20(token), start, bonus, abi.encodePacked(r, s, v));
+        assertEq(TestToken(token).balanceOf(bob), bonus + 41);
     }
 
     function testFailDoubleClaim(uint256 bonus) public {
         vm.assume(bonus < POT);
         uint256 start = 1;
+        (uint8 v, bytes32 r, bytes32 s) =
+            vm.sign(alicePk, keccak256(abi.encodePacked(bob, start, bonus)));
         vm.warp(42);
         vm.prank(bob);
-        points.claim(IERC20(token), start, bonus, sign(alicePk, bob, start, bonus));
-        assertEq(MockERC20(token).balanceOf(bob), bonus);
-        points.claim(IERC20(token), start, bonus, sign(alicePk, bob, start, bonus));
+        points.claim(IERC20(token), start, bonus, abi.encodePacked(r, s, v));
+        assertEq(TestToken(token).balanceOf(bob), bonus);
+        points.claim(IERC20(token), start, bonus, abi.encodePacked(r, s, v));
+    }
+}
+
+contract TestToken {
+    event Approval(address indexed from, address indexed to, uint256 amount);
+    event Transfer(address indexed from, address indexed to, uint256 amount);
+
+    mapping(address => mapping(address => uint256)) public allowance;
+    mapping(address => uint256) public balanceOf;
+    uint256 totalSupply;
+
+    constructor(address owner, uint256 supply) payable {
+        totalSupply = balanceOf[owner] = supply;
     }
 
-    function sign(uint256 pK, address user, uint256 start, uint256 bonus)
-        internal
-        view
-        returns (bytes memory signature)
+    function transfer(address to, uint256 amount) public returns (bool) {
+        balanceOf[msg.sender] -= amount;
+        unchecked {
+            balanceOf[to] += amount;
+        }
+        emit Transfer(msg.sender, to, amount);
+        return true;
+    }
+
+    function transferFrom(address to, uint256 amount) public returns (bool) {
+        balanceOf[msg.sender] -= amount;
+        unchecked {
+            balanceOf[to] += amount;
+        }
+        emit Transfer(msg.sender, to, amount);
+        return true;
+    }
+}
+
+/// @notice Simple ECDSA-recovered ERC4337 account.
+/// @custom:version 0.0.0
+contract Signer {
+    error Unauthorized();
+    error InvalidSignature();
+
+    address internal immutable _OWNER;
+    address payable internal constant _ENTRYPOINT =
+        payable(0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789);
+
+    constructor(address owner) payable {
+        _OWNER = owner;
+    }
+
+    function execute(address target, uint256 value, bytes calldata data)
+        public
+        payable
+        returns (bytes memory result)
     {
-        bytes32 hash = keccak256(abi.encodePacked(user, start, bonus));
-        bytes32 rehash = keccak256(abi.encodePacked("\x19\x01", _buildDomainSeparator(), hash));
-        (uint8 v, bytes32 r, bytes32 s) =
-            vm.sign(pK, keccak256(abi.encode(address(account), rehash)));
-        return abi.encodePacked(r, s, v);
+        if (msg.sender != _OWNER) if (msg.sender != _ENTRYPOINT) revert Unauthorized();
+        (, result) = target.call{value: value}(data);
     }
 
-    /// @dev Returns the EIP-712 domain separator.
-    function _buildDomainSeparator() private view returns (bytes32 separator) {
-        // We will use `separator` to store the name hash to save a bit of gas.
-        separator = keccak256(bytes("NANI"));
-        bytes32 versionHash = keccak256(bytes("0.0.0"));
-        address _account = address(account);
-        /// @solidity memory-safe-assembly
-        assembly {
-            let m := mload(0x40) // Load the free memory pointer.
-            mstore(m, _DOMAIN_TYPEHASH)
-            mstore(add(m, 0x20), separator) // Name hash.
-            mstore(add(m, 0x40), versionHash)
-            mstore(add(m, 0x60), chainid())
-            mstore(add(m, 0x80), _account)
-            separator := keccak256(m, 0xa0)
+    function validateUserOp(
+        UserOperation calldata userOp,
+        bytes32 userOpHash,
+        uint256 missingAccountFunds
+    ) external payable returns (uint256 validationData) {
+        if (msg.sender != _ENTRYPOINT) revert Unauthorized();
+        validationData = this.isValidSignature.selector
+            == isValidSignature(_toEthSignedMessageHash(userOpHash), userOp.signature) ? 0 : 1;
+        if (missingAccountFunds != 0) _ENTRYPOINT.transfer(missingAccountFunds);
+    }
+
+    function isValidSignature(bytes32 hash, bytes calldata signature)
+        public
+        view
+        returns (bytes4)
+    {
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        assembly ("memory-safe") {
+            r := calldataload(signature.offset)
+            s := calldataload(add(signature.offset, 0x20))
+            v := byte(0, calldataload(add(signature.offset, 0x40)))
+        }
+        if (_OWNER == ecrecover(hash, v, r, s)) return this.isValidSignature.selector;
+        else revert InvalidSignature();
+    }
+
+    function _toEthSignedMessageHash(bytes32 hash) internal pure returns (bytes32 result) {
+        assembly ("memory-safe") {
+            mstore(0x20, hash)
+            mstore(0x00, "\x00\x00\x00\x00\x19Ethereum Signed Message:\n32")
+            result := keccak256(0x04, 0x3c)
         }
     }
 
-    /// @dev `keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")`.
-    bytes32 internal constant _DOMAIN_TYPEHASH =
-        0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
+    struct UserOperation {
+        address sender;
+        uint256 nonce;
+        bytes initCode;
+        bytes callData;
+        uint256 callGasLimit;
+        uint256 verificationGasLimit;
+        uint256 preVerificationGas;
+        uint256 maxFeePerGas;
+        uint256 maxPriorityFeePerGas;
+        bytes paymasterAndData;
+        bytes signature;
+    }
 }
