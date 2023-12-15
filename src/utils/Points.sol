@@ -4,13 +4,13 @@ pragma solidity ^0.8.19;
 /// @notice Simple onchain points allocation protocol.
 /// @custom:version 0.0.0
 contract Points {
-    address internal immutable _OWNER; // Signatory.
-    uint256 internal immutable _RATE; // Issuance.
+    address public immutable owner; // Signatory.
+    uint256 public immutable rate; // Issuance.
     mapping(address => uint256) public claimed;
 
-    constructor(address owner, uint8 rate) payable {
-        _OWNER = owner;
-        _RATE = rate;
+    constructor(address _owner, uint8 _rate) payable {
+        owner = Points(_owner).owner();
+        rate = _rate;
     }
 
     function check(address user, uint256 start, uint256 bonus, bytes calldata signature)
@@ -18,12 +18,20 @@ contract Points {
         view
         returns (uint256 score)
     {
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        assembly ("memory-safe") {
+            r := calldataload(signature.offset)
+            s := calldataload(add(signature.offset, 0x20))
+            v := byte(0, calldataload(add(signature.offset, 0x40)))
+        }
         if (
-            IERC1271.isValidSignature.selector
-                == IERC1271(_OWNER).isValidSignature(
-                    keccak256((abi.encodePacked(user, start, bonus))), signature
+            owner
+                == ecrecover(
+                    _toEthSignedMessageHash(keccak256((abi.encodePacked(user, start, bonus)))), v, r, s
                 )
-        ) score = (bonus + (_RATE * (block.timestamp - start))) - claimed[user];
+        ) score = (bonus + (rate * (block.timestamp - start))) - claimed[user];
     }
 
     function claim(IERC20 token, uint256 start, uint256 bonus, bytes calldata signature)
@@ -34,6 +42,14 @@ contract Points {
             token.transfer(
                 msg.sender, claimed[msg.sender] += check(msg.sender, start, bonus, signature)
             );
+        }
+    }
+
+    function _toEthSignedMessageHash(bytes32 hash) internal pure returns (bytes32 result) {
+        assembly ("memory-safe") {
+            mstore(0x20, hash) // Store into scratch space for keccak256.
+            mstore(0x00, "\x00\x00\x00\x00\x19Ethereum Signed Message:\n32")
+            result := keccak256(0x04, 0x3c) // `32 * 2 - (32 - 28) = 60 = 0x3c`.
         }
     }
 }
