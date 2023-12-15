@@ -95,7 +95,6 @@ contract TestToken {
 /// @custom:version 0.0.0
 contract Signer {
     error Unauthorized();
-    error InvalidSignature();
 
     address internal immutable _OWNER;
     address payable internal constant _ENTRYPOINT =
@@ -128,7 +127,7 @@ contract Signer {
     function isValidSignature(bytes32 hash, bytes calldata signature)
         public
         view
-        returns (bytes4)
+        returns (bytes4 result)
     {
         bytes32 r;
         bytes32 s;
@@ -138,8 +137,7 @@ contract Signer {
             s := calldataload(add(signature.offset, 0x20))
             v := byte(0, calldataload(add(signature.offset, 0x40)))
         }
-        if (_OWNER == ecrecover(hash, v, r, s)) return this.isValidSignature.selector;
-        else revert InvalidSignature();
+        if (_OWNER == ecrecover(hash, v, r, s)) result = this.isValidSignature.selector;
     }
 
     function _toEthSignedMessageHash(bytes32 hash) internal pure returns (bytes32 result) {
