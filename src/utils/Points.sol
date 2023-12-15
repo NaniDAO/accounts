@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 /// @notice Simple onchain points allocation protocol.
+/// @custom:version 0.0.0
 contract Points {
     address internal immutable OWNER; // Signatory.
     uint256 internal immutable RATE; // Issuance.
