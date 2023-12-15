@@ -121,7 +121,11 @@ contract Signer {
         if (msg.sender != _ENTRYPOINT) revert Unauthorized();
         validationData = this.isValidSignature.selector
             == isValidSignature(_toEthSignedMessageHash(userOpHash), userOp.signature) ? 0 : 1;
-        if (missingAccountFunds != 0) _ENTRYPOINT.transfer(missingAccountFunds);
+        assembly ("memory-safe") {
+            if missingAccountFunds {
+                pop(call(gas(), caller(), missingAccountFunds, codesize(), 0x00, codesize(), 0x00))
+            }
+        }
     }
 
     function isValidSignature(bytes32 hash, bytes calldata signature)
