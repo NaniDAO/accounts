@@ -34,33 +34,34 @@ contract PointsTest is Test {
     function testCheck(uint256 bonus) public {
         vm.assume(bonus < POT);
         uint256 start = 1;
-        (uint8 v, bytes32 r, bytes32 s) =
-            vm.sign(alicePk, keccak256(abi.encodePacked(bob, start, bonus)));
         vm.warp(42);
-        uint256 bal = points.check(bob, start, bonus, abi.encodePacked(r, s, v));
+        uint256 bal = points.check(bob, start, bonus,  sign(alicePk, bob, start, bonus));
         assertEq(bal, bonus + 41);
     }
 
     function testClaim(uint256 bonus) public {
         vm.assume(bonus < POT);
         uint256 start = 1;
-        (uint8 v, bytes32 r, bytes32 s) =
-            vm.sign(alicePk, keccak256(abi.encodePacked(bob, start, bonus)));
         vm.warp(42);
         vm.prank(bob);
-        points.claim(IERC20(token), start, bonus, abi.encodePacked(r, s, v));
+        points.claim(IERC20(token), start, bonus,  sign(alicePk, bob, start, bonus));
         assertEq(MockERC20(token).balanceOf(bob), bonus + 41);
     }
 
     function testFailDoubleClaim(uint256 bonus) public {
         vm.assume(bonus < POT);
         uint256 start = 1;
-        (uint8 v, bytes32 r, bytes32 s) =
-            vm.sign(alicePk, keccak256(abi.encodePacked(bob, start, bonus)));
         vm.warp(42);
         vm.prank(bob);
-        points.claim(IERC20(token), start, bonus, abi.encodePacked(r, s, v));
+        points.claim(IERC20(token), start, bonus, sign(alicePk, bob, start, bonus));
         assertEq(MockERC20(token).balanceOf(bob), bonus);
-        points.claim(IERC20(token), start, bonus, abi.encodePacked(r, s, v));
+        points.claim(IERC20(token), start, bonus, sign(alicePk, bob, start, bonus));
+    }
+
+    function sign(uint256 pK, address user, uint256 start, uint256 bonus) internal pure returns (bytes memory signature) {
+        (uint8 v, bytes32 r, bytes32 s) =
+            vm.sign(pK, keccak256(abi.encodePacked(user, start, bonus)));
+
+        return abi.encodePacked(r, s, v);
     }
 }
