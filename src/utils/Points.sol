@@ -18,6 +18,7 @@ contract Points {
         view
         returns (uint256 score)
     {
+        bytes32 hash = keccak256((abi.encodePacked(user, start, bonus)));
         bytes32 r;
         bytes32 s;
         uint8 v;
@@ -27,10 +28,9 @@ contract Points {
             v := byte(0, calldataload(add(signature.offset, 0x40)))
         }
         if (
-            Points(owner).owner()
-                == ecrecover(
-                    _toEthSignedMessageHash(keccak256((abi.encodePacked(user, start, bonus)))), v, r, s
-                )
+            Points(owner).owner() == ecrecover(_toEthSignedMessageHash(hash), v, r, s)
+                || IERC1271.isValidSignature.selector
+                    == IERC1271(owner).isValidSignature(hash, signature)
         ) score = (bonus + (rate * (block.timestamp - start))) - claimed[user];
     }
 
@@ -56,4 +56,8 @@ contract Points {
 
 interface IERC20 {
     function transfer(address, uint256) external returns (bool);
+}
+
+interface IERC1271 {
+    function isValidSignature(bytes32, bytes calldata) external view returns (bytes4);
 }
