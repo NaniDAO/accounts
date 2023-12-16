@@ -8,7 +8,7 @@ contract Points {
     uint256 public immutable rate; // Issuance.
     mapping(address => uint256) public claimed;
 
-    constructor(address _owner, uint8 _rate) payable {
+    constructor(address _owner, uint256 _rate) payable {
         owner = _owner;
         rate = _rate;
     }
