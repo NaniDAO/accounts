@@ -24,6 +24,12 @@ contract TokenTest is Test {
         new Token();
     }
 
+    function testNameAndSymbolAndDecimals() public {
+        assertEq(token.name(), "NANI");
+        assertEq(token.symbol(), unicode"❂");
+        assertEq(token.decimals(), 18);
+    }
+
     function testTotalSupply() public {
         assertEq(token.totalSupply(), MAX);
     }
@@ -35,8 +41,12 @@ contract TokenTest is Test {
     function testTransfer(address to, uint256 amount) public {
         vm.assume(to != address(0) && to != address(token));
         vm.assume(amount <= MAX);
+        assertEq(token.balanceOf(alice), MAX);
         vm.prank(alice);
         token.transfer(to, amount);
+        assertEq(token.balanceOf(alice), MAX - amount);
+        assertEq(token.balanceOf(to), amount);
+        assertEq(token.totalSupply(), MAX);
     }
 
     function testFailUnsafeTransfer(address to) public {
@@ -51,6 +61,17 @@ contract TokenTest is Test {
         token.transfer(to, 1 ether);
         vm.prank(to);
         token.transfer(alice, 1 ether + 1);
+    }
+
+    function testTransferFromOwner(address to, uint256 amount) public {
+        vm.assume(to != address(0) && to != address(token));
+        vm.assume(amount <= MAX);
+        assertEq(token.balanceOf(alice), MAX);
+        vm.prank(alice);
+        token.transferFrom(alice, to, amount);
+        assertEq(token.balanceOf(alice), MAX - amount);
+        assertEq(token.balanceOf(to), amount);
+        assertEq(token.totalSupply(), MAX);
     }
 }
 
