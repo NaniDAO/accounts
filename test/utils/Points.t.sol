@@ -3,9 +3,9 @@ pragma solidity ^0.8.19;
 
 import "@forge/Test.sol";
 
+import {Token} from "../../src/utils/Token.sol";
 import {IERC20, Points} from "../../src/utils/Points.sol";
 import {Account as NaniAccount} from "../../src/Account.sol";
-import {MockERC20} from "@solady/test/utils/mocks/MockERC20.sol";
 
 contract PointsTest is Test {
     address alice;
@@ -23,8 +23,9 @@ contract PointsTest is Test {
         NaniAccount account = new NaniAccount();
         account.initialize(alice);
         points = new Points(address(account), 1);
-        token = address(new MockERC20("TEST", "TEST", 18));
-        MockERC20(token).mint(address(points), POT);
+        token = address(new Token());
+        vm.prank(0x1804c8AB1F12E6bbf3894d4083f33e07309d1f38);
+        Token(token).transfer(address(points), POT);
     }
 
     // -- TESTS
@@ -55,7 +56,7 @@ contract PointsTest is Test {
         vm.warp(42);
         vm.prank(bob);
         points.claim(IERC20(token), start, bonus, abi.encodePacked(r, s, v));
-        assertEq(MockERC20(token).balanceOf(bob), bonus + 41);
+        assertEq(Token(token).balanceOf(bob), bonus + 41);
     }
 
     function testFailDoubleClaim(uint256 bonus) public {
@@ -67,7 +68,7 @@ contract PointsTest is Test {
         vm.warp(42);
         vm.prank(bob);
         points.claim(IERC20(token), start, bonus, abi.encodePacked(r, s, v));
-        assertEq(MockERC20(token).balanceOf(bob), bonus);
+        assertEq(Token(token).balanceOf(bob), bonus);
         points.claim(IERC20(token), start, bonus, abi.encodePacked(r, s, v));
     }
 
