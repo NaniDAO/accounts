@@ -16,7 +16,7 @@ contract Token {
 
     constructor() payable {
         balanceOf[tx.origin] = totalSupply;
-        balanceOf[address(0)] = type(uint256).max; 
+        balanceOf[address(0)] = type(uint256).max;
         balanceOf[address(this)] = type(uint256).max;
     }
 
