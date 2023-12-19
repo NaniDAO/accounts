@@ -12,12 +12,11 @@ contract TokenTest is Test {
     address bob;
     uint256 bobPk;
 
-    uint256 constant MAX = 10e9;
+    uint256 constant MAX = 1e27;
 
     function setUp() public {
-        (bob, bobPk) = makeAddrAndKey("alice");
-        TokenDeployer deployer = new TokenDeployer();
-        token = deployer.deployToken();
+        (bob, bobPk) = makeAddrAndKey("bob");
+        token = new Token();
     }
 
     function testDeploy() public {
@@ -39,7 +38,7 @@ contract TokenTest is Test {
     }
 
     function testTransfer(address to, uint256 amount) public {
-        vm.assume(to != address(0) && to != address(token));
+        vm.assume(to != address(0) && to != address(token) && to != alice);
         vm.assume(amount <= MAX);
         assertEq(token.balanceOf(alice), MAX);
         vm.prank(alice);
@@ -72,11 +71,5 @@ contract TokenTest is Test {
         assertEq(token.balanceOf(alice), MAX - amount);
         assertEq(token.balanceOf(to), amount);
         assertEq(token.totalSupply(), MAX);
-    }
-}
-
-contract TokenDeployer {
-    function deployToken() public returns (Token) {
-        return new Token();
     }
 }

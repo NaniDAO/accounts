@@ -9,7 +9,7 @@ contract Token {
     string public constant name = "NANI";
     string public constant symbol = unicode"❂";
     uint256 public constant decimals = 18;
-    uint256 public constant totalSupply = 10e9;
+    uint256 public constant totalSupply = 1e27;
 
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
