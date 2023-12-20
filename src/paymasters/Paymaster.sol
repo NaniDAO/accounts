@@ -43,15 +43,6 @@ contract Paymaster {
         bytes signature;
     }
 
-    /// =========================== ENUMS =========================== ///
-
-    /// @notice The ERC4337 post-operation (postOp) mode enum.
-    enum PostOpMode {
-        opSucceeded,
-        opReverted,
-        postOpReverted
-    }
-
     /// ========================= MODIFIERS ========================= ///
 
     /// @dev Requires that the caller is the EntryPoint.
@@ -75,7 +66,7 @@ contract Paymaster {
 
     /// =================== VALIDATION OPERATIONS =================== ///
 
-    /// @dev Paymaster validation: check if the contract owner signed.
+    /// @dev Paymaster validation: check if the contract owner signed off.
     function validatePaymasterUserOp(
         UserOperation calldata userOp,
         bytes32, /*userOpHash*/
@@ -93,7 +84,7 @@ contract Paymaster {
                 _OWNER, _hashSignedUserOp(userOp, validAfter, validUntil), signature
             )
         ) {
-            return (abi.encode(userOp.sender), 0x00);
+            return ("", 0x00);
         } else {
             return ("", 0x01);
         }
@@ -126,9 +117,6 @@ contract Paymaster {
             )
         );
     }
-
-    /// @dev Perfunctory post-operation (postOp) handler. Set here as placeholder for overrides.
-    function postOp(PostOpMode, bytes calldata, uint256) public payable virtual onlyEntryPoint {}
 
     /// ===================== STAKING OPERATIONS ===================== ///
 
