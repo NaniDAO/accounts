@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import "@solady/src/utils/SignatureCheckerLib.sol";
 
 /// @notice Simple ERC4337 Paymaster.
+/// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/paymasters/Paymaster.sol)
 /// @custom:version 0.0.0
 contract Paymaster {
     /// ======================= CUSTOM ERRORS ======================= ///
@@ -11,8 +12,8 @@ contract Paymaster {
     /// @dev The caller is not authorized to call the function.
     error Unauthorized();
 
-    /// @dev The current time range is invalid for the signature.
-    error InvalidTimestamp();
+    /// @dev The current timespan is invalid for the signature.
+    error InvalidTimespan();
 
     /// ========================= CONSTANTS ========================= ///
 
@@ -22,7 +23,7 @@ contract Paymaster {
 
     /// ========================= IMMUTABLES ========================= ///
 
-    /// @dev Holds an immutable owner.
+    /// @dev Holds an immutable owner for this contract.
     address payable internal immutable _OWNER;
 
     /// ========================== STRUCTS ========================== ///
@@ -40,6 +41,15 @@ contract Paymaster {
         uint256 maxPriorityFeePerGas;
         bytes paymasterAndData;
         bytes signature;
+    }
+
+    /// =========================== ENUMS =========================== ///
+
+    /// @notice The ERC4337 post-operation (postOp) mode enum.
+    enum PostOpMode {
+        opSucceeded,
+        opReverted,
+        postOpReverted
     }
 
     /// ========================= MODIFIERS ========================= ///
@@ -65,66 +75,60 @@ contract Paymaster {
 
     /// =================== VALIDATION OPERATIONS =================== ///
 
-    /// @dev Payment validation: check if paymaster agrees to pay.
+    /// @dev Paymaster validation: check if the contract owner signed.
     function validatePaymasterUserOp(
         UserOperation calldata userOp,
         bytes32, /*userOpHash*/
         uint256 /*maxCost*/
     ) public payable virtual onlyEntryPoint returns (bytes memory, uint256) {
-        address sender;
-        assembly ("memory-safe") {
-            sender := calldataload(userOp)
-        }
-        (uint48 validUntil, uint48 validAfter, bytes memory signature) =
-            abi.decode(userOp.paymasterAndData[20:], (uint48, uint48, bytes));
-        if (block.timestamp > validUntil) revert InvalidTimestamp();
-        if (block.timestamp < validAfter) revert InvalidTimestamp();
+        (uint48 validAfter, uint48 validUntil) =
+            abi.decode(userOp.paymasterAndData[20:84], (uint48, uint48));
+        bytes memory signature = userOp.paymasterAndData[84:];
+
+        if (block.timestamp < validAfter) revert InvalidTimespan();
+        if (block.timestamp > validUntil) revert InvalidTimespan();
+
         if (
             SignatureCheckerLib.isValidSignatureNow(
-                _OWNER,
-                SignatureCheckerLib.toEthSignedMessageHash(
-                    getHash(sender, userOp, validUntil, validAfter)
-                ),
-                signature
+                _OWNER, _hashSignedUserOp(userOp, validAfter, validUntil), signature
             )
         ) {
-            return (abi.encode(sender), 0);
+            return (abi.encode(userOp.sender), 0x00);
         } else {
-            return ("", 1);
+            return ("", 0x01);
         }
     }
 
-    /// @dev Perfunctory post-operation (postOp) handler.
-    function postOp(PostOpMode, bytes calldata, uint256) public payable virtual onlyEntryPoint {
-        return;
-    }
-
-    /// @dev Returns the hash the owner will sign offchain and validate onchain.
-    /// note: This covers all fields of the userOp, except `paymasterAndData`.
-    function getHash(
-        address sender,
-        UserOperation calldata userOp,
-        uint48 validUntil,
-        uint48 validAfter
-    ) public view virtual returns (bytes32) {
-        return keccak256(
-            abi.encode(
-                sender,
-                userOp.nonce,
-                keccak256(userOp.initCode),
-                keccak256(userOp.callData),
-                userOp.callGasLimit,
-                userOp.verificationGasLimit,
-                userOp.preVerificationGas,
-                userOp.maxFeePerGas,
-                userOp.maxPriorityFeePerGas,
-                block.chainid,
-                address(this),
-                validUntil,
-                validAfter
+    /// @dev Returns the eth-signed message hash of the userOp within context of paymaster and user.
+    function _hashSignedUserOp(UserOperation calldata userOp, uint48 validAfter, uint48 validUntil)
+        internal
+        view
+        virtual
+        returns (bytes32)
+    {
+        return SignatureCheckerLib.toEthSignedMessageHash(
+            keccak256(
+                abi.encode(
+                    userOp.sender,
+                    userOp.nonce,
+                    keccak256(userOp.initCode),
+                    keccak256(userOp.callData),
+                    userOp.callGasLimit,
+                    userOp.verificationGasLimit,
+                    userOp.preVerificationGas,
+                    userOp.maxFeePerGas,
+                    userOp.maxPriorityFeePerGas,
+                    block.chainid,
+                    address(this),
+                    validAfter,
+                    validUntil
+                )
             )
         );
     }
+
+    /// @dev Perfunctory post-operation (postOp) handler. Set here as placeholder for overrides.
+    function postOp(PostOpMode, bytes calldata, uint256) public payable virtual onlyEntryPoint {}
 
     /// ===================== STAKING OPERATIONS ===================== ///
 
@@ -142,11 +146,4 @@ contract Paymaster {
     function withdrawStake(address payable withdrawAddress) public payable virtual onlyOwner {
         Paymaster(_ENTRY_POINT).withdrawStake(withdrawAddress);
     }
-}
-
-/// @notice Modes for ERC4337 postOp.
-enum PostOpMode {
-    opSucceeded,
-    opReverted,
-    postOpReverted
 }

@@ -7,7 +7,7 @@ import "@solady/src/utils/FixedPointMathLib.sol";
 
 /// @notice Simple wrapped ERC4337 implementation with paymaster and yield functions.
 /// @dev The strategy for ether (ETH) deposits defaults to Lido for this alpha version.
-/// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/utils/NEETH.sol)
+/// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/paymasters/NEETH.sol)
 /// @custom:lex The user agrees that the following terms apply to use:
 ///             This smart contract ("NEETH") is being provided as is.
 ///             No guarantee, representation or warranty is being made
