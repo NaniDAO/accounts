@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "@forge/Test.sol";
-import {Token} from "../../src/utils/Token.sol";
+import {Token} from "../../src/governance/Token.sol";
 
 contract TokenTest is Test {
     Token token;

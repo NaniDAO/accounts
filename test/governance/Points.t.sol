@@ -3,8 +3,8 @@ pragma solidity ^0.8.19;
 
 import "@forge/Test.sol";
 
-import {Token} from "../../src/utils/Token.sol";
-import {IERC20, Points} from "../../src/utils/Points.sol";
+import {Token} from "../../src/governance/Token.sol";
+import {IERC20, Points} from "../../src/governance/Points.sol";
 import {Account as NaniAccount} from "../../src/Account.sol";
 
 contract PointsTest is Test {

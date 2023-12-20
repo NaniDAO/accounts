@@ -87,7 +87,7 @@ contract NEETH is ERC20 {
         _;
     }
 
-    /// @dev Requires that the caller is the EntryPoint.
+    /// @dev Requires that the caller is the owner.
     modifier onlyOwner() virtual {
         if (msg.sender != _OWNER) revert Unauthorized();
         _;
