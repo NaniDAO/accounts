@@ -84,17 +84,6 @@ contract Paymaster {
         }
     }
 
-    /// @dev Returns the packed validation data for `validatePaymasterUserOp`.
-    function _packValidationData(bool sigFailed, uint48 validUntil, uint48 validAfter)
-        internal
-        pure
-        virtual
-        returns (uint256)
-    {
-        return
-            (sigFailed ? 1 : 0) | (uint256(validUntil) << 160) | (uint256(validAfter) << (160 + 48));
-    }
-
     /// @dev Returns the eth-signed message hash of the userOp within context of paymaster and user.
     function _hashSignedUserOp(UserOperation calldata userOp, uint48 validUntil, uint48 validAfter)
         internal
@@ -121,6 +110,17 @@ contract Paymaster {
                 )
             )
         );
+    }
+
+    /// @dev Returns the packed validation data for `validatePaymasterUserOp`.
+    function _packValidationData(bool sigFailed, uint48 validUntil, uint48 validAfter)
+        internal
+        pure
+        virtual
+        returns (uint256)
+    {
+        return
+            (sigFailed ? 1 : 0) | (uint256(validUntil) << 160) | (uint256(validAfter) << (160 + 48));
     }
 
     /// ===================== STAKING OPERATIONS ===================== ///
