@@ -12,9 +12,6 @@ contract Paymaster {
     /// @dev The caller is not authorized to call the function.
     error Unauthorized();
 
-    /// @dev The current timespan is invalid for the signature.
-    error InvalidTimespan();
-
     /// ========================= CONSTANTS ========================= ///
 
     /// @dev The canonical ERC4337 EntryPoint contract.
