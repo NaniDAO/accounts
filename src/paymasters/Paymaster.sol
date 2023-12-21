@@ -78,9 +78,9 @@ contract Paymaster {
                 _OWNER, _hashSignedUserOp(userOp, validUntil, validAfter), signature
             )
         ) {
-            return ("", _packValidationData(false, validUntil, validAfter));
-        } else {
             return ("", _packValidationData(true, validUntil, validAfter));
+        } else {
+            return ("", _packValidationData(false, validUntil, validAfter));
         }
     }
 
@@ -113,14 +113,14 @@ contract Paymaster {
     }
 
     /// @dev Returns the packed validation data for `validatePaymasterUserOp`.
-    function _packValidationData(bool sigFailed, uint48 validUntil, uint48 validAfter)
+    function _packValidationData(bool valid, uint48 validUntil, uint48 validAfter)
         internal
         pure
         virtual
         returns (uint256)
     {
         return
-            (sigFailed ? 1 : 0) | (uint256(validUntil) << 160) | (uint256(validAfter) << (160 + 48));
+            (valid ? 0 : 1) | (uint256(validUntil) << 160) | (uint256(validAfter) << (160 + 48));
     }
 
     /// ===================== STAKING OPERATIONS ===================== ///
