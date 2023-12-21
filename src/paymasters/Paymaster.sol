@@ -66,7 +66,7 @@ contract Paymaster {
 
     /// =================== VALIDATION OPERATIONS =================== ///
 
-    /// @dev Paymaster validation: check if the contract owner signed off.
+    /// @dev Paymaster validation: check that contract owner signed off.
     function validatePaymasterUserOp(
         UserOperation calldata userOp,
         bytes32, /*userOpHash*/
@@ -76,22 +76,30 @@ contract Paymaster {
             abi.decode(userOp.paymasterAndData[20:84], (uint48, uint48));
         bytes memory signature = userOp.paymasterAndData[84:];
 
-        if (block.timestamp < validAfter) revert InvalidTimespan();
-        if (block.timestamp > validUntil) revert InvalidTimespan();
-
         if (
             SignatureCheckerLib.isValidSignatureNow(
-                _OWNER, _hashSignedUserOp(userOp, validAfter, validUntil), signature
+                _OWNER, _hashSignedUserOp(userOp, validUntil, validAfter), signature
             )
         ) {
-            return ("", 0x00);
+            return ("", _packValidationData(false, validUntil, validAfter));
         } else {
-            return ("", 0x01);
+            return ("", _packValidationData(true, validUntil, validAfter));
         }
     }
 
+    /// @dev Returns the packed validation data for `validatePaymasterUserOp`.
+    function _packValidationData(bool sigFailed, uint48 validUntil, uint48 validAfter)
+        internal
+        pure
+        virtual
+        returns (uint256)
+    {
+        return
+            (sigFailed ? 1 : 0) | (uint256(validUntil) << 160) | (uint256(validAfter) << (160 + 48));
+    }
+
     /// @dev Returns the eth-signed message hash of the userOp within context of paymaster and user.
-    function _hashSignedUserOp(UserOperation calldata userOp, uint48 validAfter, uint48 validUntil)
+    function _hashSignedUserOp(UserOperation calldata userOp, uint48 validUntil, uint48 validAfter)
         internal
         view
         virtual
@@ -111,8 +119,8 @@ contract Paymaster {
                     userOp.maxPriorityFeePerGas,
                     block.chainid,
                     address(this),
-                    validAfter,
-                    validUntil
+                    validUntil,
+                    validAfter
                 )
             )
         );
