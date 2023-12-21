@@ -69,7 +69,7 @@ contract Paymaster {
         bytes32, /*userOpHash*/
         uint256 /*maxCost*/
     ) public payable virtual onlyEntryPoint returns (bytes memory, uint256) {
-        (uint48 validAfter, uint48 validUntil) =
+        (uint48 validUntil, uint48 validAfter) =
             abi.decode(userOp.paymasterAndData[20:84], (uint48, uint48));
         bytes memory signature = userOp.paymasterAndData[84:];
 
