@@ -54,10 +54,12 @@ contract Points {
     }
 }
 
+/// @notice ERC20 interface.
 interface IERC20 {
     function transfer(address, uint256) external returns (bool);
 }
 
+/// @notice ERC1271 interface.
 interface IERC1271 {
     function isValidSignature(bytes32, bytes calldata) external view returns (bytes4);
 }
