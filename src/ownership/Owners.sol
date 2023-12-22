@@ -17,7 +17,13 @@ contract Owners {
 
     /// =========================== EVENTS =========================== ///
 
-    /// @dev Logs the new authorizers' threshold for an account.
+    /// @dev Logs the new guard status for an account.
+    event GuardSet(address indexed account, bool guarded);
+
+    /// @dev Logs the new guard permits for an account.
+    event PermitsSet(address indexed account, bytes32[] permits);
+
+    /// @dev Logs the new authorizer threshold for an account.
     event ThresholdSet(address indexed account, uint256 threshold);
 
     /// @dev Logs the new authorizers for an account (i.e., 'multisig').
@@ -42,7 +48,9 @@ contract Owners {
 
     /// @dev The authorizer settings struct.
     struct Settings {
+        bool guarded;
         uint256 threshold;
+        bytes32[] permits;
         address[] authorizers;
     }
 
@@ -70,7 +78,7 @@ contract Owners {
         external
         payable
         virtual
-        returns (uint256)
+        returns (uint256 validationData)
     {
         Settings storage settings = _settings[msg.sender];
         bytes[] memory signatures = _splitSignature(userOp.signature);
@@ -78,6 +86,13 @@ contract Owners {
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
         Authorizer[] memory authorizers = new Authorizer[](settings.authorizers.length);
         unchecked {
+            if (settings.guarded) {
+                bool ok;
+                for (uint256 i; i < settings.permits.length;) {
+                    if (userOpHash == settings.permits[i]) ok = true;
+                }
+                if (!ok) return 0x01;
+            }
             for (uint256 i; i < authorizers.length;) {
                 authorizers[i].signer = settings.authorizers[i];
                 ++i;
@@ -117,6 +132,13 @@ contract Owners {
         if (signatures.length < settings.threshold) revert Unauthorized();
         Authorizer[] memory authorizers = new Authorizer[](settings.authorizers.length);
         unchecked {
+            if (settings.guarded) {
+                bool ok;
+                for (uint256 i; i < settings.permits.length;) {
+                    if (hash == settings.permits[i]) ok = true;
+                }
+                if (!ok) return 0xffffffff;
+            }
             for (uint256 i; i < authorizers.length;) {
                 authorizers[i].signer = settings.authorizers[i];
                 ++i;
@@ -169,9 +191,24 @@ contract Owners {
         return _settings[account];
     }
 
+    /// @dev Returns the permits for the account.
+    function getPermits(address account) public view virtual returns (bytes32[] memory) {
+        return _settings[account].permits;
+    }
+
     /// @dev Returns the authorizers for the account.
     function getAuthorizers(address account) public view virtual returns (address[] memory) {
         return _settings[account].authorizers;
+    }
+
+    /// @dev Sets new guard status for the caller account.
+    function setGuard(address account, bool guarded) public payable virtual {
+        emit GuardSet(account, (_settings[msg.sender].guarded = guarded));
+    }
+
+    /// @dev Sets new permits for the caller account.
+    function setPermits(bytes32[] calldata permits) public payable virtual {
+        emit PermitsSet(msg.sender, (_settings[msg.sender].permits = permits));
     }
 
     /// @dev Sets new authorizer threshold for the caller account.
@@ -191,10 +228,17 @@ contract Owners {
     /// ================== INSTALLATION OPERATIONS ================== ///
 
     /// @dev Installs the settings for the caller account.
-    function install(uint256 threshold, address[] calldata authorizers) public payable virtual {
+    function install(
+        bool guarded,
+        uint256 threshold,
+        bytes32[] calldata permits,
+        address[] calldata authorizers
+    ) public payable virtual {
         LibSort.sort(authorizers);
         LibSort.uniquifySorted(authorizers);
         if (authorizers.length < threshold) revert InvalidSetting();
+        emit GuardSet(msg.sender, _settings[msg.sender].guarded = guarded);
+        emit PermitsSet(msg.sender, (_settings[msg.sender].permits = permits));
         emit ThresholdSet(msg.sender, (_settings[msg.sender].threshold = threshold));
         emit AuthorizersSet(msg.sender, (_settings[msg.sender].authorizers = authorizers));
     }
@@ -202,7 +246,9 @@ contract Owners {
     /// @dev Uninstalls the validator settings for the caller account.
     function uninstall() public payable virtual {
         delete _settings[msg.sender];
+        emit GuardSet(msg.sender, false);
         emit ThresholdSet(msg.sender, 0);
+        emit PermitsSet(msg.sender, new bytes32[](0));
         emit AuthorizersSet(msg.sender, new address[](0));
     }
 }
