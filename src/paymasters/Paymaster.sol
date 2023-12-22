@@ -119,8 +119,7 @@ contract Paymaster {
         virtual
         returns (uint256)
     {
-        return
-            (valid ? 0 : 1) | (uint256(validUntil) << 160) | (uint256(validAfter) << (160 + 48));
+        return (valid ? 0 : 1) | (uint256(validUntil) << 160) | (uint256(validAfter) << (160 + 48));
     }
 
     /// ===================== STAKING OPERATIONS ===================== ///
