@@ -8,11 +8,13 @@ contract Points {
     uint256 public immutable rate; // Issuance.
     mapping(address => uint256) public claimed;
 
+    /// @dev Constructs owned contract with issuance rate.
     constructor(address _owner, uint256 _rate) payable {
         owner = _owner;
         rate = _rate;
     }
 
+    /// @dev Check the user's points score from a signed starting time and bonus.
     function check(address user, uint256 start, uint256 bonus, bytes calldata signature)
         public
         view
@@ -34,6 +36,7 @@ contract Points {
         ) score = (bonus + (rate * (block.timestamp - start))) - claimed[user];
     }
 
+    /// @dev Claim unredeemed points for tokens from a signed starting time and bonus.
     function claim(IERC20 token, uint256 start, uint256 bonus, bytes calldata signature)
         public
         payable
@@ -45,6 +48,7 @@ contract Points {
         }
     }
 
+    /// @dev Returns an Ethereum Signed Message, created from a `hash`.
     function _toEthSignedMessageHash(bytes32 hash) internal pure returns (bytes32 result) {
         assembly ("memory-safe") {
             mstore(0x20, hash) // Store into scratch space for keccak256.
