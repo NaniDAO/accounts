@@ -17,7 +17,7 @@ contract Owners {
     event ThresholdSet(address indexed account, uint256 threshold);
 
     /// @dev Logs the ownership share balance for an account owner.
-    event Transfer(address indexed from, address indexed to, uint256 shares);
+    event Transfer(address indexed account, address indexed owner, uint256 shares);
 
     /// ========================== STRUCTS ========================== ///
 
@@ -44,7 +44,7 @@ contract Owners {
 
     /// ========================== STORAGE ========================== ///
 
-    /// @dev Stores mappings of settings to accounts.
+    /// @dev Stores mappings of ownership settings to accounts.
     mapping(address => Settings) public settings;
 
     /// @dev Stores mappings of share balances to account owners.
@@ -96,6 +96,19 @@ contract Owners {
                 return 0xffffffff; // Failure code.
             }
         }
+    }
+
+    /// @dev Validates ERC4337 userOp with additional auth logic flow among owners.
+    function validateUserOp(
+        UserOperation calldata userOp,
+        bytes32 userOpHash,
+        uint256 /*missingAccountFunds*/
+    ) public payable virtual returns (uint256 validationData) {
+        if (
+            isValidSignature(
+                SignatureCheckerLib.toEthSignedMessageHash(userOpHash), userOp.signature
+            ) != this.isValidSignature.selector
+        ) validationData = 0x01;
     }
 
     /// ======================= OWNER SETTINGS ======================= ///
