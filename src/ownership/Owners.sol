@@ -17,7 +17,7 @@ contract Owners {
     event ThresholdSet(address indexed account, uint256 threshold);
 
     /// @dev Logs the ownership share balance for an account owner.
-    event Transfer(address indexed account, address indexed owner, uint256 shares);
+    event Transfer(address indexed from, address indexed to, uint256 shares);
 
     /// ========================== STRUCTS ========================== ///
 
