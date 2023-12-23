@@ -16,8 +16,8 @@ contract Owners {
     /// @dev Logs the ownership threshold for an account.
     event ThresholdSet(address indexed account, uint256 threshold);
 
-    /// @dev Logs the ownership share balance for an account owner.
-    event Transfer(address indexed account, address indexed owner, uint256 shares);
+    /// @dev Logs share balance updates for account owners.
+    event Transfer(address indexed from, address indexed to, uint256 shares);
 
     /// ========================== STRUCTS ========================== ///
 
@@ -111,7 +111,7 @@ contract Owners {
         ) validationData = 0x01;
     }
 
-    /// ======================= OWNER SETTINGS ======================= ///
+    /// ===================== OWNERSHIP SETTINGS ===================== ///
 
     /// @dev Mints shares for an owner of the caller account.
     function mint(address owner, uint128 shares) public payable virtual {
