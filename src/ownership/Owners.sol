@@ -132,6 +132,32 @@ contract Owners {
         ) validationData = 0x01;
     }
 
+    /// ================== INSTALLATION OPERATIONS ================== ///
+
+    /// @dev Initializes ownership settings for the caller account.
+    /// note: Finalizes with transfer request in two-step pattern.
+    /// See, e.g., Ownable.sol:
+    /// https://github.com/Vectorized/solady/blob/main/src/auth/Ownable.sol
+    function install(
+        address[] calldata owners,
+        uint256[] calldata shares,
+        ITokenOwner tkn,
+        TokenStandard std,
+        uint64 threshold
+    ) public payable virtual {
+        if (owners.length != 0) {
+            if (owners.length != shares.length) revert InvalidSetting();
+            unchecked {
+                for (uint256 i; i < owners.length; ++i) {
+                    mint(owners[i], shares[i]);
+                }
+            }
+        }
+        setToken(tkn, std);
+        setThreshold(threshold);
+        IOwnable(msg.sender).requestOwnershipHandover();
+    }
+
     /// ===================== OWNERSHIP SETTINGS ===================== ///
 
     /// @dev Mints shares for an owner of the caller account.
@@ -176,6 +202,11 @@ contract Owners {
         ) revert InvalidSetting();
         emit ThresholdSet(msg.sender, (set.threshold = threshold));
     }
+}
+
+/// @notice Simple ownership interface for account transfer requests.
+interface IOwnable {
+    function requestOwnershipHandover() external payable;
 }
 
 /// @notice Generalized fungible token ownership interface.
