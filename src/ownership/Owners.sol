@@ -40,7 +40,7 @@ contract Owners is ERC6909 {
     /// @dev The account ownership settings struct.
     struct Settings {
         ITokenOwner tkn;
-        uint64 threshold;
+        uint88 threshold;
         TokenStandard std;
     }
 
@@ -157,7 +157,7 @@ contract Owners is ERC6909 {
         uint256[] calldata shares,
         ITokenOwner tkn,
         TokenStandard std,
-        uint64 threshold
+        uint88 threshold
     ) public payable virtual {
         if (owners.length != 0) {
             if (owners.length != shares.length) revert InvalidSetting();
@@ -200,7 +200,7 @@ contract Owners is ERC6909 {
     }
 
     /// @dev Sets new ownership threshold for the caller account.
-    function setThreshold(uint64 threshold) public payable virtual {
+    function setThreshold(uint88 threshold) public payable virtual {
         Settings storage set = settings[msg.sender];
         if (
             threshold
