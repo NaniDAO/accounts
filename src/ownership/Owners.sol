@@ -56,16 +56,16 @@ contract Owners is ERC6909 {
 
     /// ========================== STORAGE ========================== ///
 
-    /// @dev Holds auth helper.
-    Owners public immutable auth;
+    /// @dev Stores mapping of auth settings to accounts.
+    mapping(address => IAuthority) public auth;
 
-    /// @dev Holds metadata helper.
-    Owners public immutable meta;
+    /// @dev Stores mapping of metadata settings to accounts.
+    mapping(uint256 => string) public uris;
 
-    /// @dev Stores mappings of ownership settings to accounts.
+    /// @dev Stores mapping of ownership settings to accounts.
     mapping(address => Settings) public settings;
 
-    /// @dev Stores mappings of share balance supplies to accounts.
+    /// @dev Stores mapping of share balance supplies to accounts.
     /// This is used for ownership settings without external tokens.
     mapping(uint256 => uint256) public totalSupply;
 
@@ -83,16 +83,15 @@ contract Owners is ERC6909 {
 
     /// @dev Returns the URI of the token ID.
     function tokenURI(uint256 id) public view virtual override returns (string memory) {
-        return meta.tokenURI(id);
+        string memory uri = uris[id];
+        return bytes(uri).length != 0 ? uri : "";
     }
 
     /// ======================== CONSTRUCTOR ======================== ///
 
-    /// @dev Constructs this implementation with helpers.
-    constructor(Owners _auth, Owners _meta) payable {
-        auth = _auth;
-        meta = _meta;
-    }
+    /// @dev Constructs
+    /// this implementation.
+    constructor() payable {}
 
     /// =================== VALIDATION OPERATIONS =================== ///
 
@@ -221,6 +220,14 @@ contract Owners is ERC6909 {
         ) revert InvalidSetting();
         emit ThresholdSet(msg.sender, (set.threshold = threshold));
     }
+}
+
+/// @notice Simple auth interface.
+interface IAuthority {
+    function canCall(address user, address target, bytes4 functionSig)
+        external
+        view
+        returns (bool);
 }
 
 /// @notice Simple ownership interface for account transfer requests.
