@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.19;
 
+import {ERC6909} from "@solady/src/tokens/ERC6909.sol";
 import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 
 /// @notice Simple ownership singleton for smart accounts.
 /// @custom:version 0.0.0
-contract Owners {
+contract Owners is ERC6909 {
     /// ======================= CUSTOM ERRORS ======================= ///
 
     /// @dev Inputs are invalid for an ownership setting.
@@ -18,9 +19,6 @@ contract Owners {
 
     /// @dev Logs the token ownership details for an account.
     event TokenSet(address indexed account, ITokenOwner tkn, TokenStandard std);
-
-    /// @dev Logs share balance updates for account owners.
-    event Transfer(address indexed from, address indexed to, uint256 shares);
 
     /// ========================== STRUCTS ========================== ///
 
@@ -63,11 +61,24 @@ contract Owners {
 
     /// @dev Stores mappings of share balance supplies to accounts.
     /// This is used for ownership settings without external tokens.
-    mapping(address => uint256) public totalSupply;
+    mapping(uint256 => uint256) public totalSupply;
 
-    /// @dev Stores mappings of share balances to account owners.
-    /// This is used for ownership settings without external tokens.
-    mapping(address => mapping(address => uint256)) public balanceOf;
+    /// ====================== ERC6909 METADATA ====================== ///
+
+    /// @dev Returns the name of the token.
+    function name() public view virtual override returns (string memory) {
+        return "Owners";
+    }
+
+    /// @dev Returns the symbol of the token.
+    function symbol() public view virtual override returns (string memory) {
+        return "OWN";
+    }
+
+    /// @dev Returns the URI of the token ID.
+    function tokenURI(uint256) public view virtual override returns (string memory) {
+        return "";
+    }
 
     /// ======================== CONSTRUCTOR ======================== ///
 
@@ -103,7 +114,7 @@ contract Owners {
                     ) && prev < owner
                 ) {
                     tally += set.tkn == ITokenOwner(address(0))
-                        ? balanceOf[msg.sender][owner]
+                        ? balanceOf(owner, uint256(keccak256(abi.encodePacked(msg.sender))))
                         : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
                             ? ITokenOwner(set.tkn).balanceOf(owner)
                             : ITokenOwner(set.tkn).balanceOf(owner, 0);
@@ -165,22 +176,20 @@ contract Owners {
 
     /// @dev Mints shares for an owner of the caller account.
     function mint(address owner, uint256 shares) public payable virtual {
-        totalSupply[msg.sender] += shares;
-        unchecked {
-            balanceOf[msg.sender][owner] += shares;
-            emit Transfer(address(0), owner, shares);
-        }
+        uint256 id = uint256(keccak256(abi.encodePacked(msg.sender)));
+        totalSupply[id] += shares;
+        _mint(owner, id, shares);
     }
 
     /// @dev Burns shares from an owner of the caller account.
     function burn(address owner, uint256 shares) public payable virtual {
+        uint256 id = uint256(keccak256(abi.encodePacked(msg.sender)));
         unchecked {
-            if (settings[msg.sender].threshold > (totalSupply[msg.sender] -= shares)) {
+            if (settings[msg.sender].threshold > (totalSupply[id] -= shares)) {
                 revert InvalidSetting();
             }
         }
-        balanceOf[msg.sender][owner] -= shares;
-        emit Transfer(owner, address(0), shares);
+        _burn(owner, id, shares);
     }
 
     /// @dev Sets new token ownership details for the caller account.
@@ -197,7 +206,7 @@ contract Owners {
             threshold
                 > (
                     set.tkn == ITokenOwner(address(0))
-                        ? totalSupply[msg.sender]
+                        ? totalSupply[uint256(keccak256(abi.encodePacked(msg.sender)))]
                         : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
                             ? set.tkn.totalSupply()
                             : set.tkn.totalSupply(0)
