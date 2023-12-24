@@ -44,7 +44,6 @@ contract Owners {
         ITokenOwner tkn;
         uint64 threshold;
         TokenStandard std;
-        uint256 totalSupply;
     }
 
     /// =========================== ENUMS =========================== ///
@@ -61,6 +60,10 @@ contract Owners {
 
     /// @dev Stores mappings of ownership settings to accounts.
     mapping(address => Settings) public settings;
+
+    /// @dev Stores mappings of share balance supplies to accounts.
+    /// This is used for ownership settings without external tokens.
+    mapping(address => uint256) public totalSupply;
 
     /// @dev Stores mappings of share balances to account owners.
     /// This is used for ownership settings without external tokens.
@@ -162,7 +165,7 @@ contract Owners {
 
     /// @dev Mints shares for an owner of the caller account.
     function mint(address owner, uint256 shares) public payable virtual {
-        settings[msg.sender].totalSupply += shares;
+        totalSupply[msg.sender] += shares;
         unchecked {
             balanceOf[msg.sender][owner] += shares;
             emit Transfer(address(0), owner, shares);
@@ -172,7 +175,7 @@ contract Owners {
     /// @dev Burns shares from an owner of the caller account.
     function burn(address owner, uint256 shares) public payable virtual {
         unchecked {
-            if (settings[msg.sender].threshold > (settings[msg.sender].totalSupply -= shares)) {
+            if (settings[msg.sender].threshold > (totalSupply[msg.sender] -= shares)) {
                 revert InvalidSetting();
             }
         }
@@ -194,7 +197,7 @@ contract Owners {
             threshold
                 > (
                     set.tkn == ITokenOwner(address(0))
-                        ? set.totalSupply
+                        ? totalSupply[msg.sender]
                         : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
                             ? set.tkn.totalSupply()
                             : set.tkn.totalSupply(0)
