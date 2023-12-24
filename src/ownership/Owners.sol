@@ -16,6 +16,9 @@ contract Owners {
     /// @dev Logs the ownership threshold for an account.
     event ThresholdSet(address indexed account, uint256 threshold);
 
+    /// @dev Logs the token ownership details for an account.
+    event TokenSet(address indexed account, ITokenOwner tkn, TokenStandard std);
+
     /// @dev Logs share balance updates for account owners.
     event Transfer(address indexed from, address indexed to, uint256 shares);
 
@@ -38,8 +41,20 @@ contract Owners {
 
     /// @dev The account ownership settings struct.
     struct Settings {
-        uint128 threshold;
-        uint128 totalSupply;
+        ITokenOwner tkn;
+        uint64 threshold;
+        TokenStandard std;
+        uint256 totalSupply;
+    }
+
+    /// =========================== ENUMS =========================== ///
+
+    /// @dev The token interface standards enum.
+    enum TokenStandard {
+        ERC20,
+        ERC721,
+        ERC1155,
+        ERC6909
     }
 
     /// ========================== STORAGE ========================== ///
@@ -48,6 +63,7 @@ contract Owners {
     mapping(address => Settings) public settings;
 
     /// @dev Stores mappings of share balances to account owners.
+    /// This is used for ownership settings without external tokens.
     mapping(address => mapping(address => uint256)) public balanceOf;
 
     /// ======================== CONSTRUCTOR ======================== ///
@@ -66,6 +82,7 @@ contract Owners {
         virtual
         returns (bytes4)
     {
+        Settings storage set = settings[msg.sender];
         unchecked {
             uint256 i;
             uint256 pos;
@@ -82,7 +99,11 @@ contract Owners {
                         signature[pos + 20:pos + 65]
                     ) && prev < owner
                 ) {
-                    tally += balanceOf[msg.sender][owner];
+                    tally += set.tkn == ITokenOwner(address(0))
+                        ? balanceOf[msg.sender][owner]
+                        : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
+                            ? ITokenOwner(set.tkn).balanceOf(owner)
+                            : ITokenOwner(set.tkn).balanceOf(owner, 0);
                     prev = owner;
                     pos += 85;
                 } else {
@@ -114,7 +135,7 @@ contract Owners {
     /// ===================== OWNERSHIP SETTINGS ===================== ///
 
     /// @dev Mints shares for an owner of the caller account.
-    function mint(address owner, uint128 shares) public payable virtual {
+    function mint(address owner, uint256 shares) public payable virtual {
         settings[msg.sender].totalSupply += shares;
         unchecked {
             balanceOf[msg.sender][owner] += shares;
@@ -123,7 +144,7 @@ contract Owners {
     }
 
     /// @dev Burns shares from an owner of the caller account.
-    function burn(address owner, uint128 shares) public payable virtual {
+    function burn(address owner, uint256 shares) public payable virtual {
         unchecked {
             if (settings[msg.sender].threshold > (settings[msg.sender].totalSupply -= shares)) {
                 revert InvalidSetting();
@@ -133,9 +154,34 @@ contract Owners {
         emit Transfer(owner, address(0), shares);
     }
 
-    /// @dev Sets new ownership threshold for the caller account.
-    function setThreshold(uint128 threshold) public payable virtual {
-        if (threshold > settings[msg.sender].totalSupply) revert InvalidSetting();
-        emit ThresholdSet(msg.sender, (settings[msg.sender].threshold = threshold));
+    /// @dev Sets new token ownership details for the caller account.
+    function setToken(ITokenOwner tkn, TokenStandard std) public payable virtual {
+        settings[msg.sender].tkn = tkn;
+        settings[msg.sender].std = std;
+        emit TokenSet(msg.sender, tkn, std);
     }
+
+    /// @dev Sets new ownership threshold for the caller account.
+    function setThreshold(uint64 threshold) public payable virtual {
+        Settings storage set = settings[msg.sender];
+        if (
+            threshold
+                > (
+                    set.tkn == ITokenOwner(address(0))
+                        ? set.totalSupply
+                        : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
+                            ? set.tkn.totalSupply()
+                            : set.tkn.totalSupply(0)
+                )
+        ) revert InvalidSetting();
+        emit ThresholdSet(msg.sender, (set.threshold = threshold));
+    }
+}
+
+/// @notice Generalized fungible token ownership interface.
+interface ITokenOwner {
+    function balanceOf(address) external view returns (uint256);
+    function balanceOf(address, uint256) external view returns (uint256);
+    function totalSupply() external view returns (uint256);
+    function totalSupply(uint256) external view returns (uint256);
 }
