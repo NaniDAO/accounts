@@ -17,7 +17,7 @@ contract Owners is ERC6909 {
     /// @dev Logs the ownership threshold for an account.
     event ThresholdSet(address indexed account, uint88 threshold);
 
-    /// @dev Logs the token ownership details for an account.
+    /// @dev Logs the tokenized ownership details for an account.
     event TokenSet(address indexed account, ITokenOwner tkn, TokenStandard std);
 
     /// ========================== STRUCTS ========================== ///
@@ -56,6 +56,12 @@ contract Owners is ERC6909 {
 
     /// ========================== STORAGE ========================== ///
 
+    /// @dev Holds auth helper.
+    Owners public immutable auth;
+
+    /// @dev Holds metadata helper.
+    Owners public immutable meta;
+
     /// @dev Stores mappings of ownership settings to accounts.
     mapping(address => Settings) public settings;
 
@@ -76,15 +82,17 @@ contract Owners is ERC6909 {
     }
 
     /// @dev Returns the URI of the token ID.
-    function tokenURI(uint256) public view virtual override returns (string memory) {
-        return "";
+    function tokenURI(uint256 id) public view virtual override returns (string memory) {
+        return meta.tokenURI(id);
     }
 
     /// ======================== CONSTRUCTOR ======================== ///
 
-    /// @dev Constructs
-    /// this implementation.
-    constructor() payable {}
+    /// @dev Constructs this implementation with helpers.
+    constructor(Owners _auth, Owners _meta) payable {
+        auth = _auth;
+        meta = _meta;
+    }
 
     /// =================== VALIDATION OPERATIONS =================== ///
 
