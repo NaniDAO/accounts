@@ -15,7 +15,7 @@ contract Owners is ERC6909 {
     /// =========================== EVENTS =========================== ///
 
     /// @dev Logs the ownership threshold for an account.
-    event ThresholdSet(address indexed account, uint256 threshold);
+    event ThresholdSet(address indexed account, uint88 threshold);
 
     /// @dev Logs the token ownership details for an account.
     event TokenSet(address indexed account, ITokenOwner tkn, TokenStandard std);
