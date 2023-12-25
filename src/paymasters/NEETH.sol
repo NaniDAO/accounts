@@ -265,7 +265,7 @@ interface IUniswapV2 {
         external;
 }
 
-/// @notice Interface for WETH.
+/// @notice Interface for WETH V9.
 interface IWETH {
     function withdraw(uint256) external;
 }

@@ -14,7 +14,17 @@ Build the foundry project with `forge build`. Run contract tests with `forge tes
 
 Chain           | Factory                                 | Implementation                          | Commit
 ----------------|-----------------------------------------|-----------------------------------------|------------------------------------------
-Ethereum, Base, Goerli, Base-Goerli    | [0x000000000000dD366cc2E4432bB998e41DFD47C7](https://etherscan.io/address/0x000000000000dD366cc2E4432bB998e41DFD47C7#code) | [0x0000000000001C05075915622130c16f6febC541](https://etherscan.io/address/0x0000000000001C05075915622130c16f6febC541#code) | [77bc49fdf9f9695af1971cc6573500dfc7fb9786](https://github.com/NaniDAO/Account/commit/77bc49fdf9f9695af1971cc6573500dfc7fb9786)
+Ethereum, Arbitrum, Optimism, Polygon, Base | [0x000000000000dD366cc2E4432bB998e41DFD47C7](https://etherscan.io/address/0x000000000000dD366cc2E4432bB998e41DFD47C7#code) | [0x0000000000001C05075915622130c16f6febC541](https://etherscan.io/address/0x0000000000001C05075915622130c16f6febC541#code) | [77bc49fdf9f9695af1971cc6573500dfc7fb9786](https://github.com/NaniDAO/Account/commit/77bc49fdf9f9695af1971cc6573500dfc7fb9786)
+
+### Plugin Validators:
+
+* JointValidator: [0x0000000000bBe5e59600001E15b9A59B42f52b75](https://etherscan.io/address/0x0000000000bbe5e59600001e15b9a59b42f52b75#code)
+* RecoveryValidator: [0x00000000002d3440001c53656DB7aEE3B37E3152](https://etherscan.io/address/0x00000000002d3440001c53656db7aee3b37e3152#code)
+
+### Governance:
+
+* Points: [0x00000000007f7396897bf90B00e96EaE4B71d055](https://etherscan.io/address/0x00000000007f7396897bf90b00e96eae4b71d055#code)
+* Token: [0x00000000000025824328358250920B271f348690](https://etherscan.io/address/0x00000000000025824328358250920b271f348690)
 
 ## Blueprint
 
