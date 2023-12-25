@@ -31,7 +31,7 @@ contract JointValidator {
 
     /// ========================== STORAGE ========================== ///
 
-    /// @dev Stores mappings of authorizers to accounts.
+    /// @dev Stores mapping of authorizers to accounts.
     mapping(address => address[]) internal _authorizers;
 
     /// ======================== CONSTRUCTOR ======================== ///
