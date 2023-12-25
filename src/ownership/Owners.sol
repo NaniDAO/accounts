@@ -120,7 +120,9 @@ contract Owners is ERC6909 {
                         ? balanceOf(owner, uint256(keccak256(abi.encodePacked(msg.sender))))
                         : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
                             ? ITokenOwner(set.tkn).balanceOf(owner)
-                            : ITokenOwner(set.tkn).balanceOf(owner, 0);
+                            : ITokenOwner(set.tkn).balanceOf(
+                                owner, uint256(keccak256(abi.encodePacked(msg.sender)))
+                            );
                     prev = owner;
                     pos += 85;
                 } else {
@@ -146,7 +148,7 @@ contract Owners is ERC6909 {
             isValidSignature(
                 SignatureCheckerLib.toEthSignedMessageHash(userOpHash), userOp.signature
             ) != this.isValidSignature.selector
-        ) validationData = 0x01;
+        ) validationData = 0x01; // Failure code.
     }
 
     /// ================== INSTALLATION OPERATIONS ================== ///
@@ -163,20 +165,25 @@ contract Owners is ERC6909 {
         uint88 threshold,
         string calldata uri
     ) public payable virtual {
+        uint256 id = uint256(keccak256(abi.encodePacked(msg.sender)));
         if (owners.length != 0) {
             if (owners.length != shares.length) revert InvalidSetting();
-            unchecked {
-                for (uint256 i; i < owners.length; ++i) {
-                    mint(owners[i], shares[i]);
+            uint256 supply;
+            for (uint256 i; i < owners.length;) {
+                _mint(owners[i], id, shares[i]);
+                supply += shares[i];
+                unchecked {
+                    ++i;
                 }
+            }
+            unchecked {
+                totalSupply[id] += supply;
             }
         }
         setToken(tkn, std);
         setThreshold(threshold);
+        if (bytes(uri).length != 0) uris[id] = uri;
         IOwnable(msg.sender).requestOwnershipHandover();
-        if (bytes(uri).length != 0) {
-            uris[uint256(keccak256(abi.encodePacked(msg.sender)))] = uri;
-        }
     }
 
     /// ===================== OWNERSHIP SETTINGS ===================== ///
@@ -216,7 +223,7 @@ contract Owners is ERC6909 {
                         ? totalSupply[uint256(keccak256(abi.encodePacked(msg.sender)))]
                         : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
                             ? set.tkn.totalSupply()
-                            : set.tkn.totalSupply(0)
+                            : set.tkn.totalSupply(uint256(keccak256(abi.encodePacked(msg.sender))))
                 )
         ) revert InvalidSetting();
         emit ThresholdSet(msg.sender, (set.threshold = threshold));
