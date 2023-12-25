@@ -56,9 +56,6 @@ contract Owners is ERC6909 {
 
     /// ========================== STORAGE ========================== ///
 
-    /// @dev Stores mapping of auth settings to accounts.
-    mapping(address => IAuthority) public auth;
-
     /// @dev Stores mapping of metadata settings to accounts.
     mapping(uint256 => string) public uris;
 
@@ -163,7 +160,8 @@ contract Owners is ERC6909 {
         uint256[] calldata shares,
         ITokenOwner tkn,
         TokenStandard std,
-        uint88 threshold
+        uint88 threshold,
+        string calldata uri
     ) public payable virtual {
         if (owners.length != 0) {
             if (owners.length != shares.length) revert InvalidSetting();
@@ -176,6 +174,9 @@ contract Owners is ERC6909 {
         setToken(tkn, std);
         setThreshold(threshold);
         IOwnable(msg.sender).requestOwnershipHandover();
+        if (bytes(uri).length != 0) {
+            uris[uint256(keccak256(abi.encodePacked(msg.sender)))] = uri;
+        }
     }
 
     /// ===================== OWNERSHIP SETTINGS ===================== ///
@@ -220,14 +221,6 @@ contract Owners is ERC6909 {
         ) revert InvalidSetting();
         emit ThresholdSet(msg.sender, (set.threshold = threshold));
     }
-}
-
-/// @notice Simple auth interface.
-interface IAuthority {
-    function canCall(address user, address target, bytes4 functionSig)
-        external
-        view
-        returns (bool);
 }
 
 /// @notice Simple ownership interface for account transfer requests.
