@@ -14,6 +14,12 @@ contract Owners is ERC6909 {
 
     /// =========================== EVENTS =========================== ///
 
+    /// @dev Logs the metadata settings for an account.
+    event URISet(address indexed account, string uri);
+
+    /// @dev Logs the token authority for an account.
+    event AuthSet(address indexed account, ITokenAuth auth);
+
     /// @dev Logs the ownership threshold for an account.
     event ThresholdSet(address indexed account, uint88 threshold);
 
@@ -58,6 +64,9 @@ contract Owners is ERC6909 {
 
     /// @dev Stores mapping of metadata settings to accounts.
     mapping(uint256 => string) public uris;
+
+    /// @dev Stores mapping of state authorities to accounts.
+    mapping(uint256 => ITokenAuth) public auths;
 
     /// @dev Stores mapping of ownership settings to accounts.
     mapping(address => Settings) public settings;
@@ -163,7 +172,8 @@ contract Owners is ERC6909 {
         ITokenOwner tkn,
         TokenStandard std,
         uint88 threshold,
-        string calldata uri
+        string calldata uri,
+        ITokenAuth auth
     ) public payable virtual {
         uint256 id = uint256(keccak256(abi.encodePacked(msg.sender)));
         if (owners.length != 0) {
@@ -182,7 +192,8 @@ contract Owners is ERC6909 {
         }
         setToken(tkn, std);
         setThreshold(threshold);
-        if (bytes(uri).length != 0) uris[id] = uri;
+        if (bytes(uri).length != 0) setURI(uri);
+        if (auth != ITokenAuth(address(0))) auths[id] = auth;
         IOwnable(msg.sender).requestOwnershipHandover();
     }
 
@@ -204,6 +215,16 @@ contract Owners is ERC6909 {
             }
         }
         _burn(owner, id, shares);
+    }
+
+    /// @dev Sets new token metadata URI for the caller account.
+    function setURI(string calldata uri) public payable virtual {
+        emit URISet(msg.sender, (uris[uint256(keccak256(abi.encodePacked(msg.sender)))] = uri));
+    }
+
+    /// @dev Sets new token authority for the caller account.
+    function setAuth(ITokenAuth auth) public payable virtual {
+        emit AuthSet(msg.sender, auths[uint256(keccak256(abi.encodePacked(msg.sender)))] = auth);
     }
 
     /// @dev Sets new token ownership details for the caller account.
@@ -228,11 +249,31 @@ contract Owners is ERC6909 {
         ) revert InvalidSetting();
         emit ThresholdSet(msg.sender, (set.threshold = threshold));
     }
+
+    /// ===================== OVERRIDES ===================== ///
+
+    /// @dev Hook that is called before any transfer of tokens.
+    /// This includes minting and burning. Requests authority for the token transfer.
+    function _beforeTokenTransfer(address from, address to, uint256 id, uint256 amount)
+        internal
+        virtual
+        override(ERC6909)
+    {
+        ITokenAuth auth = auths[id];
+        if (auth != ITokenAuth(address(0))) {
+            auths[id].canTransfer(from, to, id, amount);
+        }
+    }
 }
 
-/// @notice Simple ownership interface for account transfer requests.
+/// @notice Simple interface for ownership requests.
 interface IOwnable {
     function requestOwnershipHandover() external payable;
+}
+
+/// @notice Simple authority interface for token transfers.
+interface ITokenAuth {
+    function canTransfer(address, address, uint256, uint256) external payable;
 }
 
 /// @notice Generalized fungible token ownership interface.
