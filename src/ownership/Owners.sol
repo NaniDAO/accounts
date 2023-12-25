@@ -224,7 +224,7 @@ contract Owners is ERC6909 {
 
     /// @dev Sets new token authority for the caller account.
     function setAuth(ITokenAuth auth) public payable virtual {
-        emit AuthSet(msg.sender, auths[uint256(keccak256(abi.encodePacked(msg.sender)))] = auth);
+        emit AuthSet(msg.sender, (auths[uint256(keccak256(abi.encodePacked(msg.sender)))] = auth));
     }
 
     /// @dev Sets new token ownership details for the caller account.
@@ -250,7 +250,7 @@ contract Owners is ERC6909 {
         emit ThresholdSet(msg.sender, (set.threshold = threshold));
     }
 
-    /// ===================== OVERRIDES ===================== ///
+    /// ========================= OVERRIDES ========================= ///
 
     /// @dev Hook that is called before any transfer of tokens.
     /// This includes minting and burning. Requests authority for the token transfer.
