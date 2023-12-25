@@ -29,7 +29,7 @@ contract RecoveryValidator {
     /// @dev Logs the new deadline for an account to renew custody.
     event DeadlineSet(address indexed account, uint32 deadline);
 
-    /// @dev Logs the new authorizers' threshold for an account.
+    /// @dev Logs the new authorizer threshold for an account.
     event ThresholdSet(address indexed account, uint192 threshold);
 
     /// @dev Logs the new authorizers for an account (i.e., 'multisig').
@@ -68,7 +68,7 @@ contract RecoveryValidator {
 
     /// ========================== STORAGE ========================== ///
 
-    /// @dev Stores mappings of settings to accounts.
+    /// @dev Stores mapping of settings to accounts.
     mapping(address => Settings) internal _settings;
 
     /// ======================== CONSTRUCTOR ======================== ///
@@ -159,7 +159,7 @@ contract RecoveryValidator {
         emit DelaySet(msg.sender, (_settings[msg.sender].delay = delay));
     }
 
-    /// @dev Sets new authorizers' threshold for the caller account.
+    /// @dev Sets new authorizer threshold for the caller account.
     function setThreshold(uint192 threshold) public payable virtual {
         if (threshold > _settings[msg.sender].authorizers.length) revert InvalidSetting();
         emit ThresholdSet(msg.sender, (_settings[msg.sender].threshold = threshold));
