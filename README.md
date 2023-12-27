@@ -14,7 +14,7 @@ Build the foundry project with `forge build`. Run contract tests with `forge tes
 
 Chain           | Factory                                 | Implementation                          | Commit
 ----------------|-----------------------------------------|-----------------------------------------|------------------------------------------
-Ethereum, Arbitrum, Optimism, Polygon, Base | [0x000000000000dD366cc2E4432bB998e41DFD47C7](https://etherscan.io/address/0x000000000000dD366cc2E4432bB998e41DFD47C7#code) | [0x0000000000001C05075915622130c16f6febC541](https://etherscan.io/address/0x0000000000001C05075915622130c16f6febC541#code) | [77bc49fdf9f9695af1971cc6573500dfc7fb9786](https://github.com/NaniDAO/Account/commit/77bc49fdf9f9695af1971cc6573500dfc7fb9786)
+Ethereum, Arbitrum, Optimism, Polygon, Base, Sepolia (testnet) | [0x000000000000dD366cc2E4432bB998e41DFD47C7](https://etherscan.io/address/0x000000000000dD366cc2E4432bB998e41DFD47C7#code) | [0x0000000000001C05075915622130c16f6febC541](https://etherscan.io/address/0x0000000000001C05075915622130c16f6febC541#code) | [77bc49fdf9f9695af1971cc6573500dfc7fb9786](https://github.com/NaniDAO/Account/commit/77bc49fdf9f9695af1971cc6573500dfc7fb9786)
 
 ### Plugin Validators:
 
