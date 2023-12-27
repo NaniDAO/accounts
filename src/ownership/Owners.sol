@@ -18,6 +18,9 @@ contract Owners is ERC6909 {
     /// @dev Voting period has ended for an account.
     error VoteEnded();
 
+    /// @dev The proposal failed to process.
+    error ProposalFailed();
+
     /// =========================== EVENTS =========================== ///
 
     /// @dev Logs the metadata settings for an account.
@@ -42,6 +45,10 @@ contract Owners is ERC6909 {
         string info
     );
 
+    event VoteCast(
+        address indexed voter, address indexed account, uint256 indexed propId, Vote action
+    );
+
     /// ========================== STRUCTS ========================== ///
 
     /// @dev The account proposal struct.
@@ -51,21 +58,22 @@ contract Owners is ERC6909 {
         uint96 value;
         bytes data;
         bytes32 info;
-        uint32 start;
-        uint32 end;
+        uint48 start;
+        uint48 end;
+        uint160 abst;
         uint128 yes;
         uint128 no;
     }
 
-    /// @dev The account proposal period struct.
-    struct Period {
-        uint32 voteDelay;
-        uint112 votePeriod;
-        uint112 gracePeriod;
+    /// @dev The account proposal timer struct.
+    struct Timer {
+        uint32 delay;
+        uint112 voting;
+        uint112 grace;
     }
 
     /// @dev The account ownership settings struct.
-    struct Settings {
+    struct Setting {
         ITokenOwner tkn;
         uint88 threshold;
         TokenStandard std;
@@ -92,7 +100,7 @@ contract Owners is ERC6909 {
     /// Modified from Moloch:
     /// https://github.com/MolochVentures/moloch/blob/master/contracts/Moloch.sol
     enum Vote {
-        NULL,
+        ABST,
         YES,
         NO
     }
@@ -110,8 +118,8 @@ contract Owners is ERC6909 {
     /// @dev Stores mapping of IDs to account proposals.
     mapping(uint256 => Proposal) public props;
 
-    /// @dev Stores mapping of proposal periods to accounts.
-    mapping(address => Period) public periods;
+    /// @dev Stores mapping of proposal timers to accounts.
+    mapping(address => Timer) public timers;
 
     /// @dev Stores mapping of metadata settings to accounts.
     mapping(uint256 => string) public uris;
@@ -120,7 +128,7 @@ contract Owners is ERC6909 {
     mapping(uint256 => ITokenAuth) public auths;
 
     /// @dev Stores mapping of ownership settings to accounts.
-    mapping(address => Settings) public settings;
+    mapping(address => Setting) public settings;
 
     /// @dev Stores mapping of share balance supplies to accounts.
     /// This is used for ownership settings without external tokens.
@@ -160,7 +168,7 @@ contract Owners is ERC6909 {
         virtual
         returns (bytes4)
     {
-        Settings storage set = settings[msg.sender];
+        Setting storage set = settings[msg.sender];
         unchecked {
             uint256 pos;
             address prev;
@@ -222,11 +230,11 @@ contract Owners is ERC6909 {
         bytes calldata data,
         string calldata info
     ) public payable virtual returns (uint256 propId) {
-        Period storage period = periods[account];
+        Timer storage timer = timers[account];
         bytes32 infoHash = keccak256(bytes(info));
         propId = _hashProposalId(account, target, value, data, infoHash);
         unchecked {
-            uint32 start = uint32(block.timestamp + period.voteDelay);
+            uint32 start = uint32(block.timestamp + timer.delay);
             props[propId] = Proposal({
                 proposer: msg.sender,
                 target: target,
@@ -234,7 +242,8 @@ contract Owners is ERC6909 {
                 data: data,
                 info: infoHash,
                 start: start,
-                end: uint32(start + period.votePeriod),
+                end: uint32(start + timer.voting),
+                abst: 0,
                 yes: 0,
                 no: 0
             });
@@ -256,12 +265,12 @@ contract Owners is ERC6909 {
     /// @dev Casts vote on registered proposal. Reverts if non-existent.
     function vote(address account, uint256 propId, Vote action) public payable virtual {
         Proposal storage prop = props[propId];
-        Settings storage set = settings[account];
+        Setting storage set = settings[account];
 
         if (block.timestamp < prop.start) revert VotePending();
         if (block.timestamp > prop.end) revert VoteEnded();
 
-        prop.yes += set.tkn == ITokenOwner(address(0))
+        uint128 weight = set.tkn == ITokenOwner(address(0))
             ? uint128(balanceOf(msg.sender, uint256(keccak256(abi.encodePacked(msg.sender)))))
             : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
                 ? uint128(ITokenOwner(set.tkn).balanceOf(msg.sender))
@@ -270,6 +279,77 @@ contract Owners is ERC6909 {
                         msg.sender, uint256(keccak256(abi.encodePacked(msg.sender)))
                     )
                 );
+
+        if (action == Vote.YES) {
+            prop.yes += weight;
+        } else if (action == Vote.NO) {
+            prop.no += weight;
+        } else {
+            prop.abst += weight;
+        }
+
+        emit VoteCast(msg.sender, account, propId, action);
+    }
+
+    /// @dev Processes proposal and checks voting results.
+    function processProposal(
+        address account,
+        address target,
+        uint96 value,
+        bytes calldata data,
+        bytes32 infoHash
+    ) public payable virtual returns (bytes memory result) {
+        uint256 propId = _hashProposalId(account, target, value, data, infoHash);
+
+        Proposal storage prop = props[propId];
+        Timer storage timer = timers[account];
+        Setting storage set = settings[account];
+
+        if (block.timestamp < timer.grace + prop.end) revert VotePending();
+
+        if (_countVotes(prop.abst, prop.yes, prop.no, set)) return _execute(target, value, data);
+        else revert ProposalFailed();
+    }
+
+    /// @dev Returns the success or failure of the vote tally upon processing.
+    function _countVotes(uint256 abstentions, uint256 yesVotes, uint256 noVotes, Setting memory set)
+        internal
+        view
+        virtual
+        returns (bool passed)
+    {
+        if (yesVotes == 0) if (noVotes == 0) return false;
+
+        uint256 voteSupply = set.tkn == ITokenOwner(address(0))
+            ? totalSupply[uint256(keccak256(abi.encodePacked(msg.sender)))]
+            : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
+                ? set.tkn.totalSupply()
+                : set.tkn.totalSupply(uint256(keccak256(abi.encodePacked(msg.sender))));
+
+        passed == ((abstentions + yesVotes + noVotes) < ((voteSupply * set.threshold) / 100)) // Quorum.
+            && (yesVotes > noVotes); // Approval.
+    }
+
+    /// @dev Execute a call from this contract.
+    function _execute(address target, uint256 value, bytes calldata data)
+        internal
+        virtual
+        returns (bytes memory result)
+    {
+        /// @solidity memory-safe-assembly
+        assembly {
+            result := mload(0x40)
+            calldatacopy(result, data.offset, data.length)
+            if iszero(call(gas(), target, value, result, data.length, codesize(), 0x00)) {
+                // Bubble up the revert if the call reverts.
+                returndatacopy(result, 0x00, returndatasize())
+                revert(result, returndatasize())
+            }
+            mstore(result, returndatasize()) // Store the length.
+            let o := add(result, 0x20)
+            returndatacopy(o, 0x00, returndatasize()) // Copy the returndata.
+            mstore(0x40, add(o, returndatasize())) // Allocate the memory.
+        }
     }
 
     /// ================== INSTALLATION OPERATIONS ================== ///
@@ -348,7 +428,7 @@ contract Owners is ERC6909 {
 
     /// @dev Sets new ownership threshold for the caller account.
     function setThreshold(uint88 threshold) public payable virtual {
-        Settings storage set = settings[msg.sender];
+        Setting storage set = settings[msg.sender];
         if (
             threshold
                 > (
