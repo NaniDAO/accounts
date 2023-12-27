@@ -12,6 +12,12 @@ contract Owners is ERC6909 {
     /// @dev Inputs are invalid for an ownership setting.
     error InvalidSetting();
 
+    /// @dev Voting period has not begun for an account.
+    error VotePending();
+
+    /// @dev Voting period has ended for an account.
+    error VoteEnded();
+
     /// =========================== EVENTS =========================== ///
 
     /// @dev Logs the metadata settings for an account.
@@ -23,10 +29,47 @@ contract Owners is ERC6909 {
     /// @dev Logs the ownership threshold for an account.
     event ThresholdSet(address indexed account, uint88 threshold);
 
-    /// @dev Logs the tokenized ownership details for an account.
+    /// @dev Logs the token ownership strategy for an account.
     event TokenSet(address indexed account, ITokenOwner tkn, TokenStandard std);
 
+    /// @dev Logs the creation of a proposal to an account.
+    event ProposalCreated(
+        address indexed proposer,
+        address indexed account,
+        address target,
+        uint96 value,
+        bytes data,
+        string info
+    );
+
     /// ========================== STRUCTS ========================== ///
+
+    /// @dev The account proposal struct.
+    struct Proposal {
+        address proposer;
+        address target;
+        uint96 value;
+        bytes data;
+        bytes32 info;
+        uint32 start;
+        uint32 end;
+        uint128 yes;
+        uint128 no;
+    }
+
+    /// @dev The account proposal period struct.
+    struct Period {
+        uint32 voteDelay;
+        uint112 votePeriod;
+        uint112 gracePeriod;
+    }
+
+    /// @dev The account ownership settings struct.
+    struct Settings {
+        ITokenOwner tkn;
+        uint88 threshold;
+        TokenStandard std;
+    }
 
     /// @dev The ERC4337 user operation (userOp) struct.
     struct UserOperation {
@@ -43,14 +86,16 @@ contract Owners is ERC6909 {
         bytes signature;
     }
 
-    /// @dev The account ownership settings struct.
-    struct Settings {
-        ITokenOwner tkn;
-        uint88 threshold;
-        TokenStandard std;
-    }
-
     /// =========================== ENUMS =========================== ///
+
+    /// @dev The user voting actions enum.
+    /// Modified from Moloch:
+    /// https://github.com/MolochVentures/moloch/blob/master/contracts/Moloch.sol
+    enum Vote {
+        NULL,
+        YES,
+        NO
+    }
 
     /// @dev The token interface standards enum.
     enum TokenStandard {
@@ -61,6 +106,12 @@ contract Owners is ERC6909 {
     }
 
     /// ========================== STORAGE ========================== ///
+
+    /// @dev Stores mapping of IDs to account proposals.
+    mapping(uint256 => Proposal) public props;
+
+    /// @dev Stores mapping of proposal periods to accounts.
+    mapping(address => Period) public periods;
 
     /// @dev Stores mapping of metadata settings to accounts.
     mapping(uint256 => string) public uris;
@@ -158,6 +209,67 @@ contract Owners is ERC6909 {
                 SignatureCheckerLib.toEthSignedMessageHash(userOpHash), userOp.signature
             ) != this.isValidSignature.selector
         ) validationData = 0x01; // Failure code.
+    }
+
+    /// ==================== PROPOSAL OPERATIONS ==================== ///
+
+    /// @dev Proposes an operation to an account.
+    /// The proposal ID is derived from content.
+    function propose(
+        address account,
+        address target,
+        uint96 value,
+        bytes calldata data,
+        string calldata info
+    ) public payable virtual returns (uint256 propId) {
+        Period storage period = periods[account];
+        bytes32 infoHash = keccak256(bytes(info));
+        propId = _hashProposalId(account, target, value, data, infoHash);
+        unchecked {
+            uint32 start = uint32(block.timestamp + period.voteDelay);
+            props[propId] = Proposal({
+                proposer: msg.sender,
+                target: target,
+                value: value,
+                data: data,
+                info: infoHash,
+                start: start,
+                end: uint32(start + period.votePeriod),
+                yes: 0,
+                no: 0
+            });
+        }
+        emit ProposalCreated(msg.sender, account, target, value, data, info);
+    }
+
+    /// @dev Hash proposal ID from contents.
+    function _hashProposalId(
+        address account,
+        address target,
+        uint96 value,
+        bytes calldata data,
+        bytes32 info
+    ) internal pure virtual returns (uint256) {
+        return uint256(keccak256(abi.encode(account, target, value, data, info)));
+    }
+
+    /// @dev Casts vote on registered proposal. Reverts if non-existent.
+    function vote(address account, uint256 propId, Vote action) public payable virtual {
+        Proposal storage prop = props[propId];
+        Settings storage set = settings[account];
+
+        if (block.timestamp < prop.start) revert VotePending();
+        if (block.timestamp > prop.end) revert VoteEnded();
+
+        prop.yes += set.tkn == ITokenOwner(address(0))
+            ? uint128(balanceOf(msg.sender, uint256(keccak256(abi.encodePacked(msg.sender)))))
+            : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
+                ? uint128(ITokenOwner(set.tkn).balanceOf(msg.sender))
+                : uint128(
+                    ITokenOwner(set.tkn).balanceOf(
+                        msg.sender, uint256(keccak256(abi.encodePacked(msg.sender)))
+                    )
+                );
     }
 
     /// ================== INSTALLATION OPERATIONS ================== ///
