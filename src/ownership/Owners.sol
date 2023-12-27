@@ -40,11 +40,12 @@ contract Owners is ERC6909 {
         address indexed proposer,
         address indexed account,
         address target,
-        uint96 value,
+        uint256 value,
         bytes data,
         string info
     );
 
+    /// @dev Logs the casting of a vote on a proposal to an account.
     event VoteCast(
         address indexed voter, address indexed account, uint256 indexed propId, Vote action
     );
@@ -54,22 +55,18 @@ contract Owners is ERC6909 {
     /// @dev The account proposal struct.
     struct Proposal {
         address proposer;
-        address target;
-        uint96 value;
-        bytes data;
-        bytes32 info;
         uint48 start;
         uint48 end;
-        uint160 abst;
-        uint128 yes;
-        uint128 no;
+        uint80 abst;
+        uint88 yes;
+        uint88 no;
     }
 
     /// @dev The account proposal timer struct.
     struct Timer {
-        uint32 delay;
-        uint112 voting;
-        uint112 grace;
+        uint48 delay;
+        uint48 voting;
+        uint48 grace;
     }
 
     /// @dev The account ownership settings struct.
@@ -227,23 +224,18 @@ contract Owners is ERC6909 {
     function propose(
         address account,
         address target,
-        uint96 value,
+        uint256 value,
         bytes calldata data,
         string calldata info
     ) public payable virtual returns (uint256 propId) {
         Timer storage timer = timers[account];
-        bytes32 infoHash = keccak256(bytes(info));
-        propId = _hashProposalId(account, target, value, data, infoHash);
+        propId = _hashProposalId(account, target, value, data, keccak256(bytes(info)));
         unchecked {
-            uint32 start = uint32(block.timestamp + timer.delay);
+            uint48 start = uint48(block.timestamp + timer.delay);
             props[propId] = Proposal({
                 proposer: msg.sender,
-                target: target,
-                value: value,
-                data: data,
-                info: infoHash,
                 start: start,
-                end: uint32(start + timer.voting),
+                end: uint48(start + timer.voting),
                 abst: 0,
                 yes: 0,
                 no: 0
@@ -256,7 +248,7 @@ contract Owners is ERC6909 {
     function _hashProposalId(
         address account,
         address target,
-        uint96 value,
+        uint256 value,
         bytes calldata data,
         bytes32 info
     ) internal pure virtual returns (uint256) {
@@ -271,11 +263,11 @@ contract Owners is ERC6909 {
         if (block.timestamp < prop.start) revert VotePending();
         if (block.timestamp > prop.end) revert VoteEnded();
 
-        uint128 weight = set.std == TokenStandard.OWN
-            ? uint128(balanceOf(msg.sender, uint256(keccak256(abi.encodePacked(msg.sender)))))
+        uint88 weight = set.std == TokenStandard.OWN
+            ? uint88(balanceOf(msg.sender, uint256(keccak256(abi.encodePacked(msg.sender)))))
             : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
-                ? uint128(ITokenOwner(set.tkn).balanceOf(msg.sender))
-                : uint128(
+                ? uint88(ITokenOwner(set.tkn).balanceOf(msg.sender))
+                : uint88(
                     ITokenOwner(set.tkn).balanceOf(
                         msg.sender, uint256(keccak256(abi.encodePacked(msg.sender)))
                     )
@@ -286,7 +278,7 @@ contract Owners is ERC6909 {
         } else if (action == Vote.NO) {
             prop.no += weight;
         } else {
-            prop.abst += weight;
+            prop.abst += uint80(weight);
         }
 
         emit VoteCast(msg.sender, account, propId, action);
@@ -296,20 +288,19 @@ contract Owners is ERC6909 {
     function processProposal(
         address account,
         address target,
-        uint96 value,
+        uint256 value,
         bytes calldata data,
         bytes32 infoHash
     ) public payable virtual returns (bytes memory result) {
-        uint256 propId = _hashProposalId(account, target, value, data, infoHash);
-
-        Proposal storage prop = props[propId];
-        Timer storage timer = timers[account];
-        Setting storage set = settings[account];
-
-        if (block.timestamp < timer.grace + prop.end) revert VotePending();
-
-        if (_countVotes(prop.abst, prop.yes, prop.no, set)) return _execute(target, value, data);
-        else revert ProposalFailed();
+        Proposal storage prop = props[_hashProposalId(account, target, value, data, infoHash)];
+        unchecked {
+            if (block.timestamp < timers[account].grace + prop.end) revert VotePending();
+        }
+        if (_countVotes(prop.abst, prop.yes, prop.no, settings[account])) {
+            return _execute(target, value, data);
+        } else {
+            revert ProposalFailed();
+        }
     }
 
     /// @dev Returns the success or failure of the vote tally upon processing.
