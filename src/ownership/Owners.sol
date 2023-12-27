@@ -107,6 +107,7 @@ contract Owners is ERC6909 {
 
     /// @dev The token interface standards enum.
     enum TokenStandard {
+        OWN,
         ERC20,
         ERC721,
         ERC1155,
@@ -184,7 +185,7 @@ contract Owners is ERC6909 {
                         signature[pos + 20:pos + 65]
                     ) && prev < owner
                 ) {
-                    tally += set.tkn == ITokenOwner(address(0))
+                    tally += set.std == TokenStandard.OWN
                         ? balanceOf(owner, uint256(keccak256(abi.encodePacked(msg.sender))))
                         : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
                             ? ITokenOwner(set.tkn).balanceOf(owner)
@@ -270,7 +271,7 @@ contract Owners is ERC6909 {
         if (block.timestamp < prop.start) revert VotePending();
         if (block.timestamp > prop.end) revert VoteEnded();
 
-        uint128 weight = set.tkn == ITokenOwner(address(0))
+        uint128 weight = set.std == TokenStandard.OWN
             ? uint128(balanceOf(msg.sender, uint256(keccak256(abi.encodePacked(msg.sender)))))
             : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
                 ? uint128(ITokenOwner(set.tkn).balanceOf(msg.sender))
@@ -320,7 +321,7 @@ contract Owners is ERC6909 {
     {
         if (yesVotes == 0) if (noVotes == 0) return false;
 
-        uint256 voteSupply = set.tkn == ITokenOwner(address(0))
+        uint256 voteSupply = set.std == TokenStandard.OWN
             ? totalSupply[uint256(keccak256(abi.encodePacked(msg.sender)))]
             : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
                 ? set.tkn.totalSupply()
@@ -432,7 +433,7 @@ contract Owners is ERC6909 {
         if (
             threshold
                 > (
-                    set.tkn == ITokenOwner(address(0))
+                    set.std == TokenStandard.OWN
                         ? totalSupply[uint256(keccak256(abi.encodePacked(msg.sender)))]
                         : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
                             ? set.tkn.totalSupply()
