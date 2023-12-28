@@ -172,9 +172,8 @@ contract Owners is ERC6909 {
             address prev;
             address owner;
             uint256 tally;
-            uint256 len = signature.length / 85;
             // Check if the owners' signature is valid:
-            for (uint256 i; i < len; ++i) {
+            for (uint256 i; i < signature.length / 85; ++i) {
                 if (
                     SignatureCheckerLib.isValidSignatureNow(
                         owner = address(bytes20(signature[pos:pos + 20])),
