@@ -179,7 +179,7 @@ contract Owners is ERC6909 {
                     SignatureCheckerLib.isValidSignatureNow(
                         owner = address(bytes20(signature[pos:pos + 20])),
                         hash,
-                        signature[pos + 20:pos + 65]
+                        signature[pos + 20:pos + 85]
                     ) && prev < owner
                 ) {
                     tally += set.std == TokenStandard.OWN
