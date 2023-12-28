@@ -17,7 +17,7 @@ contract OwnersTest is Test {
     address internal dave;
     uint256 internal davePk;
 
-    MockERC20 internal erc20;
+    address internal erc20;
 
     NaniAccount internal account;
     Owners internal owners;
@@ -35,11 +35,11 @@ contract OwnersTest is Test {
         (dave, davePk) = makeAddrAndKey("dave");
         keys[dave] = davePk;
 
-        erc20 = new MockERC20("TEST", "TEST", 18);
-        erc20.mint(alice, 40 ether);
-        erc20.mint(bob, 20 ether);
-        erc20.mint(chuck, 20 ether);
-        erc20.mint(dave, 20 ether);
+        erc20 = address(new MockERC20("TEST", "TEST", 18));
+        MockERC20(erc20).mint(alice, 40 ether);
+        MockERC20(erc20).mint(bob, 20 ether);
+        MockERC20(erc20).mint(chuck, 20 ether);
+        MockERC20(erc20).mint(dave, 20 ether);
 
         account = new NaniAccount();
         account.initialize(alice);
@@ -367,6 +367,101 @@ contract OwnersTest is Test {
         bytes32 userOpHash = keccak256("OWN");
         bytes32 signHash = _toEthSignedMessageHash(userOpHash);
         _owners = _sortAddresses(_owners);
+        userOp.signature = abi.encodePacked(_owners[0], _sign(_getPkByAddr(_owners[0]), signHash));
+
+        vm.prank(entryPoint);
+        uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
+        assertEq(validationData, 0x00);
+    }
+
+    // In 40-of-100, at least 40 ERC20 units signed.
+    function testIsValidSignatureWeightedERC20() public payable {
+        address[] memory _owners = new address[](0);
+        uint256[] memory _shares = new uint256[](0);
+
+        address[] memory memOwners = new address[](3);
+        memOwners[0] = alice;
+        memOwners[1] = bob;
+        memOwners[2] = chuck;
+
+        vm.prank(alice);
+        account.execute(
+            address(owners),
+            0,
+            abi.encodeWithSelector(
+                owners.install.selector,
+                _owners,
+                _shares,
+                ITokenOwner(erc20),
+                Owners.TokenStandard.ERC20,
+                40 ether,
+                "",
+                ITokenAuth(address(0))
+            )
+        );
+
+        vm.prank(alice);
+        account.execute(
+            address(account),
+            0,
+            abi.encodeWithSelector(account.completeOwnershipHandover.selector, address(owners))
+        );
+
+        NaniAccount.UserOperation memory userOp;
+        bytes32 userOpHash = keccak256("OWN");
+        bytes32 signHash = _toEthSignedMessageHash(userOpHash);
+        _owners = _sortAddresses(memOwners);
+        userOp.signature = abi.encodePacked(
+            _owners[0],
+            _sign(_getPkByAddr(_owners[0]), signHash),
+            _owners[1],
+            _sign(_getPkByAddr(_owners[1]), signHash),
+            _owners[2],
+            _sign(_getPkByAddr(_owners[2]), signHash)
+        );
+
+        vm.prank(entryPoint);
+        uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
+        assertEq(validationData, 0x00);
+    }
+
+    // In 40-of-100, 20 units signed. So fail.
+    function testFailIsValidSignatureWeightedERC20() public payable {
+        address[] memory _owners = new address[](0);
+        uint256[] memory _shares = new uint256[](0);
+
+        address[] memory memOwners = new address[](3);
+        memOwners[0] = alice;
+        memOwners[1] = bob;
+        memOwners[2] = chuck;
+
+        vm.prank(alice);
+        account.execute(
+            address(owners),
+            0,
+            abi.encodeWithSelector(
+                owners.install.selector,
+                _owners,
+                _shares,
+                ITokenOwner(erc20),
+                Owners.TokenStandard.ERC20,
+                40 ether,
+                "",
+                ITokenAuth(address(0))
+            )
+        );
+
+        vm.prank(alice);
+        account.execute(
+            address(account),
+            0,
+            abi.encodeWithSelector(account.completeOwnershipHandover.selector, address(owners))
+        );
+
+        NaniAccount.UserOperation memory userOp;
+        bytes32 userOpHash = keccak256("OWN");
+        bytes32 signHash = _toEthSignedMessageHash(userOpHash);
+        _owners = _sortAddresses(memOwners);
         userOp.signature = abi.encodePacked(_owners[0], _sign(_getPkByAddr(_owners[0]), signHash));
 
         vm.prank(entryPoint);
