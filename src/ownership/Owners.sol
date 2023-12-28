@@ -166,8 +166,8 @@ contract Owners is ERC6909 {
         virtual
         returns (bytes4)
     {
-        Setting storage set = settings[msg.sender];
         unchecked {
+            Setting storage set = settings[msg.sender];
             uint256 pos;
             address prev;
             address owner;
