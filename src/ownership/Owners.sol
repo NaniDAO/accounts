@@ -182,6 +182,8 @@ contract Owners is ERC6909 {
                         signature[pos + 20:pos + 85]
                     ) && prev < owner
                 ) {
+                    pos += 85;
+                    prev = owner;
                     tally += set.std == TokenStandard.OWN
                         ? balanceOf(owner, uint256(keccak256(abi.encodePacked(msg.sender))))
                         : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
@@ -189,8 +191,6 @@ contract Owners is ERC6909 {
                             : ITokenOwner(set.tkn).balanceOf(
                                 owner, uint256(keccak256(abi.encodePacked(msg.sender)))
                             );
-                    prev = owner;
-                    pos += 85;
                 } else {
                     return 0xffffffff; // Failure code.
                 }
