@@ -12,15 +12,6 @@ contract Owners is ERC6909 {
     /// @dev Inputs are invalid for an ownership setting.
     error InvalidSetting();
 
-    /// @dev Voting period has not begun for an account.
-    error VotePending();
-
-    /// @dev Voting period has ended for an account.
-    error VoteEnded();
-
-    /// @dev The proposal failed to process.
-    error ProposalFailed();
-
     /// =========================== EVENTS =========================== ///
 
     /// @dev Logs the metadata settings for an account.
@@ -35,39 +26,7 @@ contract Owners is ERC6909 {
     /// @dev Logs the token ownership strategy for an account.
     event TokenSet(address indexed account, ITokenOwner tkn, TokenStandard std);
 
-    /// @dev Logs the creation of a proposal to an account.
-    event ProposalCreated(
-        address indexed proposer,
-        address indexed account,
-        address target,
-        uint256 value,
-        bytes data,
-        string info
-    );
-
-    /// @dev Logs the casting of a vote on a proposal to an account.
-    event VoteCast(
-        address indexed voter, address indexed account, uint256 indexed propId, Vote action
-    );
-
     /// ========================== STRUCTS ========================== ///
-
-    /// @dev The account proposal struct.
-    struct Proposal {
-        address proposer;
-        uint48 start;
-        uint48 end;
-        uint80 abst;
-        uint88 yes;
-        uint88 no;
-    }
-
-    /// @dev The account proposal timer struct.
-    struct Timer {
-        uint48 delay;
-        uint48 voting;
-        uint48 grace;
-    }
 
     /// @dev The account ownership settings struct.
     struct Setting {
@@ -93,15 +52,6 @@ contract Owners is ERC6909 {
 
     /// =========================== ENUMS =========================== ///
 
-    /// @dev The user voting actions enum.
-    /// Modified from Moloch:
-    /// https://github.com/MolochVentures/moloch/blob/master/contracts/Moloch.sol
-    enum Vote {
-        ABST,
-        YES,
-        NO
-    }
-
     /// @dev The token interface standards enum.
     enum TokenStandard {
         OWN,
@@ -112,12 +62,6 @@ contract Owners is ERC6909 {
     }
 
     /// ========================== STORAGE ========================== ///
-
-    /// @dev Stores mapping of IDs to account proposals.
-    mapping(uint256 => Proposal) public props;
-
-    /// @dev Stores mapping of proposal timers to accounts.
-    mapping(address => Timer) public timers;
 
     /// @dev Stores mapping of metadata settings to accounts.
     mapping(uint256 => string) public uris;
@@ -214,133 +158,6 @@ contract Owners is ERC6909 {
                 SignatureCheckerLib.toEthSignedMessageHash(userOpHash), userOp.signature
             ) != this.isValidSignature.selector
         ) validationData = 0x01; // Failure code.
-    }
-
-    /// ==================== PROPOSAL OPERATIONS ==================== ///
-
-    /// @dev Proposes an operation to an account.
-    /// The proposal ID is derived from content.
-    function propose(
-        address account,
-        address target,
-        uint256 value,
-        bytes calldata data,
-        string calldata info
-    ) public payable virtual returns (uint256 propId) {
-        Timer storage timer = timers[account];
-        propId = _hashProposalId(account, target, value, data, keccak256(bytes(info)));
-        unchecked {
-            uint48 start = uint48(block.timestamp + timer.delay);
-            props[propId] = Proposal({
-                proposer: msg.sender,
-                start: start,
-                end: uint48(start + timer.voting),
-                abst: 0,
-                yes: 0,
-                no: 0
-            });
-        }
-        emit ProposalCreated(msg.sender, account, target, value, data, info);
-    }
-
-    /// @dev Hash proposal ID from contents.
-    function _hashProposalId(
-        address account,
-        address target,
-        uint256 value,
-        bytes calldata data,
-        bytes32 info
-    ) internal pure virtual returns (uint256) {
-        return uint256(keccak256(abi.encode(account, target, value, data, info)));
-    }
-
-    /// @dev Casts vote on registered proposal. Reverts if non-existent.
-    function vote(address account, uint256 propId, Vote action) public payable virtual {
-        Proposal storage prop = props[propId];
-        Setting storage set = settings[account];
-
-        if (block.timestamp < prop.start) revert VotePending();
-        if (block.timestamp > prop.end) revert VoteEnded();
-
-        uint88 weight = set.std == TokenStandard.OWN
-            ? uint88(balanceOf(msg.sender, uint256(keccak256(abi.encodePacked(msg.sender)))))
-            : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
-                ? uint88(ITokenOwner(set.tkn).balanceOf(msg.sender))
-                : uint88(
-                    ITokenOwner(set.tkn).balanceOf(
-                        msg.sender, uint256(keccak256(abi.encodePacked(msg.sender)))
-                    )
-                );
-
-        if (action == Vote.YES) {
-            prop.yes += weight;
-        } else if (action == Vote.NO) {
-            prop.no += weight;
-        } else {
-            prop.abst += uint80(weight);
-        }
-
-        emit VoteCast(msg.sender, account, propId, action);
-    }
-
-    /// @dev Processes proposal and checks voting results.
-    function processProposal(
-        address account,
-        address target,
-        uint256 value,
-        bytes calldata data,
-        bytes32 infoHash
-    ) public payable virtual returns (bytes memory result) {
-        Proposal storage prop = props[_hashProposalId(account, target, value, data, infoHash)];
-        unchecked {
-            if (block.timestamp < timers[account].grace + prop.end) revert VotePending();
-        }
-        if (_countVotes(prop.abst, prop.yes, prop.no, settings[account])) {
-            return _execute(target, value, data);
-        } else {
-            revert ProposalFailed();
-        }
-    }
-
-    /// @dev Returns the success or failure of the vote tally upon processing.
-    function _countVotes(uint256 abstentions, uint256 yesVotes, uint256 noVotes, Setting memory set)
-        internal
-        view
-        virtual
-        returns (bool passed)
-    {
-        if (yesVotes == 0) if (noVotes == 0) return false;
-
-        uint256 voteSupply = set.std == TokenStandard.OWN
-            ? totalSupply[uint256(keccak256(abi.encodePacked(msg.sender)))]
-            : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
-                ? set.tkn.totalSupply()
-                : set.tkn.totalSupply(uint256(keccak256(abi.encodePacked(msg.sender))));
-
-        passed == ((abstentions + yesVotes + noVotes) < ((voteSupply * set.threshold) / 100)) // Quorum.
-            && (yesVotes > noVotes); // Approval.
-    }
-
-    /// @dev Execute a call from this contract.
-    function _execute(address target, uint256 value, bytes calldata data)
-        internal
-        virtual
-        returns (bytes memory result)
-    {
-        /// @solidity memory-safe-assembly
-        assembly {
-            result := mload(0x40)
-            calldatacopy(result, data.offset, data.length)
-            if iszero(call(gas(), target, value, result, data.length, codesize(), 0x00)) {
-                // Bubble up the revert if the call reverts.
-                returndatacopy(result, 0x00, returndatasize())
-                revert(result, returndatasize())
-            }
-            mstore(result, returndatasize()) // Store the length.
-            let o := add(result, 0x20)
-            returndatacopy(o, 0x00, returndatasize()) // Copy the returndata.
-            mstore(0x40, add(o, returndatasize())) // Allocate the memory.
-        }
     }
 
     /// ================== INSTALLATION OPERATIONS ================== ///
