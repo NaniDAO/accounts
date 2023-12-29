@@ -76,7 +76,9 @@ contract OwnersTest is Test {
     Owners internal owners;
     address internal entryPoint = 0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789;
 
-    mapping(address => uint256) keys;
+    uint256 internal accountId;
+
+    mapping(address => uint256) internal keys;
 
     function setUp() public payable {
         (alice, alicePk) = makeAddrAndKey("alice");
@@ -92,7 +94,7 @@ contract OwnersTest is Test {
         account.initialize(alice);
         owners = new Owners();
 
-        uint256 accountId = uint256(keccak256(abi.encodePacked(address(account))));
+        accountId = uint256(keccak256(abi.encodePacked(address(account))));
 
         erc20 = address(new MockERC20("TEST", "TEST", 18));
         MockERC20(erc20).mint(alice, 40 ether);
@@ -147,8 +149,6 @@ contract OwnersTest is Test {
 
         assertEq(account.ownershipHandoverExpiresAt(address(owners)), block.timestamp + 2 days);
 
-        uint256 accountId = uint256(keccak256(abi.encodePacked(address(account))));
-
         assertEq(owners.balanceOf(alice, accountId), 1);
 
         (ITokenOwner setTkn, uint88 setThreshold, Owners.TokenStandard setStd) =
@@ -160,6 +160,33 @@ contract OwnersTest is Test {
 
         assertEq(owners.uris(accountId), "");
         assertEq(address(owners.auths(accountId)), address(0));
+    }
+
+    function testSetThreshold() public {
+        testInstall();
+        vm.prank(address(account));
+        owners.setThreshold(1);
+        (, uint88 setThreshold,) = owners.settings(address(account));
+        assertEq(setThreshold, 1);
+    }
+
+    function testFailInvalidThresholdNull() public {
+        testInstall();
+        vm.prank(address(account));
+        owners.setThreshold(0);
+    }
+
+    function testFailInvalidThresholdExceedsSupply() public {
+        testInstall();
+        vm.prank(address(account));
+        owners.setThreshold(2);
+    }
+
+    function testSetURI() public {
+        testInstall();
+        vm.prank(address(account));
+        owners.setURI("TEST");
+        assertEq(owners.uris(accountId), "TEST");
     }
 
     function testIsValidSignature() public {
