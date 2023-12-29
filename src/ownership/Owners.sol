@@ -90,8 +90,7 @@ contract Owners is ERC6909 {
 
     /// @dev Returns the URI for token `id` using this contract.
     function tokenURI(uint256 id) public view virtual override(ERC6909) returns (string memory) {
-        string memory uri = uris[id];
-        return bytes(uri).length != 0 ? uri : "";
+        return uris[id];
     }
 
     /// ======================== CONSTRUCTOR ======================== ///
