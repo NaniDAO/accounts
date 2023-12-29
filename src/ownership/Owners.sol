@@ -14,16 +14,16 @@ contract Owners is ERC6909 {
 
     /// =========================== EVENTS =========================== ///
 
-    /// @dev Logs the metadata settings for an account.
+    /// @dev Logs new metadata settings for an account.
     event URISet(address indexed account, string uri);
 
-    /// @dev Logs the token authority for an account.
+    /// @dev Logs new token authority for an account.
     event AuthSet(address indexed account, ITokenAuth auth);
 
-    /// @dev Logs the ownership threshold for an account.
+    /// @dev Logs new ownership threshold for an account.
     event ThresholdSet(address indexed account, uint88 threshold);
 
-    /// @dev Logs the token ownership strategy for an account.
+    /// @dev Logs new token ownership strategy for an account.
     event TokenSet(address indexed account, ITokenOwner tkn, TokenStandard std);
 
     /// ========================== STRUCTS ========================== ///
@@ -78,18 +78,18 @@ contract Owners is ERC6909 {
 
     /// ====================== ERC6909 METADATA ====================== ///
 
-    /// @dev Returns the name of the token.
-    function name() public view virtual override returns (string memory) {
+    /// @dev Returns the name for token `id` using this contract.
+    function name() public view virtual override(ERC6909) returns (string memory) {
         return "Owners";
     }
 
-    /// @dev Returns the symbol of the token.
-    function symbol() public view virtual override returns (string memory) {
+    /// @dev Returns the symbol for token `id` using this contract.
+    function symbol() public view virtual override(ERC6909) returns (string memory) {
         return "OWN";
     }
 
-    /// @dev Returns the URI of the token ID.
-    function tokenURI(uint256 id) public view virtual override returns (string memory) {
+    /// @dev Returns the URI for token `id` using this contract.
+    function tokenURI(uint256 id) public view virtual override(ERC6909) returns (string memory) {
         string memory uri = uris[id];
         return bytes(uri).length != 0 ? uri : "";
     }
@@ -148,6 +148,7 @@ contract Owners is ERC6909 {
     }
 
     /// @dev Validates ERC4337 userOp with additional auth logic flow among owners.
+    /// note: This is expected to be called in a validator plugin-like userOp flow.
     function validateUserOp(
         UserOperation calldata userOp,
         bytes32 userOpHash,
@@ -227,7 +228,7 @@ contract Owners is ERC6909 {
         emit AuthSet(msg.sender, (auths[uint256(keccak256(abi.encodePacked(msg.sender)))] = auth));
     }
 
-    /// @dev Sets new token ownership details for the caller account.
+    /// @dev Sets new token ownership strategy for the caller account.
     function setToken(ITokenOwner tkn, TokenStandard std) public payable virtual {
         settings[msg.sender].tkn = tkn;
         settings[msg.sender].std = std;
@@ -245,7 +246,7 @@ contract Owners is ERC6909 {
                         : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
                             ? set.tkn.totalSupply()
                             : set.tkn.totalSupply(uint256(keccak256(abi.encodePacked(msg.sender))))
-                )
+                ) || threshold == 0
         ) revert InvalidSetting();
         emit ThresholdSet(msg.sender, (set.threshold = threshold));
     }
@@ -260,9 +261,7 @@ contract Owners is ERC6909 {
         override(ERC6909)
     {
         ITokenAuth auth = auths[id];
-        if (auth != ITokenAuth(address(0))) {
-            auths[id].canTransfer(from, to, id, amount);
-        }
+        if (auth != ITokenAuth(address(0))) auth.canTransfer(from, to, id, amount);
     }
 }
 
