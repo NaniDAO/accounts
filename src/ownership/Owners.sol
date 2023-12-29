@@ -130,16 +130,14 @@ contract Owners is ERC6909 {
                     tally += set.std == TokenStandard.OWN
                         ? balanceOf(owner, uint256(keccak256(abi.encodePacked(msg.sender))))
                         : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
-                            ? ITokenOwner(set.tkn).balanceOf(owner)
-                            : ITokenOwner(set.tkn).balanceOf(
-                                owner, uint256(keccak256(abi.encodePacked(msg.sender)))
-                            );
+                            ? set.tkn.balanceOf(owner)
+                            : set.tkn.balanceOf(owner, uint256(keccak256(abi.encodePacked(msg.sender))));
                 } else {
                     return 0xffffffff; // Failure code.
                 }
             }
             // Check if the ownership tally has been met:
-            if (tally >= settings[msg.sender].threshold) {
+            if (tally >= set.threshold) {
                 return this.isValidSignature.selector;
             } else {
                 return 0xffffffff; // Failure code.
