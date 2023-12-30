@@ -9,7 +9,7 @@ import "@solady/test/utils/mocks/MockERC6909.sol";
 import {LibClone} from "@solady/src/utils/LibClone.sol";
 
 import {Account as NaniAccount} from "../../src/Account.sol";
-import {ITokenOwner, ITokenAuth, Owners} from "../../src/ownership/Owners.sol";
+import {ITokenOwner, IAuth, Owners} from "../../src/ownership/Owners.sol";
 
 contract MockERC721TotalSupply is MockERC721 {
     uint256 public totalSupply;
@@ -156,7 +156,7 @@ contract OwnersTest is Test {
 
         uint88 threshold = 1;
         string memory uri = "";
-        ITokenAuth auth = ITokenAuth(address(0));
+        IAuth auth = IAuth(address(0));
 
         vm.prank(alice);
         account.execute(
@@ -245,7 +245,7 @@ contract OwnersTest is Test {
         owners.setToken(tkn, Owners.TokenStandard(uint8(5)));
     }
 
-    function testSetAuth(ITokenAuth auth) public {
+    function testSetAuth(IAuth auth) public {
         testInstall();
         vm.prank(address(account));
         owners.setAuth(auth);
@@ -279,7 +279,7 @@ contract OwnersTest is Test {
         vm.prank(address(account));
         owners.mint(from, amount);
         vm.prank(address(account));
-        owners.setAuth(ITokenAuth(mockAuth));
+        owners.setAuth(IAuth(mockAuth));
         vm.prank(from);
         owners.transfer(to, accountId, amount);
     }
@@ -290,7 +290,7 @@ contract OwnersTest is Test {
         vm.prank(address(account));
         owners.mint(from, amount);
         vm.prank(address(account));
-        owners.setAuth(ITokenAuth(address(4269)));
+        owners.setAuth(IAuth(address(4269)));
         vm.prank(from);
         owners.transfer(to, accountId, amount);
     }
@@ -339,7 +339,7 @@ contract OwnersTest is Test {
 
         uint88 threshold = 1;
         string memory uri = "";
-        ITokenAuth auth = ITokenAuth(address(0));
+        IAuth auth = IAuth(address(0));
 
         vm.prank(alice);
         account.execute(
@@ -392,7 +392,7 @@ contract OwnersTest is Test {
                 Owners.TokenStandard.OWN,
                 2,
                 "",
-                ITokenAuth(address(0))
+                IAuth(address(0))
             )
         );
 
@@ -442,7 +442,7 @@ contract OwnersTest is Test {
                 Owners.TokenStandard.OWN,
                 2,
                 "",
-                ITokenAuth(address(0))
+                IAuth(address(0))
             )
         );
 
@@ -490,7 +490,7 @@ contract OwnersTest is Test {
                 Owners.TokenStandard.OWN,
                 2,
                 "",
-                ITokenAuth(address(0))
+                IAuth(address(0))
             )
         );
 
@@ -537,7 +537,7 @@ contract OwnersTest is Test {
                 Owners.TokenStandard.OWN,
                 40,
                 "",
-                ITokenAuth(address(0))
+                IAuth(address(0))
             )
         );
 
@@ -591,7 +591,7 @@ contract OwnersTest is Test {
                 Owners.TokenStandard.OWN,
                 40,
                 "",
-                ITokenAuth(address(0))
+                IAuth(address(0))
             )
         );
 
@@ -635,7 +635,7 @@ contract OwnersTest is Test {
                 Owners.TokenStandard.ERC20,
                 40 ether,
                 "",
-                ITokenAuth(address(0))
+                IAuth(address(0))
             )
         );
 
@@ -686,7 +686,7 @@ contract OwnersTest is Test {
                 Owners.TokenStandard.ERC20,
                 40 ether,
                 "",
-                ITokenAuth(address(0))
+                IAuth(address(0))
             )
         );
 
@@ -730,7 +730,7 @@ contract OwnersTest is Test {
                 Owners.TokenStandard.ERC721,
                 2,
                 "",
-                ITokenAuth(address(0))
+                IAuth(address(0))
             )
         );
 
@@ -779,7 +779,7 @@ contract OwnersTest is Test {
                 Owners.TokenStandard.ERC721,
                 2,
                 "",
-                ITokenAuth(address(0))
+                IAuth(address(0))
             )
         );
 
@@ -823,7 +823,7 @@ contract OwnersTest is Test {
                 Owners.TokenStandard.ERC1155,
                 40 ether,
                 "",
-                ITokenAuth(address(0))
+                IAuth(address(0))
             )
         );
 
@@ -874,7 +874,7 @@ contract OwnersTest is Test {
                 Owners.TokenStandard.ERC1155,
                 40 ether,
                 "",
-                ITokenAuth(address(0))
+                IAuth(address(0))
             )
         );
 
@@ -918,7 +918,7 @@ contract OwnersTest is Test {
                 Owners.TokenStandard.ERC6909,
                 40 ether,
                 "",
-                ITokenAuth(address(0))
+                IAuth(address(0))
             )
         );
 
@@ -969,7 +969,7 @@ contract OwnersTest is Test {
                 Owners.TokenStandard.ERC6909,
                 40 ether,
                 "",
-                ITokenAuth(address(0))
+                IAuth(address(0))
             )
         );
 
@@ -1015,7 +1015,7 @@ contract OwnersTest is Test {
                 Owners.TokenStandard.OWN,
                 40,
                 "",
-                ITokenAuth(address(0))
+                IAuth(address(0))
             )
         );
 
@@ -1067,7 +1067,7 @@ contract OwnersTest is Test {
                 9, // Bad Code.
                 40,
                 "",
-                ITokenAuth(address(0))
+                IAuth(address(0))
             )
         );
 

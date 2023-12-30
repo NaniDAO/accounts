@@ -17,13 +17,13 @@ contract Owners is ERC6909 {
     /// @dev Logs new metadata settings for an account.
     event URISet(address indexed account, string uri);
 
-    /// @dev Logs new token authority for an account.
-    event AuthSet(address indexed account, ITokenAuth auth);
+    /// @dev Logs new authority contract for an account.
+    event AuthSet(address indexed account, IAuth auth);
 
     /// @dev Logs new ownership threshold for an account.
     event ThresholdSet(address indexed account, uint88 threshold);
 
-    /// @dev Logs new token ownership strategy for an account.
+    /// @dev Logs new token ownership standard for an account.
     event TokenSet(address indexed account, ITokenOwner tkn, TokenStandard std);
 
     /// ========================== STRUCTS ========================== ///
@@ -67,7 +67,7 @@ contract Owners is ERC6909 {
     mapping(uint256 => string) internal _uris;
 
     /// @dev Stores mapping of state authorities to accounts.
-    mapping(uint256 => ITokenAuth) public auths;
+    mapping(uint256 => IAuth) public auths;
 
     /// @dev Stores mapping of ownership settings to accounts.
     mapping(address => Setting) internal _settings;
@@ -110,11 +110,11 @@ contract Owners is ERC6909 {
         returns (bytes4)
     {
         unchecked {
-            Setting memory set = _settings[msg.sender];
             uint256 pos;
             address prev;
             address owner;
             uint256 tally;
+            Setting memory set = _settings[msg.sender];
             // Check if the owners' signature is valid:
             for (uint256 i; i < signature.length / 85; ++i) {
                 if (
@@ -151,6 +151,12 @@ contract Owners is ERC6909 {
         bytes32 userOpHash,
         uint256 /*missingAccountFunds*/
     ) public payable virtual returns (uint256 validationData) {
+        IAuth auth = auths[uint256(uint160(msg.sender))];
+        if (auth != IAuth(address(0))) {
+            (address target, uint256 value, bytes memory data) =
+                abi.decode(userOp.callData[4:], (address, uint256, bytes));
+            auth.canCall(msg.sender, target, value, data);
+        }
         if (
             isValidSignature(
                 SignatureCheckerLib.toEthSignedMessageHash(userOpHash), userOp.signature
@@ -171,7 +177,7 @@ contract Owners is ERC6909 {
         TokenStandard std,
         uint88 threshold,
         string calldata uri,
-        ITokenAuth auth
+        IAuth auth
     ) public payable virtual {
         uint256 id = uint256(uint160(msg.sender));
         if (owners.length != 0) {
@@ -191,7 +197,7 @@ contract Owners is ERC6909 {
         setToken(tkn, std);
         setThreshold(threshold);
         if (bytes(uri).length != 0) setURI(uri);
-        if (auth != ITokenAuth(address(0))) auths[id] = auth;
+        if (auth != IAuth(address(0))) auths[id] = auth;
         IOwnable(msg.sender).requestOwnershipHandover();
     }
 
@@ -232,12 +238,12 @@ contract Owners is ERC6909 {
         emit URISet(msg.sender, (_uris[uint256(uint160(msg.sender))] = uri));
     }
 
-    /// @dev Sets new token authority for the caller account.
-    function setAuth(ITokenAuth auth) public payable virtual {
+    /// @dev Sets new authority contract for the caller account.
+    function setAuth(IAuth auth) public payable virtual {
         emit AuthSet(msg.sender, (auths[uint256(uint160(msg.sender))] = auth));
     }
 
-    /// @dev Sets new token ownership strategy for the caller account.
+    /// @dev Sets new token ownership standard for the caller account.
     function setToken(ITokenOwner tkn, TokenStandard std) public payable virtual {
         emit TokenSet(msg.sender, _settings[msg.sender].tkn = tkn, _settings[msg.sender].std = std);
     }
@@ -267,8 +273,8 @@ contract Owners is ERC6909 {
         virtual
         override(ERC6909)
     {
-        ITokenAuth auth = auths[id];
-        if (auth != ITokenAuth(address(0))) auth.canTransfer(from, to, id, amount);
+        IAuth auth = auths[id];
+        if (auth != IAuth(address(0))) auth.canTransfer(from, to, id, amount);
     }
 }
 
@@ -277,9 +283,10 @@ interface IOwnable {
     function requestOwnershipHandover() external payable;
 }
 
-/// @notice Simple authority interface for token transfers.
-interface ITokenAuth {
+/// @notice Simple authority interface for contracts.
+interface IAuth {
     function canTransfer(address, address, uint256, uint256) external payable;
+    function canCall(address, address, uint256, bytes calldata) external payable;
 }
 
 /// @notice Generalized fungible token ownership interface.
