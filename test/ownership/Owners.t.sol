@@ -165,9 +165,11 @@ contract OwnersTest is Test {
     function testSetThreshold() public {
         testInstall();
         vm.prank(address(account));
-        owners.setThreshold(1);
+        owners.mint(alice, 1);
+        vm.prank(address(account));
+        owners.setThreshold(2);
         (, uint88 setThreshold,) = owners.settings(address(account));
-        assertEq(setThreshold, 1);
+        assertEq(setThreshold, 2);
     }
 
     function testFailInvalidThresholdNull() public {
@@ -180,6 +182,16 @@ contract OwnersTest is Test {
         testInstall();
         vm.prank(address(account));
         owners.setThreshold(2);
+    }
+
+    function testFailInvalidThresholdExceedsSupply2() public {
+        testInstall();
+        vm.prank(address(account));
+        owners.mint(alice, 1);
+        vm.prank(address(account));
+        owners.setThreshold(3);
+        (, uint88 setThreshold,) = owners.settings(address(account));
+        assertEq(setThreshold, 3);
     }
 
     function testSetURI() public {
@@ -207,11 +219,58 @@ contract OwnersTest is Test {
         assertEq(address(tkn), address(setTkn));
     }
 
+    function testFailSetTokenInvalidStd(ITokenOwner tkn) public {
+        testInstall();
+        vm.prank(address(account));
+        owners.setToken(tkn, Owners.TokenStandard(uint8(5)));
+    }
+
     function testSetAuth(ITokenAuth auth) public {
         testInstall();
         vm.prank(address(account));
         owners.setAuth(auth);
         assertEq(address(auth), address(owners.auths(accountId)));
+    }
+
+    function testMint(address to, uint96 amount) public {
+        vm.assume(to != alice);
+        testInstall();
+        vm.prank(address(account));
+        owners.mint(to, amount);
+        assertEq(owners.balanceOf(to, accountId), amount);
+    }
+
+    function testBurn(address from, uint96 amount) public {
+        vm.assume(from != alice);
+        testInstall();
+        vm.prank(address(account));
+        owners.mint(from, amount);
+        assertEq(owners.balanceOf(from, accountId), amount);
+        vm.prank(address(account));
+        owners.burn(from, amount);
+        assertEq(owners.balanceOf(from, accountId), 0);
+    }
+
+    function testFailBurnOverBalance(address from, uint96 amount) public {
+        vm.assume(from != alice);
+        testInstall();
+        vm.prank(address(account));
+        owners.mint(from, amount);
+        assertEq(owners.balanceOf(from, accountId), amount);
+        vm.prank(address(account));
+        owners.burn(from, amount + 1);
+    }
+
+    function testFailBurnOverThreshold(address from, uint96 amount) public {
+        vm.assume(from != alice);
+        testInstall();
+        vm.prank(address(account));
+        owners.mint(from, amount);
+        assertEq(owners.balanceOf(from, accountId), amount);
+        vm.prank(address(account));
+        owners.burn(from, amount);
+        vm.expectRevert(Owners.InvalidSetting.selector);
+        owners.burn(alice, 1);
     }
 
     function testIsValidSignature() public {
