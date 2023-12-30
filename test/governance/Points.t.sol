@@ -4,40 +4,47 @@ pragma solidity ^0.8.19;
 import "@forge/Test.sol";
 
 import {Token} from "../../src/governance/Token.sol";
-import {IERC20, Points} from "../../src/governance/Points.sol";
+import {LibClone} from "@solady/src/utils/LibClone.sol";
 import {Account as NaniAccount} from "../../src/Account.sol";
+import {IERC20, Points} from "../../src/governance/Points.sol";
 
 contract PointsTest is Test {
-    address alice;
-    uint256 alicePk;
-    address bob;
+    address internal alice;
+    uint256 internal alicePk;
+    address internal bob;
 
-    Points points;
+    address internal erc4337;
+    NaniAccount internal account;
 
-    address token;
-    uint256 constant POT = 1_000_000_000;
+    Points internal points;
+    address internal token;
+
+    uint256 internal constant _POT = 1_000_000_000;
+    address internal constant _ENTRY_POINT = 0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789;
 
     function setUp() public {
         (alice, alicePk) = makeAddrAndKey("alice");
         bob = makeAddr("bob");
-        NaniAccount account = new NaniAccount();
+        // Etch something onto `_ENTRY_POINT` such that we can deploy the account implementation.
+        vm.etch(_ENTRY_POINT, hex"00");
+        erc4337 = address(new NaniAccount());
+        account = NaniAccount(payable(address(LibClone.deployERC1967(erc4337))));
         account.initialize(alice);
         points = new Points(address(account), 1);
         token = address(new Token());
         vm.prank(0x1804c8AB1F12E6bbf3894d4083f33e07309d1f38);
-        Token(token).transfer(address(points), POT);
+        Token(token).transfer(address(points), _POT);
     }
 
     // -- TESTS
 
     function testDeploy() public {
-        NaniAccount account = new NaniAccount();
+        account = NaniAccount(payable(address(LibClone.deployERC1967(erc4337))));
         account.initialize(alice);
-        new Points(address(account), 1);
     }
 
     function testCheck(uint256 bonus) public {
-        vm.assume(bonus < POT);
+        vm.assume(bonus < _POT);
         uint256 start = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(
             alicePk, _toEthSignedMessageHash(keccak256(abi.encodePacked(bob, start, bonus)))
@@ -48,7 +55,7 @@ contract PointsTest is Test {
     }
 
     function testClaim(uint256 bonus) public {
-        vm.assume(bonus < POT);
+        vm.assume(bonus < _POT);
         uint256 start = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(
             alicePk, _toEthSignedMessageHash(keccak256(abi.encodePacked(bob, start, bonus)))
@@ -60,7 +67,7 @@ contract PointsTest is Test {
     }
 
     function testFailDoubleClaim(uint256 bonus) public {
-        vm.assume(bonus < POT);
+        vm.assume(bonus < _POT);
         uint256 start = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(
             alicePk, _toEthSignedMessageHash(keccak256(abi.encodePacked(bob, start, bonus)))

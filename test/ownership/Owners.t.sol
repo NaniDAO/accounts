@@ -6,6 +6,7 @@ import "@solady/test/utils/mocks/MockERC20.sol";
 import "@solady/test/utils/mocks/MockERC721.sol";
 import "@solady/test/utils/mocks/MockERC1155.sol";
 import "@solady/test/utils/mocks/MockERC6909.sol";
+import {LibClone} from "@solady/src/utils/LibClone.sol";
 
 import {Account as NaniAccount} from "../../src/Account.sol";
 import {ITokenOwner, ITokenAuth, Owners} from "../../src/ownership/Owners.sol";
@@ -73,6 +74,8 @@ contract OwnersTest is Test {
     address internal dave;
     uint256 internal davePk;
 
+    mapping(address => uint256) internal keys;
+
     address internal erc20;
     address internal erc721;
     address internal erc1155;
@@ -81,12 +84,10 @@ contract OwnersTest is Test {
     address internal mockAuth;
 
     NaniAccount internal account;
-    Owners internal owners;
-    address internal entryPoint = 0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789;
-
     uint256 internal accountId;
+    Owners internal owners;
 
-    mapping(address => uint256) internal keys;
+    address internal constant _ENTRY_POINT = 0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789;
 
     function setUp() public payable {
         (alice, alicePk) = makeAddrAndKey("alice");
@@ -98,11 +99,14 @@ contract OwnersTest is Test {
         (dave, davePk) = makeAddrAndKey("dave");
         keys[dave] = davePk;
 
-        account = new NaniAccount();
+        // Etch something onto `_ENTRY_POINT` such that we can deploy the account implementation.
+        vm.etch(_ENTRY_POINT, hex"00");
+        account = NaniAccount(payable(address(LibClone.deployERC1967(address(new NaniAccount())))));
         account.initialize(alice);
-        owners = new Owners();
 
         accountId = uint256(uint160(address(account)));
+
+        owners = new Owners();
 
         erc20 = address(new MockERC20("TEST", "TEST", 18));
         MockERC20(erc20).mint(alice, 40 ether);
@@ -136,8 +140,8 @@ contract OwnersTest is Test {
     }
 
     function testNameAndSymbolAndDecimals(uint256 id) public {
-        assertEq(owners.name(), "Owners");
-        assertEq(owners.symbol(), "OWN");
+        assertEq(owners.name(id), "Owners");
+        assertEq(owners.symbol(id), "OWN");
         assertEq(owners.decimals(id), 18);
     }
 
@@ -360,7 +364,7 @@ contract OwnersTest is Test {
         require(userOp.signature.length == 85, "INVALID_LEN");
         userOp.sender = address(account);
 
-        vm.prank(entryPoint);
+        vm.prank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
         assertEq(validationData, 0x00);
     }
@@ -412,7 +416,7 @@ contract OwnersTest is Test {
             _sign(_getPkByAddr(_owners[2]), signHash)
         );
 
-        vm.prank(entryPoint);
+        vm.prank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
         assertEq(validationData, 0x00);
     }
@@ -460,7 +464,7 @@ contract OwnersTest is Test {
             _sign(_getPkByAddr(_owners[1]), signHash)
         );
 
-        vm.prank(entryPoint);
+        vm.prank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
         assertEq(validationData, 0x00);
     }
@@ -503,7 +507,7 @@ contract OwnersTest is Test {
         _owners = _sortAddresses(_owners);
         userOp.signature = abi.encodePacked(_owners[0], _sign(_getPkByAddr(_owners[0]), signHash));
 
-        vm.prank(entryPoint);
+        vm.prank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
         assertEq(validationData, 0x00);
     }
@@ -557,7 +561,7 @@ contract OwnersTest is Test {
             _sign(_getPkByAddr(_owners[2]), signHash)
         );
 
-        vm.prank(entryPoint);
+        vm.prank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
         assertEq(validationData, 0x00);
     }
@@ -604,7 +608,7 @@ contract OwnersTest is Test {
         _owners = _sortAddresses(_owners);
         userOp.signature = abi.encodePacked(_owners[0], _sign(_getPkByAddr(_owners[0]), signHash));
 
-        vm.prank(entryPoint);
+        vm.prank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
         assertEq(validationData, 0x00);
     }
@@ -655,7 +659,7 @@ contract OwnersTest is Test {
             _sign(_getPkByAddr(_owners[2]), signHash)
         );
 
-        vm.prank(entryPoint);
+        vm.prank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
         assertEq(validationData, 0x00);
     }
@@ -699,7 +703,7 @@ contract OwnersTest is Test {
         _owners = _sortAddresses(memOwners);
         userOp.signature = abi.encodePacked(_owners[0], _sign(_getPkByAddr(_owners[0]), signHash));
 
-        vm.prank(entryPoint);
+        vm.prank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
         assertEq(validationData, 0x00);
     }
@@ -748,7 +752,7 @@ contract OwnersTest is Test {
             _sign(_getPkByAddr(_owners[1]), signHash)
         );
 
-        vm.prank(entryPoint);
+        vm.prank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
         assertEq(validationData, 0x00);
     }
@@ -792,7 +796,7 @@ contract OwnersTest is Test {
         _owners = _sortAddresses(memOwners);
         userOp.signature = abi.encodePacked(_owners[0], _sign(_getPkByAddr(_owners[0]), signHash));
 
-        vm.prank(entryPoint);
+        vm.prank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
         assertEq(validationData, 0x00);
     }
@@ -843,7 +847,7 @@ contract OwnersTest is Test {
             _sign(_getPkByAddr(_owners[2]), signHash)
         );
 
-        vm.prank(entryPoint);
+        vm.prank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
         assertEq(validationData, 0x00);
     }
@@ -887,7 +891,7 @@ contract OwnersTest is Test {
         _owners = _sortAddresses(memOwners);
         userOp.signature = abi.encodePacked(_owners[0], _sign(_getPkByAddr(_owners[0]), signHash));
 
-        vm.prank(entryPoint);
+        vm.prank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
         assertEq(validationData, 0x00);
     }
@@ -938,7 +942,7 @@ contract OwnersTest is Test {
             _sign(_getPkByAddr(_owners[2]), signHash)
         );
 
-        vm.prank(entryPoint);
+        vm.prank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
         assertEq(validationData, 0x00);
     }
@@ -982,7 +986,7 @@ contract OwnersTest is Test {
         _owners = _sortAddresses(memOwners);
         userOp.signature = abi.encodePacked(_owners[0], _sign(_getPkByAddr(_owners[0]), signHash));
 
-        vm.prank(entryPoint);
+        vm.prank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
         assertEq(validationData, 0x00);
     }
@@ -1034,7 +1038,7 @@ contract OwnersTest is Test {
             _sign(_getPkByAddr(_owners[2]), signHash)
         );
 
-        vm.prank(entryPoint);
+        vm.prank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
         assertEq(validationData, 0x00);
     }
@@ -1087,7 +1091,7 @@ contract OwnersTest is Test {
             _sign(_getPkByAddr(_owners[2]), signHash)
         );
 
-        vm.prank(entryPoint);
+        vm.prank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
         assertEq(validationData, 0x00);
     }

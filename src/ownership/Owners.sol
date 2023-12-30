@@ -79,12 +79,12 @@ contract Owners is ERC6909 {
     /// ====================== ERC6909 METADATA ====================== ///
 
     /// @dev Returns the name for token `id` using this contract.
-    function name() public view virtual override(ERC6909) returns (string memory) {
+    function name(uint256) public view virtual override(ERC6909) returns (string memory) {
         return "Owners";
     }
 
     /// @dev Returns the symbol for token `id` using this contract.
-    function symbol() public view virtual override(ERC6909) returns (string memory) {
+    function symbol(uint256) public view virtual override(ERC6909) returns (string memory) {
         return "OWN";
     }
 
