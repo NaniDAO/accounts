@@ -70,7 +70,7 @@ contract Owners is ERC6909 {
     mapping(uint256 => ITokenAuth) public auths;
 
     /// @dev Stores mapping of ownership settings to accounts.
-    mapping(address => Setting) public settings;
+    mapping(address => Setting) internal _settings;
 
     /// @dev Stores mapping of share balance supplies to accounts.
     /// This is used for ownership settings without external tokens.
@@ -110,7 +110,7 @@ contract Owners is ERC6909 {
         returns (bytes4)
     {
         unchecked {
-            Setting memory set = settings[msg.sender];
+            Setting memory set = _settings[msg.sender];
             uint256 pos;
             address prev;
             address owner;
@@ -197,6 +197,18 @@ contract Owners is ERC6909 {
 
     /// ===================== OWNERSHIP SETTINGS ===================== ///
 
+    /// @dev Returns the account settings.
+    function getSettings(address account)
+        public
+        view
+        virtual
+        returns (ITokenOwner tkn, uint88 threshold, TokenStandard std)
+    {
+        tkn = _settings[account].tkn;
+        threshold = _settings[account].threshold;
+        std = _settings[account].std;
+    }
+
     /// @dev Mints shares for an owner of the caller account.
     function mint(address owner, uint256 shares) public payable virtual {
         uint256 id = uint256(uint160(msg.sender));
@@ -208,7 +220,7 @@ contract Owners is ERC6909 {
     function burn(address owner, uint256 shares) public payable virtual {
         uint256 id = uint256(uint160(msg.sender));
         unchecked {
-            if (settings[msg.sender].threshold > (totalSupply[id] -= shares)) {
+            if (_settings[msg.sender].threshold > (totalSupply[id] -= shares)) {
                 revert InvalidSetting();
             }
         }
@@ -227,14 +239,14 @@ contract Owners is ERC6909 {
 
     /// @dev Sets new token ownership strategy for the caller account.
     function setToken(ITokenOwner tkn, TokenStandard std) public payable virtual {
-        settings[msg.sender].tkn = tkn;
-        settings[msg.sender].std = std;
+        _settings[msg.sender].tkn = tkn;
+        _settings[msg.sender].std = std;
         emit TokenSet(msg.sender, tkn, std);
     }
 
     /// @dev Sets new ownership threshold for the caller account.
     function setThreshold(uint88 threshold) public payable virtual {
-        Setting storage set = settings[msg.sender];
+        Setting storage set = _settings[msg.sender];
         if (
             threshold
                 > (

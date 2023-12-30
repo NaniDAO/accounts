@@ -162,7 +162,7 @@ contract OwnersTest is Test {
         assertEq(owners.balanceOf(alice, accountId), 1);
 
         (ITokenOwner setTkn, uint88 setThreshold, Owners.TokenStandard setStd) =
-            owners.settings(address(account));
+            owners.getSettings(address(account));
 
         assertEq(address(setTkn), address(tkn));
         assertEq(uint256(setThreshold), uint256(threshold));
@@ -178,7 +178,7 @@ contract OwnersTest is Test {
         owners.mint(alice, 1);
         vm.prank(address(account));
         owners.setThreshold(2);
-        (, uint88 setThreshold,) = owners.settings(address(account));
+        (, uint88 setThreshold,) = owners.getSettings(address(account));
         assertEq(setThreshold, 2);
     }
 
@@ -200,7 +200,7 @@ contract OwnersTest is Test {
         owners.mint(alice, 1);
         vm.prank(address(account));
         owners.setThreshold(3);
-        (, uint88 setThreshold,) = owners.settings(address(account));
+        (, uint88 setThreshold,) = owners.getSettings(address(account));
         assertEq(setThreshold, 3);
     }
 
@@ -219,13 +219,13 @@ contract OwnersTest is Test {
         testInstall();
         vm.prank(address(account));
         owners.setToken(tkn, std);
-        (ITokenOwner setTkn,, Owners.TokenStandard setStd) = owners.settings(address(account));
+        (ITokenOwner setTkn,, Owners.TokenStandard setStd) = owners.getSettings(address(account));
         assertEq(address(tkn), address(setTkn));
         assertEq(uint8(std), uint8(setStd));
         std = Owners.TokenStandard.ERC20;
         vm.prank(address(account));
         owners.setToken(tkn, std);
-        (setTkn,, setStd) = owners.settings(address(account));
+        (setTkn,, setStd) = owners.getSettings(address(account));
         assertEq(address(tkn), address(setTkn));
     }
 
