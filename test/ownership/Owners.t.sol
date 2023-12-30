@@ -57,6 +57,12 @@ contract MockERC6909TotalSupply is MockERC6909 {
     }
 }
 
+contract MockAuth {
+    function canTransfer(address, address, uint256, uint256) public payable {
+        return;
+    }
+}
+
 contract OwnersTest is Test {
     address internal alice;
     uint256 internal alicePk;
@@ -71,6 +77,8 @@ contract OwnersTest is Test {
     address internal erc721;
     address internal erc1155;
     address internal erc6909;
+
+    address internal mockAuth;
 
     NaniAccount internal account;
     Owners internal owners;
@@ -119,6 +127,8 @@ contract OwnersTest is Test {
         MockERC6909TotalSupply(erc6909).mint(bob, accountId, 20 ether);
         MockERC6909TotalSupply(erc6909).mint(chuck, accountId, 20 ether);
         MockERC6909TotalSupply(erc6909).mint(dave, accountId, 20 ether);
+
+        mockAuth = address(new MockAuth());
     }
 
     function testDeploy() public {
@@ -232,12 +242,47 @@ contract OwnersTest is Test {
         assertEq(address(auth), address(owners.auths(accountId)));
     }
 
-    function testMint(address to, uint96 amount) public {
-        vm.assume(to != alice);
+    function testTransfer(address from, address to, uint96 amount) public {
+        vm.assume(from != alice && to != alice);
         testInstall();
         vm.prank(address(account));
-        owners.mint(to, amount);
+        owners.mint(from, amount);
+        assertEq(owners.balanceOf(from, accountId), amount);
+        vm.prank(from);
+        owners.transfer(to, accountId, amount);
+        assertEq(owners.balanceOf(from, accountId), 0);
         assertEq(owners.balanceOf(to, accountId), amount);
+    }
+
+    function testFailTransferOverBalance(address from, address to, uint96 amount) public {
+        vm.assume(from != alice && to != alice);
+        testInstall();
+        vm.prank(address(account));
+        owners.mint(from, amount);
+        vm.prank(from);
+        owners.transfer(to, accountId, amount + 1);
+    }
+
+    function testTransferWithAuth(address from, address to, uint96 amount) public {
+        vm.assume(from != alice && to != alice);
+        testInstall();
+        vm.prank(address(account));
+        owners.mint(from, amount);
+        vm.prank(address(account));
+        owners.setAuth(ITokenAuth(mockAuth));
+        vm.prank(from);
+        owners.transfer(to, accountId, amount);
+    }
+
+    function testFailTransferFromInactiveAuth(address from, address to, uint96 amount) public {
+        vm.assume(from != alice && to != alice);
+        testInstall();
+        vm.prank(address(account));
+        owners.mint(from, amount);
+        vm.prank(address(account));
+        owners.setAuth(ITokenAuth(address(4269)));
+        vm.prank(from);
+        owners.transfer(to, accountId, amount);
     }
 
     function testBurn(address from, uint96 amount) public {
