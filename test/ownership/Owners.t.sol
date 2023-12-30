@@ -158,7 +158,7 @@ contract OwnersTest is Test {
         assertEq(uint256(setThreshold), uint256(threshold));
         assertEq(uint8(setStd), uint8(std));
 
-        assertEq(owners.uris(accountId), "");
+        assertEq(owners.tokenURI(accountId), "");
         assertEq(address(owners.auths(accountId)), address(0));
     }
 
@@ -186,7 +186,35 @@ contract OwnersTest is Test {
         testInstall();
         vm.prank(address(account));
         owners.setURI("TEST");
-        assertEq(owners.uris(accountId), "TEST");
+        assertEq(owners.tokenURI(accountId), "TEST");
+    }
+
+    function testSetToken(ITokenOwner tkn) public {
+        Owners.TokenStandard std = Owners.TokenStandard.OWN; /*|| std == Owners.TokenStandard.ERC20
+                || std == Owners.TokenStandard.ERC721 || std == Owners.TokenStandard.ERC1155
+                || std == Owners.TokenStandard.ERC6909
+        );*/
+        testInstall();
+        vm.prank(address(account));
+        owners.setToken(tkn, std);
+        (ITokenOwner setTkn,, Owners.TokenStandard setStd) = owners.settings(address(account));
+        assertEq(address(tkn), address(setTkn));
+        assertEq(uint8(std), uint8(setStd));
+        std = Owners.TokenStandard.ERC20;
+        vm.prank(address(account));
+        owners.setToken(tkn, std);
+        (setTkn,, setStd) = owners.settings(address(account));
+        assertEq(address(tkn), address(setTkn));
+    }
+
+    function testSetAuth(ITokenAuth auth) public {
+        testInstall();
+        vm.prank(address(account));
+        owners.setAuth(auth);
+        assertEq(
+            address(auth),
+            address(owners.auths(uint256(keccak256(abi.encodePacked(address(account))))))
+        );
     }
 
     function testIsValidSignature() public {

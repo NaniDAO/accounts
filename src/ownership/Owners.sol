@@ -64,7 +64,7 @@ contract Owners is ERC6909 {
     /// ========================== STORAGE ========================== ///
 
     /// @dev Stores mapping of metadata settings to accounts.
-    mapping(uint256 => string) public uris;
+    mapping(uint256 => string) internal _uris;
 
     /// @dev Stores mapping of state authorities to accounts.
     mapping(uint256 => ITokenAuth) public auths;
@@ -90,7 +90,7 @@ contract Owners is ERC6909 {
 
     /// @dev Returns the URI for token `id` using this contract.
     function tokenURI(uint256 id) public view virtual override(ERC6909) returns (string memory) {
-        return uris[id];
+        return _uris[id];
     }
 
     /// ======================== CONSTRUCTOR ======================== ///
@@ -217,7 +217,7 @@ contract Owners is ERC6909 {
 
     /// @dev Sets new token metadata URI for the caller account.
     function setURI(string calldata uri) public payable virtual {
-        emit URISet(msg.sender, (uris[uint256(keccak256(abi.encodePacked(msg.sender)))] = uri));
+        emit URISet(msg.sender, (_uris[uint256(keccak256(abi.encodePacked(msg.sender)))] = uri));
     }
 
     /// @dev Sets new token authority for the caller account.
