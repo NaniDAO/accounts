@@ -116,7 +116,7 @@ contract Owners is ERC6909 {
             uint256 tally;
             Setting memory set = _settings[msg.sender];
             // Check if the owners' signature is valid:
-            for (uint256 i; i < signature.length / 85; ++i) {
+            for (uint256 i; i != signature.length / 85; ++i) {
                 if (
                     SignatureCheckerLib.isValidSignatureNow(
                         owner = address(bytes20(signature[pos:pos + 20])),
@@ -183,7 +183,7 @@ contract Owners is ERC6909 {
         if (owners.length != 0) {
             if (owners.length != shares.length) revert InvalidSetting();
             uint256 supply;
-            for (uint256 i; i < owners.length;) {
+            for (uint256 i; i != owners.length;) {
                 _mint(owners[i], id, shares[i]);
                 supply += shares[i];
                 unchecked {
