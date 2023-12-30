@@ -127,10 +127,10 @@ contract Owners is ERC6909 {
                     pos += 85;
                     prev = owner;
                     tally += set.std == TokenStandard.OWN
-                        ? balanceOf(owner, uint256(keccak256(abi.encodePacked(msg.sender))))
+                        ? balanceOf(owner, uint256(uint160(msg.sender)))
                         : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
                             ? set.tkn.balanceOf(owner)
-                            : set.tkn.balanceOf(owner, uint256(keccak256(abi.encodePacked(msg.sender))));
+                            : set.tkn.balanceOf(owner, uint256(uint160(msg.sender)));
                 } else {
                     return 0xffffffff; // Failure code.
                 }
@@ -173,7 +173,7 @@ contract Owners is ERC6909 {
         string calldata uri,
         ITokenAuth auth
     ) public payable virtual {
-        uint256 id = uint256(keccak256(abi.encodePacked(msg.sender)));
+        uint256 id = uint256(uint160(msg.sender));
         if (owners.length != 0) {
             if (owners.length != shares.length) revert InvalidSetting();
             uint256 supply;
@@ -199,14 +199,14 @@ contract Owners is ERC6909 {
 
     /// @dev Mints shares for an owner of the caller account.
     function mint(address owner, uint256 shares) public payable virtual {
-        uint256 id = uint256(keccak256(abi.encodePacked(msg.sender)));
+        uint256 id = uint256(uint160(msg.sender));
         totalSupply[id] += shares;
         _mint(owner, id, shares);
     }
 
     /// @dev Burns shares from an owner of the caller account.
     function burn(address owner, uint256 shares) public payable virtual {
-        uint256 id = uint256(keccak256(abi.encodePacked(msg.sender)));
+        uint256 id = uint256(uint160(msg.sender));
         unchecked {
             if (settings[msg.sender].threshold > (totalSupply[id] -= shares)) {
                 revert InvalidSetting();
@@ -217,12 +217,12 @@ contract Owners is ERC6909 {
 
     /// @dev Sets new token metadata URI for the caller account.
     function setURI(string calldata uri) public payable virtual {
-        emit URISet(msg.sender, (_uris[uint256(keccak256(abi.encodePacked(msg.sender)))] = uri));
+        emit URISet(msg.sender, (_uris[uint256(uint160(msg.sender))] = uri));
     }
 
     /// @dev Sets new token authority for the caller account.
     function setAuth(ITokenAuth auth) public payable virtual {
-        emit AuthSet(msg.sender, (auths[uint256(keccak256(abi.encodePacked(msg.sender)))] = auth));
+        emit AuthSet(msg.sender, (auths[uint256(uint160(msg.sender))] = auth));
     }
 
     /// @dev Sets new token ownership strategy for the caller account.
@@ -239,10 +239,10 @@ contract Owners is ERC6909 {
             threshold
                 > (
                     set.std == TokenStandard.OWN
-                        ? totalSupply[uint256(keccak256(abi.encodePacked(msg.sender)))]
+                        ? totalSupply[uint256(uint160(msg.sender))]
                         : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
                             ? set.tkn.totalSupply()
-                            : set.tkn.totalSupply(uint256(keccak256(abi.encodePacked(msg.sender))))
+                            : set.tkn.totalSupply(uint256(uint160(msg.sender)))
                 ) || threshold == 0
         ) revert InvalidSetting();
         emit ThresholdSet(msg.sender, (set.threshold = threshold));

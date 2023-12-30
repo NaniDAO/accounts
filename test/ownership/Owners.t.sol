@@ -94,7 +94,7 @@ contract OwnersTest is Test {
         account.initialize(alice);
         owners = new Owners();
 
-        accountId = uint256(keccak256(abi.encodePacked(address(account))));
+        accountId = uint256(uint160(address(account)));
 
         erc20 = address(new MockERC20("TEST", "TEST", 18));
         MockERC20(erc20).mint(alice, 40 ether);
@@ -211,10 +211,7 @@ contract OwnersTest is Test {
         testInstall();
         vm.prank(address(account));
         owners.setAuth(auth);
-        assertEq(
-            address(auth),
-            address(owners.auths(uint256(keccak256(abi.encodePacked(address(account))))))
-        );
+        assertEq(address(auth), address(owners.auths(accountId)));
     }
 
     function testIsValidSignature() public {
