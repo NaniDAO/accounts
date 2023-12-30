@@ -110,7 +110,7 @@ contract Owners is ERC6909 {
         returns (bytes4)
     {
         unchecked {
-            Setting storage set = settings[msg.sender];
+            Setting memory set = settings[msg.sender];
             uint256 pos;
             address prev;
             address owner;
