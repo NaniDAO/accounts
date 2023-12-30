@@ -135,6 +135,12 @@ contract OwnersTest is Test {
         owners = new Owners();
     }
 
+    function testNameAndSymbolAndDecimals(uint256 id) public {
+        assertEq(owners.name(), "Owners");
+        assertEq(owners.symbol(), "OWN");
+        assertEq(owners.decimals(id), 18);
+    }
+
     function testInstall() public {
         address[] memory _owners = new address[](1);
         uint256[] memory _shares = new uint256[](1);

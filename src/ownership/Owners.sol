@@ -239,9 +239,7 @@ contract Owners is ERC6909 {
 
     /// @dev Sets new token ownership strategy for the caller account.
     function setToken(ITokenOwner tkn, TokenStandard std) public payable virtual {
-        _settings[msg.sender].tkn = tkn;
-        _settings[msg.sender].std = std;
-        emit TokenSet(msg.sender, tkn, std);
+        emit TokenSet(msg.sender, _settings[msg.sender].tkn = tkn, _settings[msg.sender].std = std);
     }
 
     /// @dev Sets new ownership threshold for the caller account.
