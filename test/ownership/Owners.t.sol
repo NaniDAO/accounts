@@ -147,7 +147,7 @@ contract OwnersTest is Test {
 
     function testInstall() public {
         address[] memory _owners = new address[](1);
-        uint256[] memory _shares = new uint256[](1);
+        uint96[] memory _shares = new uint96[](1);
         _owners[0] = alice;
         _shares[0] = 1;
 
@@ -246,11 +246,19 @@ contract OwnersTest is Test {
         owners.setToken(tkn, Owners.TokenStandard(uint8(5)));
     }
 
+    /*returns (
+            string memory _name,
+            string memory _symbol,
+            string memory _tokenURI,
+            IAuth _authority
+        )*/
+
     function testSetAuth(IAuth auth) public {
         testInstall();
         vm.prank(address(account));
         owners.setAuth(auth);
-        assertEq(address(auth), address(owners.auths(accountId)));
+        (,,, IAuth authority) = owners.getMetadata(address(account));
+        assertEq(address(auth), address(authority));
     }
 
     function testTransfer(address from, address to, uint96 amount) public {
@@ -331,7 +339,7 @@ contract OwnersTest is Test {
 
     function testIsValidSignature() public {
         address[] memory _owners = new address[](1);
-        uint256[] memory _shares = new uint256[](1);
+        uint96[] memory _shares = new uint96[](1);
         _owners[0] = alice;
         _shares[0] = 1;
 
@@ -373,7 +381,7 @@ contract OwnersTest is Test {
     // In 2-of-3, 3 signed.
     function testIsValidSignature3of3() public payable {
         address[] memory _owners = new address[](3);
-        uint256[] memory _shares = new uint256[](3);
+        uint96[] memory _shares = new uint96[](3);
         _owners[0] = alice;
         _shares[0] = 1;
         _owners[1] = bob;

@@ -23,9 +23,6 @@ contract Owners is ERC6909 {
     /// @dev Logs new ownership threshold for an account.
     event ThresholdSet(address indexed account, uint88 threshold);
 
-    /// @dev Logs new token metadata settings for an account.
-    event MetaSet(address indexed account, string name, string symbol);
-
     /// @dev Logs new token ownership standard for an account.
     event TokenSet(address indexed account, ITokenOwner tkn, TokenStandard std);
 
@@ -37,16 +34,17 @@ contract Owners is ERC6909 {
         string symbol;
         string tokenURI;
         IAuth authority;
+        uint96 totalSupply;
     }
 
     /// @dev The account ownership shares struct.
     struct Ownership {
         address owner;
-        uint256 shares;
+        uint96 shares;
     }
 
     /// @dev The account ownership settings struct.
-    struct Setting {
+    struct Settings {
         ITokenOwner tkn;
         uint88 threshold;
         TokenStandard std;
@@ -81,20 +79,16 @@ contract Owners is ERC6909 {
     /// ========================== STORAGE ========================== ///
 
     /// @dev Stores mapping of metadata settings to accounts.
-    mapping(uint256 => Metadata) internal _metadata;
+    mapping(uint256 id => Metadata) internal _metadata;
 
     /// @dev Stores mapping of ownership settings to accounts.
-    mapping(address => Setting) internal _settings;
+    mapping(address account => Settings) internal _settings;
 
-    /// @dev Stores mapping of share balance supplies to accounts.
-    /// This is used for ownership settings without external tokens.
-    mapping(uint256 => uint256) public totalSupply;
+    /// @dev Stores mapping of voting tallies to userOp hashes.
+    mapping(bytes32 userOpHash => uint256) public votingTally;
 
-    /// @dev Stores mapping of voting tally for given userOp hash.
-    mapping(bytes32 => uint256) public voteTally;
-
-    /// @dev Stores mapping of votes cast by an account owner.
-    mapping(address => mapping(address => uint256)) public voted;
+    /// @dev Stores mapping of owner voting shares cast on userOp hashes.
+    mapping(address owner => mapping(bytes32 userOpHash => uint256 shares)) public voted;
 
     /// ====================== ERC6909 METADATA ====================== ///
 
@@ -113,6 +107,12 @@ contract Owners is ERC6909 {
         return _metadata[id].tokenURI;
     }
 
+    /// @dev Stores mapping of share balance supplies to accounts.
+    /// This is used for ownership settings without external tokens.
+    function totalSupply(uint256 id) public view virtual returns (uint256) {
+        return _metadata[id].totalSupply;
+    }
+
     /// ======================== CONSTRUCTOR ======================== ///
 
     /// @dev Constructs
@@ -129,7 +129,7 @@ contract Owners is ERC6909 {
         virtual
         returns (bytes4)
     {
-        Setting memory set = _settings[msg.sender];
+        Settings memory set = _settings[msg.sender];
         if (signature.length != 0) {
             unchecked {
                 uint256 pos;
@@ -164,7 +164,7 @@ contract Owners is ERC6909 {
                 }
             }
         } else {
-            if (voteTally[hash] >= set.threshold) {
+            if (votingTally[hash] >= set.threshold) {
                 return this.isValidSignature.selector;
             } else {
                 return 0xffffffff; // Failure code.
@@ -194,17 +194,16 @@ contract Owners is ERC6909 {
 
     /// ===================== VOTING OPERATIONS ===================== ///
 
-    /// @dev Casts vote on signed userOp hash for onchain tally.
-    function vote(bytes32 hash, bytes calldata signature)
+    /// @dev Casts account owner votes on a userOp hash for onchain tally.
+    function vote(bytes32 userOpHash, bytes calldata signature)
         public
         payable
         virtual
         returns (uint256)
     {
-        Setting memory set = _settings[msg.sender];
+        Settings memory set = _settings[msg.sender];
         unchecked {
             uint256 pos;
-            address prev;
             address owner;
             uint256 tally;
             // Check if the owners' signature is valid:
@@ -212,20 +211,19 @@ contract Owners is ERC6909 {
                 if (
                     SignatureCheckerLib.isValidSignatureNow(
                         owner = address(bytes20(signature[pos:pos + 20])),
-                        hash,
+                        SignatureCheckerLib.toEthSignedMessageHash(userOpHash),
                         signature[pos + 20:pos + 85]
-                    ) && prev < owner && voted[hash][owner] == 0 // Check double voting.
+                    ) && voted[owner][userOpHash] == 0 // Check double voting.
                 ) {
                     pos += 85;
-                    prev = owner;
-                    tally += voted[hash][owner] = set.std == TokenStandard.OWN
+                    tally += voted[owner][userOpHash] = set.std == TokenStandard.OWN
                         ? balanceOf(owner, uint256(uint160(msg.sender)))
                         : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
                             ? set.tkn.balanceOf(owner)
                             : set.tkn.balanceOf(owner, uint256(uint160(msg.sender)));
                 }
             }
-            return voteTally[hash] += tally;
+            return votingTally[userOpHash] += tally;
         }
     }
 
@@ -235,14 +233,14 @@ contract Owners is ERC6909 {
     /// note: Finalizes with transfer request in two-step pattern.
     /// See, e.g., Ownable.sol:
     /// https://github.com/Vectorized/solady/blob/main/src/auth/Ownable.sol
-    function install(Ownership[] calldata owners, Setting calldata setting, Metadata calldata meta)
+    function install(Ownership[] calldata owners, Settings calldata setting, Metadata calldata meta)
         public
         payable
         virtual
     {
         uint256 id = uint256(uint160(msg.sender));
         if (owners.length != 0) {
-            uint256 supply;
+            uint96 supply;
             for (uint256 i; i != owners.length;) {
                 _mint(owners[i].owner, id, owners[i].shares);
                 supply += owners[i].shares;
@@ -251,7 +249,7 @@ contract Owners is ERC6909 {
                 }
             }
             unchecked {
-                totalSupply[id] += supply;
+                _metadata[id].totalSupply += supply;
             }
         }
         setToken(setting.tkn, setting.std);
@@ -298,22 +296,9 @@ contract Owners is ERC6909 {
         _authority = _metadata[id].authority;
     }
 
-    /// @dev Mints shares for an owner of the caller account.
-    function mint(address owner, uint256 shares) public payable virtual {
-        uint256 id = uint256(uint160(msg.sender));
-        totalSupply[id] += shares;
-        _mint(owner, id, shares);
-    }
-
-    /// @dev Burns shares from an owner of the caller account.
-    function burn(address owner, uint256 shares) public payable virtual {
-        uint256 id = uint256(uint160(msg.sender));
-        unchecked {
-            if (_settings[msg.sender].threshold > (totalSupply[id] -= shares)) {
-                revert InvalidSetting();
-            }
-        }
-        _burn(owner, id, shares);
+    /// @dev Sets new authority contract for the caller account.
+    function setAuth(IAuth auth) public payable virtual {
+        emit AuthSet(msg.sender, (_metadata[uint256(uint160(msg.sender))].authority = auth));
     }
 
     /// @dev Sets new token metadata URI for the caller account.
@@ -321,9 +306,20 @@ contract Owners is ERC6909 {
         emit URISet(msg.sender, (_metadata[uint256(uint160(msg.sender))].tokenURI = uri));
     }
 
-    /// @dev Sets new authority contract for the caller account.
-    function setAuth(IAuth auth) public payable virtual {
-        emit AuthSet(msg.sender, (_metadata[uint256(uint160(msg.sender))].authority = auth));
+    /// @dev Sets new ownership threshold for the caller account.
+    function setThreshold(uint88 threshold) public payable virtual {
+        Settings storage set = _settings[msg.sender];
+        if (
+            threshold
+                > (
+                    set.std == TokenStandard.OWN
+                        ? totalSupply(uint256(uint160(msg.sender)))
+                        : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
+                            ? set.tkn.totalSupply()
+                            : set.tkn.totalSupply(uint256(uint160(msg.sender)))
+                ) || threshold == 0
+        ) revert InvalidSetting();
+        emit ThresholdSet(msg.sender, (set.threshold = threshold));
     }
 
     /// @dev Sets new token ownership standard for the caller account.
@@ -331,20 +327,24 @@ contract Owners is ERC6909 {
         emit TokenSet(msg.sender, _settings[msg.sender].tkn = tkn, _settings[msg.sender].std = std);
     }
 
-    /// @dev Sets new ownership threshold for the caller account.
-    function setThreshold(uint88 threshold) public payable virtual {
-        Setting storage set = _settings[msg.sender];
-        if (
-            threshold
-                > (
-                    set.std == TokenStandard.OWN
-                        ? totalSupply[uint256(uint160(msg.sender))]
-                        : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
-                            ? set.tkn.totalSupply()
-                            : set.tkn.totalSupply(uint256(uint160(msg.sender)))
-                ) || threshold == 0
-        ) revert InvalidSetting();
-        emit ThresholdSet(msg.sender, (set.threshold = threshold));
+    /// ====================== TOKEN OPERATIONS ====================== ///
+
+    /// @dev Mints shares for an owner of the caller account.
+    function mint(address owner, uint96 shares) public payable virtual {
+        uint256 id = uint256(uint160(msg.sender));
+        _metadata[id].totalSupply += shares;
+        _mint(owner, id, shares);
+    }
+
+    /// @dev Burns shares from an owner of the caller account.
+    function burn(address owner, uint96 shares) public payable virtual {
+        uint256 id = uint256(uint160(msg.sender));
+        unchecked {
+            if (_settings[msg.sender].threshold > (_metadata[id].totalSupply -= shares)) {
+                revert InvalidSetting();
+            }
+        }
+        _burn(owner, id, shares);
     }
 
     /// ========================= OVERRIDES ========================= ///
