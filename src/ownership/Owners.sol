@@ -78,7 +78,8 @@ contract Owners is ERC6909 {
 
     /// ========================== STORAGE ========================== ///
 
-    /// @dev Stores mapping of metadata settings to accounts.
+    /// @dev Stores mapping of metadata settings to account token IDs.
+    /// note: IDs are unique to addresses (uint256(uint160(account))).
     mapping(uint256 id => Metadata) internal _metadata;
 
     /// @dev Stores mapping of ownership settings to accounts.
@@ -87,7 +88,7 @@ contract Owners is ERC6909 {
     /// @dev Stores mapping of voting tallies to userOp hashes.
     mapping(bytes32 userOpHash => uint256) public votingTally;
 
-    /// @dev Stores mapping of owner voting shares cast on userOp hashes.
+    /// @dev Stores mapping of account owner voting shares cast on userOp hashes.
     mapping(address owner => mapping(bytes32 userOpHash => uint256 shares)) public voted;
 
     /// ====================== ERC6909 METADATA ====================== ///
@@ -194,14 +195,14 @@ contract Owners is ERC6909 {
 
     /// ===================== VOTING OPERATIONS ===================== ///
 
-    /// @dev Casts account owner votes on a userOp hash for onchain tally.
-    function vote(bytes32 userOpHash, bytes calldata signature)
+    /// @dev Casts account owner voting shares on a given userOp hash.
+    function vote(address account, bytes32 userOpHash, bytes calldata signature)
         public
         payable
         virtual
         returns (uint256)
     {
-        Settings memory set = _settings[msg.sender];
+        Settings memory set = _settings[account];
         unchecked {
             uint256 pos;
             address owner;
@@ -217,10 +218,10 @@ contract Owners is ERC6909 {
                 ) {
                     pos += 85;
                     tally += voted[owner][userOpHash] = set.std == TokenStandard.OWN
-                        ? balanceOf(owner, uint256(uint160(msg.sender)))
+                        ? balanceOf(owner, uint256(uint160(account)))
                         : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
                             ? set.tkn.balanceOf(owner)
-                            : set.tkn.balanceOf(owner, uint256(uint160(msg.sender)));
+                            : set.tkn.balanceOf(owner, uint256(uint160(account)));
                 }
             }
             return votingTally[userOpHash] += tally;
@@ -263,7 +264,7 @@ contract Owners is ERC6909 {
         IOwnable(msg.sender).requestOwnershipHandover();
     }
 
-    /// ===================== OWNERSHIP SETTINGS ===================== ///
+    /// ==================== OWNERSHIP OPERATIONS ==================== ///
 
     /// @dev Returns the account settings.
     function getSettings(address account)
