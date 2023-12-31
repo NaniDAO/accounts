@@ -179,7 +179,8 @@ contract OwnersTest is Test {
         assertEq(uint8(setStd), uint8(std));
 
         assertEq(owners.tokenURI(accountId), "");
-        assertEq(address(owners.auths(accountId)), address(0));
+        (,,, IAuth authority) = owners.getMetadata(address(account));
+        assertEq(address(authority), address(0));
     }
 
     function testSetThreshold() public {

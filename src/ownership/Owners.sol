@@ -14,19 +14,36 @@ contract Owners is ERC6909 {
 
     /// =========================== EVENTS =========================== ///
 
-    /// @dev Logs new metadata settings for an account.
-    event URISet(address indexed account, string uri);
-
     /// @dev Logs new authority contract for an account.
     event AuthSet(address indexed account, IAuth auth);
 
+    /// @dev Logs new token uri settings for an account.
+    event URISet(address indexed account, string uri);
+
     /// @dev Logs new ownership threshold for an account.
     event ThresholdSet(address indexed account, uint88 threshold);
+
+    /// @dev Logs new token metadata settings for an account.
+    event MetaSet(address indexed account, string name, string symbol);
 
     /// @dev Logs new token ownership standard for an account.
     event TokenSet(address indexed account, ITokenOwner tkn, TokenStandard std);
 
     /// ========================== STRUCTS ========================== ///
+
+    /// @dev The account token metadata struct.
+    struct Metadata {
+        string name;
+        string symbol;
+        string tokenURI;
+        IAuth authority;
+    }
+
+    /// @dev The account ownership shares struct.
+    struct Ownership {
+        address owner;
+        uint256 shares;
+    }
 
     /// @dev The account ownership settings struct.
     struct Setting {
@@ -64,10 +81,7 @@ contract Owners is ERC6909 {
     /// ========================== STORAGE ========================== ///
 
     /// @dev Stores mapping of metadata settings to accounts.
-    mapping(uint256 => string) internal _uris;
-
-    /// @dev Stores mapping of state authorities to accounts.
-    mapping(uint256 => IAuth) public auths;
+    mapping(uint256 => Metadata) internal _metadata;
 
     /// @dev Stores mapping of ownership settings to accounts.
     mapping(address => Setting) internal _settings;
@@ -76,21 +90,27 @@ contract Owners is ERC6909 {
     /// This is used for ownership settings without external tokens.
     mapping(uint256 => uint256) public totalSupply;
 
+    /// @dev Stores mapping of voting tally for given userOp hash.
+    mapping(bytes32 => uint256) public voteTally;
+
+    /// @dev Stores mapping of votes cast by an account owner.
+    mapping(address => mapping(address => uint256)) public voted;
+
     /// ====================== ERC6909 METADATA ====================== ///
 
     /// @dev Returns the name for token `id` using this contract.
-    function name(uint256) public view virtual override(ERC6909) returns (string memory) {
-        return "Owners";
+    function name(uint256 id) public view virtual override(ERC6909) returns (string memory) {
+        return _metadata[id].name;
     }
 
     /// @dev Returns the symbol for token `id` using this contract.
-    function symbol(uint256) public view virtual override(ERC6909) returns (string memory) {
-        return "OWN";
+    function symbol(uint256 id) public view virtual override(ERC6909) returns (string memory) {
+        return _metadata[id].symbol;
     }
 
     /// @dev Returns the URI for token `id` using this contract.
     function tokenURI(uint256 id) public view virtual override(ERC6909) returns (string memory) {
-        return _uris[id];
+        return _metadata[id].tokenURI;
     }
 
     /// ======================== CONSTRUCTOR ======================== ///
@@ -109,34 +129,42 @@ contract Owners is ERC6909 {
         virtual
         returns (bytes4)
     {
-        unchecked {
-            uint256 pos;
-            address prev;
-            address owner;
-            uint256 tally;
-            Setting memory set = _settings[msg.sender];
-            // Check if the owners' signature is valid:
-            for (uint256 i; i != signature.length / 85; ++i) {
-                if (
-                    SignatureCheckerLib.isValidSignatureNow(
-                        owner = address(bytes20(signature[pos:pos + 20])),
-                        hash,
-                        signature[pos + 20:pos + 85]
-                    ) && prev < owner
-                ) {
-                    pos += 85;
-                    prev = owner;
-                    tally += set.std == TokenStandard.OWN
-                        ? balanceOf(owner, uint256(uint160(msg.sender)))
-                        : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
-                            ? set.tkn.balanceOf(owner)
-                            : set.tkn.balanceOf(owner, uint256(uint160(msg.sender)));
+        Setting memory set = _settings[msg.sender];
+        if (signature.length != 0) {
+            unchecked {
+                uint256 pos;
+                address prev;
+                address owner;
+                uint256 tally;
+                // Check if the owners' signature is valid:
+                for (uint256 i; i != signature.length / 85; ++i) {
+                    if (
+                        SignatureCheckerLib.isValidSignatureNow(
+                            owner = address(bytes20(signature[pos:pos + 20])),
+                            hash,
+                            signature[pos + 20:pos + 85]
+                        ) && prev < owner
+                    ) {
+                        pos += 85;
+                        prev = owner;
+                        tally += set.std == TokenStandard.OWN
+                            ? balanceOf(owner, uint256(uint160(msg.sender)))
+                            : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
+                                ? set.tkn.balanceOf(owner)
+                                : set.tkn.balanceOf(owner, uint256(uint160(msg.sender)));
+                    } else {
+                        return 0xffffffff; // Failure code.
+                    }
+                }
+                // Check if the ownership tally has been met:
+                if (tally >= set.threshold) {
+                    return this.isValidSignature.selector;
                 } else {
                     return 0xffffffff; // Failure code.
                 }
             }
-            // Check if the ownership tally has been met:
-            if (tally >= set.threshold) {
+        } else {
+            if (voteTally[hash] >= set.threshold) {
                 return this.isValidSignature.selector;
             } else {
                 return 0xffffffff; // Failure code.
@@ -151,7 +179,7 @@ contract Owners is ERC6909 {
         bytes32 userOpHash,
         uint256 /*missingAccountFunds*/
     ) public payable virtual returns (uint256 validationData) {
-        IAuth auth = auths[uint256(uint160(msg.sender))];
+        IAuth auth = _metadata[uint256(uint160(msg.sender))].authority;
         if (auth != IAuth(address(0))) {
             (address target, uint256 value, bytes memory data) =
                 abi.decode(userOp.callData[4:], (address, uint256, bytes));
@@ -164,28 +192,60 @@ contract Owners is ERC6909 {
         ) validationData = 0x01; // Failure code.
     }
 
+    /// ===================== VOTING OPERATIONS ===================== ///
+
+    /// @dev Casts vote on signed userOp hash for onchain tally.
+    function vote(bytes32 hash, bytes calldata signature)
+        public
+        payable
+        virtual
+        returns (uint256)
+    {
+        Setting memory set = _settings[msg.sender];
+        unchecked {
+            uint256 pos;
+            address prev;
+            address owner;
+            uint256 tally;
+            // Check if the owners' signature is valid:
+            for (uint256 i; i != signature.length / 85; ++i) {
+                if (
+                    SignatureCheckerLib.isValidSignatureNow(
+                        owner = address(bytes20(signature[pos:pos + 20])),
+                        hash,
+                        signature[pos + 20:pos + 85]
+                    ) && prev < owner && voted[hash][owner] == 0 // Check double voting.
+                ) {
+                    pos += 85;
+                    prev = owner;
+                    tally += voted[hash][owner] = set.std == TokenStandard.OWN
+                        ? balanceOf(owner, uint256(uint160(msg.sender)))
+                        : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
+                            ? set.tkn.balanceOf(owner)
+                            : set.tkn.balanceOf(owner, uint256(uint160(msg.sender)));
+                }
+            }
+            return voteTally[hash] += tally;
+        }
+    }
+
     /// ================== INSTALLATION OPERATIONS ================== ///
 
     /// @dev Initializes ownership settings for the caller account.
     /// note: Finalizes with transfer request in two-step pattern.
     /// See, e.g., Ownable.sol:
     /// https://github.com/Vectorized/solady/blob/main/src/auth/Ownable.sol
-    function install(
-        address[] calldata owners,
-        uint256[] calldata shares,
-        ITokenOwner tkn,
-        TokenStandard std,
-        uint88 threshold,
-        string calldata uri,
-        IAuth auth
-    ) public payable virtual {
+    function install(Ownership[] calldata owners, Setting calldata setting, Metadata calldata meta)
+        public
+        payable
+        virtual
+    {
         uint256 id = uint256(uint160(msg.sender));
         if (owners.length != 0) {
-            if (owners.length != shares.length) revert InvalidSetting();
             uint256 supply;
             for (uint256 i; i != owners.length;) {
-                _mint(owners[i], id, shares[i]);
-                supply += shares[i];
+                _mint(owners[i].owner, id, owners[i].shares);
+                supply += owners[i].shares;
                 unchecked {
                     ++i;
                 }
@@ -194,10 +254,14 @@ contract Owners is ERC6909 {
                 totalSupply[id] += supply;
             }
         }
-        setToken(tkn, std);
-        setThreshold(threshold);
-        if (bytes(uri).length != 0) setURI(uri);
-        if (auth != IAuth(address(0))) auths[id] = auth;
+        setToken(setting.tkn, setting.std);
+        setThreshold(setting.threshold);
+        if (bytes(meta.tokenURI).length != 0) setURI(meta.tokenURI);
+        if (bytes(meta.name).length != 0) {
+            _metadata[id].name = meta.name;
+            _metadata[id].symbol = meta.symbol;
+        }
+        if (meta.authority != IAuth(address(0))) _metadata[id].authority = meta.authority;
         IOwnable(msg.sender).requestOwnershipHandover();
     }
 
@@ -213,6 +277,25 @@ contract Owners is ERC6909 {
         tkn = _settings[account].tkn;
         threshold = _settings[account].threshold;
         std = _settings[account].std;
+    }
+
+    /// @dev Returns the account metadata.
+    function getMetadata(address account)
+        public
+        view
+        virtual
+        returns (
+            string memory _name,
+            string memory _symbol,
+            string memory _tokenURI,
+            IAuth _authority
+        )
+    {
+        uint256 id = uint256(uint160(account));
+        _name = _metadata[id].name;
+        _symbol = _metadata[id].symbol;
+        _tokenURI = _metadata[id].tokenURI;
+        _authority = _metadata[id].authority;
     }
 
     /// @dev Mints shares for an owner of the caller account.
@@ -235,12 +318,12 @@ contract Owners is ERC6909 {
 
     /// @dev Sets new token metadata URI for the caller account.
     function setURI(string calldata uri) public payable virtual {
-        emit URISet(msg.sender, (_uris[uint256(uint160(msg.sender))] = uri));
+        emit URISet(msg.sender, (_metadata[uint256(uint160(msg.sender))].tokenURI = uri));
     }
 
     /// @dev Sets new authority contract for the caller account.
     function setAuth(IAuth auth) public payable virtual {
-        emit AuthSet(msg.sender, (auths[uint256(uint160(msg.sender))] = auth));
+        emit AuthSet(msg.sender, (_metadata[uint256(uint160(msg.sender))].authority = auth));
     }
 
     /// @dev Sets new token ownership standard for the caller account.
@@ -273,7 +356,7 @@ contract Owners is ERC6909 {
         virtual
         override(ERC6909)
     {
-        IAuth auth = auths[id];
+        IAuth auth = _metadata[id].authority;
         if (auth != IAuth(address(0))) auth.canTransfer(from, to, id, amount);
     }
 }
