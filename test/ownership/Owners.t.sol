@@ -152,7 +152,7 @@ contract OwnersTest is Test {
 
         Owners.Settings memory setting;
         setting.tkn = ITokenOwner(address(0));
-        setting.std = Owners.TokenStandard.OWN;
+        setting.std = Owners.TokenStandard.OWNER;
         setting.threshold = 1;
 
         Owners.Metadata memory meta;
@@ -230,7 +230,7 @@ contract OwnersTest is Test {
     }
 
     function testSetToken(ITokenOwner tkn) public {
-        Owners.TokenStandard std = Owners.TokenStandard.OWN;
+        Owners.TokenStandard std = Owners.TokenStandard.OWNER;
         testInstall();
         vm.prank(address(account));
         owners.setToken(tkn, std);
@@ -355,6 +355,24 @@ contract OwnersTest is Test {
         assertEq(validationData, 0x00);
     }
 
+    function testIsValidSignatureOnchain() public {
+        testInstall();
+        bytes32 userOpHash = keccak256("OWN");
+        NaniAccount.UserOperation memory userOp;
+        userOp.signature = bytes("");
+        require(userOp.signature.length == 0, "INVALID_LEN");
+        userOp.sender = address(account);
+
+        bytes memory signature =
+            abi.encodePacked(alice, _sign(alicePk, _toEthSignedMessageHash(userOpHash)));
+
+        owners.vote(address(account), userOpHash, signature);
+
+        vm.prank(_ENTRY_POINT);
+        uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
+        assertEq(validationData, 0x00);
+    }
+
     // In 2-of-3, 3 signed.
     function testIsValidSignature3of3() public payable {
         Owners.Ownership[] memory _owners = new Owners.Ownership[](3);
@@ -372,7 +390,7 @@ contract OwnersTest is Test {
 
         Owners.Settings memory setting;
         setting.tkn = ITokenOwner(address(0));
-        setting.std = Owners.TokenStandard.OWN;
+        setting.std = Owners.TokenStandard.OWNER;
         setting.threshold = 1;
 
         Owners.Metadata memory meta;
@@ -430,7 +448,7 @@ contract OwnersTest is Test {
 
         Owners.Settings memory setting;
         setting.tkn = ITokenOwner(address(0));
-        setting.std = Owners.TokenStandard.OWN;
+        setting.std = Owners.TokenStandard.OWNER;
         setting.threshold = 1;
 
         Owners.Metadata memory meta;
@@ -486,7 +504,7 @@ contract OwnersTest is Test {
 
         Owners.Settings memory setting;
         setting.tkn = ITokenOwner(address(0));
-        setting.std = Owners.TokenStandard.OWN;
+        setting.std = Owners.TokenStandard.OWNER;
         setting.threshold = 2;
 
         Owners.Metadata memory meta;
@@ -540,7 +558,7 @@ contract OwnersTest is Test {
 
         Owners.Settings memory setting;
         setting.tkn = ITokenOwner(address(0));
-        setting.std = Owners.TokenStandard.OWN;
+        setting.std = Owners.TokenStandard.OWNER;
         setting.threshold = 40;
 
         Owners.Metadata memory meta;
@@ -601,7 +619,7 @@ contract OwnersTest is Test {
 
         Owners.Settings memory setting;
         setting.tkn = ITokenOwner(address(0));
-        setting.std = Owners.TokenStandard.OWN;
+        setting.std = Owners.TokenStandard.OWNER;
         setting.threshold = 40;
 
         Owners.Metadata memory meta;
@@ -1103,7 +1121,7 @@ contract OwnersTest is Test {
 
         Owners.Settings memory setting;
         setting.tkn = ITokenOwner(address(0));
-        setting.std = Owners.TokenStandard.OWN;
+        setting.std = Owners.TokenStandard.OWNER;
         setting.threshold = 40;
 
         Owners.Metadata memory meta;

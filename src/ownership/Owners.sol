@@ -69,7 +69,7 @@ contract Owners is ERC6909 {
 
     /// @dev The token interface standards enum.
     enum TokenStandard {
-        OWN,
+        OWNER,
         ERC20,
         ERC721,
         ERC1155,
@@ -148,7 +148,7 @@ contract Owners is ERC6909 {
                     ) {
                         pos += 85;
                         prev = owner;
-                        tally += set.std == TokenStandard.OWN
+                        tally += set.std == TokenStandard.OWNER
                             ? balanceOf(owner, uint256(uint160(msg.sender)))
                             : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
                                 ? set.tkn.balanceOf(owner)
@@ -217,7 +217,7 @@ contract Owners is ERC6909 {
                     ) && voted[owner][userOpHash] == 0 // Check double voting.
                 ) {
                     pos += 85;
-                    tally += voted[owner][userOpHash] = set.std == TokenStandard.OWN
+                    tally += voted[owner][userOpHash] = set.std == TokenStandard.OWNER
                         ? balanceOf(owner, uint256(uint160(account)))
                         : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
                             ? set.tkn.balanceOf(owner)
@@ -313,7 +313,7 @@ contract Owners is ERC6909 {
         if (
             threshold
                 > (
-                    set.std == TokenStandard.OWN
+                    set.std == TokenStandard.OWNER
                         ? totalSupply(uint256(uint160(msg.sender)))
                         : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
                             ? set.tkn.totalSupply()
