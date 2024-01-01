@@ -340,11 +340,11 @@ contract Owners is ERC6909 {
     /// @dev Burns shares from an owner of the caller account.
     function burn(address owner, uint96 shares) public payable virtual {
         uint256 id = uint256(uint160(msg.sender));
-        unchecked {
+        /*unchecked {
             if (_settings[msg.sender].threshold > (_metadata[id].totalSupply -= shares)) {
                 revert InvalidSetting();
             }
-        }
+        }*/
         _burn(owner, id, shares);
     }
 
