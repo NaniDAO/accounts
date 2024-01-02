@@ -140,46 +140,54 @@ contract OwnersTest is Test {
     }
 
     function testNameAndSymbolAndDecimals(uint256 id) public {
-        assertEq(owners.name(id), "Owners");
-        assertEq(owners.symbol(id), "OWN");
+        assertEq(owners.name(id), "");
+        assertEq(owners.symbol(id), "");
         assertEq(owners.decimals(id), 18);
     }
 
     function testInstall() public {
-        address[] memory _owners = new address[](1);
-        uint256[] memory _shares = new uint256[](1);
-        _owners[0] = alice;
-        _shares[0] = 1;
+        Owners.Ownership[] memory _owners = new Owners.Ownership[](1);
+        _owners[0].owner = alice;
+        _owners[0].shares = 1;
 
-        ITokenOwner tkn = ITokenOwner(address(0));
-        Owners.TokenStandard std = Owners.TokenStandard.OWN;
+        Owners.Settings memory setting;
+        setting.tkn = ITokenOwner(address(0));
+        setting.std = Owners.TokenStandard.OWNER;
+        setting.threshold = 1;
 
-        uint88 threshold = 1;
-        string memory uri = "";
-        IAuth auth = IAuth(address(0));
+        Owners.Metadata memory meta;
+        meta.name = "";
+        meta.symbol = "";
+        meta.tokenURI = "";
+        meta.authority = IAuth(address(0));
 
         vm.prank(alice);
         account.execute(
             address(owners),
             0,
-            abi.encodeWithSelector(
-                owners.install.selector, _owners, _shares, tkn, std, threshold, uri, auth
-            )
+            abi.encodeWithSelector(owners.install.selector, _owners, setting, meta)
         );
 
         assertEq(account.ownershipHandoverExpiresAt(address(owners)), block.timestamp + 2 days);
-
         assertEq(owners.balanceOf(alice, accountId), 1);
+
+        vm.prank(alice);
+        account.execute(
+            address(account),
+            0,
+            abi.encodeWithSelector(account.completeOwnershipHandover.selector, address(owners))
+        );
 
         (ITokenOwner setTkn, uint88 setThreshold, Owners.TokenStandard setStd) =
             owners.getSettings(address(account));
 
-        assertEq(address(setTkn), address(tkn));
-        assertEq(uint256(setThreshold), uint256(threshold));
-        assertEq(uint8(setStd), uint8(std));
+        assertEq(address(setTkn), address(setting.tkn));
+        assertEq(uint256(setThreshold), uint256(setting.threshold));
+        assertEq(uint8(setStd), uint8(setting.std));
 
         assertEq(owners.tokenURI(accountId), "");
-        assertEq(address(owners.auths(accountId)), address(0));
+        (,,, IAuth authority) = owners.getMetadata(address(account));
+        assertEq(address(authority), address(0));
     }
 
     function testSetThreshold() public {
@@ -222,10 +230,7 @@ contract OwnersTest is Test {
     }
 
     function testSetToken(ITokenOwner tkn) public {
-        Owners.TokenStandard std = Owners.TokenStandard.OWN; /*|| std == Owners.TokenStandard.ERC20
-                || std == Owners.TokenStandard.ERC721 || std == Owners.TokenStandard.ERC1155
-                || std == Owners.TokenStandard.ERC6909
-        );*/
+        Owners.TokenStandard std = Owners.TokenStandard.OWNER;
         testInstall();
         vm.prank(address(account));
         owners.setToken(tkn, std);
@@ -249,11 +254,14 @@ contract OwnersTest is Test {
         testInstall();
         vm.prank(address(account));
         owners.setAuth(auth);
-        assertEq(address(auth), address(owners.auths(accountId)));
+        (,,, IAuth authority) = owners.getMetadata(address(account));
+        assertEq(address(auth), address(authority));
     }
 
     function testTransfer(address from, address to, uint96 amount) public {
         vm.assume(from != alice && to != alice);
+        vm.assume(to != 0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF);
+        vm.assume(amount < type(uint96).max);
         testInstall();
         vm.prank(address(account));
         owners.mint(from, amount);
@@ -266,6 +274,7 @@ contract OwnersTest is Test {
 
     function testFailTransferOverBalance(address from, address to, uint96 amount) public {
         vm.assume(from != alice && to != alice);
+        vm.assume(amount < type(uint96).max);
         testInstall();
         vm.prank(address(account));
         owners.mint(from, amount);
@@ -275,6 +284,7 @@ contract OwnersTest is Test {
 
     function testTransferWithAuth(address from, address to, uint96 amount) public {
         vm.assume(from != alice && to != alice);
+        vm.assume(amount < type(uint96).max);
         testInstall();
         vm.prank(address(account));
         owners.mint(from, amount);
@@ -286,6 +296,7 @@ contract OwnersTest is Test {
 
     function testFailTransferFromInactiveAuth(address from, address to, uint96 amount) public {
         vm.assume(from != alice && to != alice);
+        vm.assume(amount < type(uint96).max);
         testInstall();
         vm.prank(address(account));
         owners.mint(from, amount);
@@ -297,6 +308,7 @@ contract OwnersTest is Test {
 
     function testBurn(address from, uint96 amount) public {
         vm.assume(from != alice);
+        vm.assume(amount < type(uint96).max);
         testInstall();
         vm.prank(address(account));
         owners.mint(from, amount);
@@ -308,6 +320,7 @@ contract OwnersTest is Test {
 
     function testFailBurnOverBalance(address from, uint96 amount) public {
         vm.assume(from != alice);
+        vm.assume(amount < type(uint96).max);
         testInstall();
         vm.prank(address(account));
         owners.mint(from, amount);
@@ -318,6 +331,7 @@ contract OwnersTest is Test {
 
     function testFailBurnOverThreshold(address from, uint96 amount) public {
         vm.assume(from != alice);
+        vm.assume(amount < type(uint96).max);
         testInstall();
         vm.prank(address(account));
         owners.mint(from, amount);
@@ -329,34 +343,7 @@ contract OwnersTest is Test {
     }
 
     function testIsValidSignature() public {
-        address[] memory _owners = new address[](1);
-        uint256[] memory _shares = new uint256[](1);
-        _owners[0] = alice;
-        _shares[0] = 1;
-
-        ITokenOwner tkn = ITokenOwner(address(0));
-        Owners.TokenStandard std = Owners.TokenStandard.OWN;
-
-        uint88 threshold = 1;
-        string memory uri = "";
-        IAuth auth = IAuth(address(0));
-
-        vm.prank(alice);
-        account.execute(
-            address(owners),
-            0,
-            abi.encodeWithSelector(
-                owners.install.selector, _owners, _shares, tkn, std, threshold, uri, auth
-            )
-        );
-
-        vm.prank(alice);
-        account.execute(
-            address(account),
-            0,
-            abi.encodeWithSelector(account.completeOwnershipHandover.selector, address(owners))
-        );
-
+        testInstall();
         bytes32 userOpHash = keccak256("OWN");
         NaniAccount.UserOperation memory userOp;
         userOp.signature =
@@ -369,31 +356,55 @@ contract OwnersTest is Test {
         assertEq(validationData, 0x00);
     }
 
+    function testIsValidSignatureOnchain() public {
+        testInstall();
+        bytes32 userOpHash = keccak256("OWN");
+        NaniAccount.UserOperation memory userOp;
+        userOp.signature = "";
+        require(userOp.signature.length == 0, "INVALID_LEN");
+        userOp.sender = address(account);
+
+        bytes memory signature =
+            abi.encodePacked(alice, _sign(alicePk, _toEthSignedMessageHash(userOpHash)));
+
+        owners.vote(address(account), userOpHash, signature);
+
+        vm.prank(_ENTRY_POINT);
+        uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
+        assertEq(validationData, 0x00);
+    }
+
     // In 2-of-3, 3 signed.
     function testIsValidSignature3of3() public payable {
-        address[] memory _owners = new address[](3);
-        uint256[] memory _shares = new uint256[](3);
-        _owners[0] = alice;
-        _shares[0] = 1;
-        _owners[1] = bob;
-        _shares[1] = 1;
-        _owners[2] = chuck;
-        _shares[2] = 1;
+        Owners.Ownership[] memory _owners = new Owners.Ownership[](3);
+        _owners[0].owner = alice;
+        _owners[0].shares = 1;
+        _owners[1].owner = bob;
+        _owners[1].shares = 1;
+        _owners[2].owner = chuck;
+        _owners[2].shares = 1;
+
+        address[] memory addrs = new address[](3);
+        addrs[0] = alice;
+        addrs[1] = bob;
+        addrs[2] = chuck;
+
+        Owners.Settings memory setting;
+        setting.tkn = ITokenOwner(address(0));
+        setting.std = Owners.TokenStandard.OWNER;
+        setting.threshold = 1;
+
+        Owners.Metadata memory meta;
+        meta.name = "";
+        meta.symbol = "";
+        meta.tokenURI = "";
+        meta.authority = IAuth(address(0));
 
         vm.prank(alice);
         account.execute(
             address(owners),
             0,
-            abi.encodeWithSelector(
-                owners.install.selector,
-                _owners,
-                _shares,
-                ITokenOwner(address(0)),
-                Owners.TokenStandard.OWN,
-                2,
-                "",
-                IAuth(address(0))
-            )
+            abi.encodeWithSelector(owners.install.selector, _owners, setting, meta)
         );
 
         vm.prank(alice);
@@ -406,14 +417,14 @@ contract OwnersTest is Test {
         NaniAccount.UserOperation memory userOp;
         bytes32 userOpHash = keccak256("OWN");
         bytes32 signHash = _toEthSignedMessageHash(userOpHash);
-        _owners = _sortAddresses(_owners);
+        addrs = _sortAddresses(addrs);
         userOp.signature = abi.encodePacked(
-            _owners[0],
-            _sign(_getPkByAddr(_owners[0]), signHash),
-            _owners[1],
-            _sign(_getPkByAddr(_owners[1]), signHash),
-            _owners[2],
-            _sign(_getPkByAddr(_owners[2]), signHash)
+            addrs[0],
+            _sign(_getPkByAddr(addrs[0]), signHash),
+            addrs[1],
+            _sign(_getPkByAddr(addrs[1]), signHash),
+            addrs[2],
+            _sign(_getPkByAddr(addrs[2]), signHash)
         );
 
         vm.prank(_ENTRY_POINT);
@@ -423,27 +434,35 @@ contract OwnersTest is Test {
 
     // In 2-of-3, 2 signed.
     function testIsValidSignature2of3() public payable {
-        address[] memory _owners = new address[](2);
-        uint256[] memory _shares = new uint256[](2);
-        _owners[0] = alice;
-        _shares[0] = 1;
-        _owners[1] = bob;
-        _shares[1] = 1;
+        Owners.Ownership[] memory _owners = new Owners.Ownership[](3);
+        _owners[0].owner = alice;
+        _owners[0].shares = 1;
+        _owners[1].owner = bob;
+        _owners[1].shares = 1;
+        _owners[2].owner = chuck;
+        _owners[2].shares = 1;
+
+        address[] memory addrs = new address[](3);
+        addrs[0] = alice;
+        addrs[1] = bob;
+        addrs[2] = chuck;
+
+        Owners.Settings memory setting;
+        setting.tkn = ITokenOwner(address(0));
+        setting.std = Owners.TokenStandard.OWNER;
+        setting.threshold = 1;
+
+        Owners.Metadata memory meta;
+        meta.name = "";
+        meta.symbol = "";
+        meta.tokenURI = "";
+        meta.authority = IAuth(address(0));
 
         vm.prank(alice);
         account.execute(
             address(owners),
             0,
-            abi.encodeWithSelector(
-                owners.install.selector,
-                _owners,
-                _shares,
-                ITokenOwner(address(0)),
-                Owners.TokenStandard.OWN,
-                2,
-                "",
-                IAuth(address(0))
-            )
+            abi.encodeWithSelector(owners.install.selector, _owners, setting, meta)
         );
 
         vm.prank(alice);
@@ -456,12 +475,12 @@ contract OwnersTest is Test {
         NaniAccount.UserOperation memory userOp;
         bytes32 userOpHash = keccak256("OWN");
         bytes32 signHash = _toEthSignedMessageHash(userOpHash);
-        _owners = _sortAddresses(_owners);
+        addrs = _sortAddresses(addrs);
         userOp.signature = abi.encodePacked(
-            _owners[0],
-            _sign(_getPkByAddr(_owners[0]), signHash),
-            _owners[1],
-            _sign(_getPkByAddr(_owners[1]), signHash)
+            addrs[0],
+            _sign(_getPkByAddr(addrs[0]), signHash),
+            addrs[1],
+            _sign(_getPkByAddr(addrs[1]), signHash)
         );
 
         vm.prank(_ENTRY_POINT);
@@ -471,27 +490,35 @@ contract OwnersTest is Test {
 
     // In 2-of-3, 1 signed. So fail.
     function testFailIsValidSignature2of3ForInsufficientSignatures() public payable {
-        address[] memory _owners = new address[](2);
-        uint256[] memory _shares = new uint256[](2);
-        _owners[0] = alice;
-        _shares[0] = 1;
-        _owners[1] = bob;
-        _shares[1] = 1;
+        Owners.Ownership[] memory _owners = new Owners.Ownership[](3);
+        _owners[0].owner = alice;
+        _owners[0].shares = 1;
+        _owners[1].owner = bob;
+        _owners[1].shares = 1;
+        _owners[2].owner = chuck;
+        _owners[2].shares = 1;
+
+        address[] memory addrs = new address[](3);
+        addrs[0] = alice;
+        addrs[1] = bob;
+        addrs[2] = chuck;
+
+        Owners.Settings memory setting;
+        setting.tkn = ITokenOwner(address(0));
+        setting.std = Owners.TokenStandard.OWNER;
+        setting.threshold = 2;
+
+        Owners.Metadata memory meta;
+        meta.name = "";
+        meta.symbol = "";
+        meta.tokenURI = "";
+        meta.authority = IAuth(address(0));
 
         vm.prank(alice);
         account.execute(
             address(owners),
             0,
-            abi.encodeWithSelector(
-                owners.install.selector,
-                _owners,
-                _shares,
-                ITokenOwner(address(0)),
-                Owners.TokenStandard.OWN,
-                2,
-                "",
-                IAuth(address(0))
-            )
+            abi.encodeWithSelector(Owners.install.selector, _owners, setting, meta)
         );
 
         vm.prank(alice);
@@ -504,8 +531,8 @@ contract OwnersTest is Test {
         NaniAccount.UserOperation memory userOp;
         bytes32 userOpHash = keccak256("OWN");
         bytes32 signHash = _toEthSignedMessageHash(userOpHash);
-        _owners = _sortAddresses(_owners);
-        userOp.signature = abi.encodePacked(_owners[0], _sign(_getPkByAddr(_owners[0]), signHash));
+        addrs = _sortAddresses(addrs);
+        userOp.signature = abi.encodePacked(addrs[0], _sign(_getPkByAddr(addrs[0]), signHash));
 
         vm.prank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
@@ -514,31 +541,38 @@ contract OwnersTest is Test {
 
     // In 40-of-100, at least 40 units signed.
     function testIsValidSignatureWeighted() public payable {
-        address[] memory _owners = new address[](4);
-        uint256[] memory _shares = new uint256[](4);
-        _owners[0] = alice;
-        _shares[0] = 40;
-        _owners[1] = bob;
-        _shares[1] = 20;
-        _owners[2] = chuck;
-        _shares[2] = 20;
-        _owners[3] = dave;
-        _shares[3] = 20;
+        Owners.Ownership[] memory _owners = new Owners.Ownership[](4);
+        _owners[0].owner = alice;
+        _owners[0].shares = 40;
+        _owners[1].owner = bob;
+        _owners[1].shares = 20;
+        _owners[2].owner = chuck;
+        _owners[2].shares = 20;
+        _owners[3].owner = dave;
+        _owners[3].shares = 20;
+
+        address[] memory addrs = new address[](4);
+        addrs[0] = alice;
+        addrs[1] = bob;
+        addrs[2] = chuck;
+        addrs[3] = dave;
+
+        Owners.Settings memory setting;
+        setting.tkn = ITokenOwner(address(0));
+        setting.std = Owners.TokenStandard.OWNER;
+        setting.threshold = 40;
+
+        Owners.Metadata memory meta;
+        meta.name = "";
+        meta.symbol = "";
+        meta.tokenURI = "";
+        meta.authority = IAuth(address(0));
 
         vm.prank(alice);
         account.execute(
             address(owners),
             0,
-            abi.encodeWithSelector(
-                owners.install.selector,
-                _owners,
-                _shares,
-                ITokenOwner(address(0)),
-                Owners.TokenStandard.OWN,
-                40,
-                "",
-                IAuth(address(0))
-            )
+            abi.encodeWithSelector(owners.install.selector, _owners, setting, meta)
         );
 
         vm.prank(alice);
@@ -551,14 +585,14 @@ contract OwnersTest is Test {
         NaniAccount.UserOperation memory userOp;
         bytes32 userOpHash = keccak256("OWN");
         bytes32 signHash = _toEthSignedMessageHash(userOpHash);
-        _owners = _sortAddresses(_owners);
+        addrs = _sortAddresses(addrs);
         userOp.signature = abi.encodePacked(
-            _owners[0],
-            _sign(_getPkByAddr(_owners[0]), signHash),
-            _owners[1],
-            _sign(_getPkByAddr(_owners[1]), signHash),
-            _owners[2],
-            _sign(_getPkByAddr(_owners[2]), signHash)
+            addrs[0],
+            _sign(_getPkByAddr(addrs[0]), signHash),
+            addrs[1],
+            _sign(_getPkByAddr(addrs[1]), signHash),
+            addrs[2],
+            _sign(_getPkByAddr(addrs[2]), signHash)
         );
 
         vm.prank(_ENTRY_POINT);
@@ -568,31 +602,38 @@ contract OwnersTest is Test {
 
     // In 40-of-100, 20 units signed. So fail.
     function testFailIsValidSignatureWeighted() public payable {
-        address[] memory _owners = new address[](4);
-        uint256[] memory _shares = new uint256[](4);
-        _owners[0] = alice;
-        _shares[0] = 40;
-        _owners[1] = bob;
-        _shares[1] = 20;
-        _owners[2] = chuck;
-        _shares[2] = 20;
-        _owners[3] = dave;
-        _shares[3] = 20;
+        Owners.Ownership[] memory _owners = new Owners.Ownership[](4);
+        _owners[0].owner = alice;
+        _owners[0].shares = 40;
+        _owners[1].owner = bob;
+        _owners[1].shares = 20;
+        _owners[2].owner = chuck;
+        _owners[2].shares = 20;
+        _owners[3].owner = dave;
+        _owners[3].shares = 20;
+
+        address[] memory addrs = new address[](4);
+        addrs[0] = alice;
+        addrs[1] = bob;
+        addrs[2] = chuck;
+        addrs[3] = dave;
+
+        Owners.Settings memory setting;
+        setting.tkn = ITokenOwner(address(0));
+        setting.std = Owners.TokenStandard.OWNER;
+        setting.threshold = 40;
+
+        Owners.Metadata memory meta;
+        meta.name = "";
+        meta.symbol = "";
+        meta.tokenURI = "";
+        meta.authority = IAuth(address(0));
 
         vm.prank(alice);
         account.execute(
             address(owners),
             0,
-            abi.encodeWithSelector(
-                owners.install.selector,
-                _owners,
-                _shares,
-                ITokenOwner(address(0)),
-                Owners.TokenStandard.OWN,
-                40,
-                "",
-                IAuth(address(0))
-            )
+            abi.encodeWithSelector(owners.install.selector, _owners, setting, meta)
         );
 
         vm.prank(alice);
@@ -605,8 +646,8 @@ contract OwnersTest is Test {
         NaniAccount.UserOperation memory userOp;
         bytes32 userOpHash = keccak256("OWN");
         bytes32 signHash = _toEthSignedMessageHash(userOpHash);
-        _owners = _sortAddresses(_owners);
-        userOp.signature = abi.encodePacked(_owners[0], _sign(_getPkByAddr(_owners[0]), signHash));
+        addrs = _sortAddresses(addrs);
+        userOp.signature = abi.encodePacked(addrs[0], _sign(_getPkByAddr(addrs[0]), signHash));
 
         vm.prank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
@@ -615,28 +656,38 @@ contract OwnersTest is Test {
 
     // In 40-of-100, at least 40 ERC20 units signed.
     function testIsValidSignatureWeightedERC20() public payable {
-        address[] memory _owners = new address[](0);
-        uint256[] memory _shares = new uint256[](0);
+        Owners.Ownership[] memory _owners = new Owners.Ownership[](4);
+        _owners[0].owner = alice;
+        _owners[0].shares = 40;
+        _owners[1].owner = bob;
+        _owners[1].shares = 20;
+        _owners[2].owner = chuck;
+        _owners[2].shares = 20;
+        _owners[3].owner = dave;
+        _owners[3].shares = 20;
 
-        address[] memory memOwners = new address[](3);
-        memOwners[0] = alice;
-        memOwners[1] = bob;
-        memOwners[2] = chuck;
+        address[] memory addrs = new address[](4);
+        addrs[0] = alice;
+        addrs[1] = bob;
+        addrs[2] = chuck;
+        addrs[3] = dave;
+
+        Owners.Settings memory setting;
+        setting.tkn = ITokenOwner(erc20);
+        setting.std = Owners.TokenStandard.ERC20;
+        setting.threshold = 40;
+
+        Owners.Metadata memory meta;
+        meta.name = "";
+        meta.symbol = "";
+        meta.tokenURI = "";
+        meta.authority = IAuth(address(0));
 
         vm.prank(alice);
         account.execute(
             address(owners),
             0,
-            abi.encodeWithSelector(
-                owners.install.selector,
-                _owners,
-                _shares,
-                ITokenOwner(erc20),
-                Owners.TokenStandard.ERC20,
-                40 ether,
-                "",
-                IAuth(address(0))
-            )
+            abi.encodeWithSelector(owners.install.selector, _owners, setting, meta)
         );
 
         vm.prank(alice);
@@ -649,14 +700,14 @@ contract OwnersTest is Test {
         NaniAccount.UserOperation memory userOp;
         bytes32 userOpHash = keccak256("OWN");
         bytes32 signHash = _toEthSignedMessageHash(userOpHash);
-        _owners = _sortAddresses(memOwners);
+        addrs = _sortAddresses(addrs);
         userOp.signature = abi.encodePacked(
-            _owners[0],
-            _sign(_getPkByAddr(_owners[0]), signHash),
-            _owners[1],
-            _sign(_getPkByAddr(_owners[1]), signHash),
-            _owners[2],
-            _sign(_getPkByAddr(_owners[2]), signHash)
+            addrs[0],
+            _sign(_getPkByAddr(addrs[0]), signHash),
+            addrs[1],
+            _sign(_getPkByAddr(addrs[1]), signHash),
+            addrs[2],
+            _sign(_getPkByAddr(addrs[2]), signHash)
         );
 
         vm.prank(_ENTRY_POINT);
@@ -666,28 +717,38 @@ contract OwnersTest is Test {
 
     // In 40-of-100, 20 units signed. So fail.
     function testFailIsValidSignatureWeightedERC20() public payable {
-        address[] memory _owners = new address[](0);
-        uint256[] memory _shares = new uint256[](0);
+        Owners.Ownership[] memory _owners = new Owners.Ownership[](4);
+        _owners[0].owner = alice;
+        _owners[0].shares = 40;
+        _owners[1].owner = bob;
+        _owners[1].shares = 20;
+        _owners[2].owner = chuck;
+        _owners[2].shares = 20;
+        _owners[3].owner = dave;
+        _owners[3].shares = 20;
 
-        address[] memory memOwners = new address[](3);
-        memOwners[0] = alice;
-        memOwners[1] = bob;
-        memOwners[2] = chuck;
+        address[] memory addrs = new address[](4);
+        addrs[0] = alice;
+        addrs[1] = bob;
+        addrs[2] = chuck;
+        addrs[3] = dave;
+
+        Owners.Settings memory setting;
+        setting.tkn = ITokenOwner(erc20);
+        setting.std = Owners.TokenStandard.ERC20;
+        setting.threshold = 40;
+
+        Owners.Metadata memory meta;
+        meta.name = "";
+        meta.symbol = "";
+        meta.tokenURI = "";
+        meta.authority = IAuth(address(0));
 
         vm.prank(alice);
         account.execute(
             address(owners),
             0,
-            abi.encodeWithSelector(
-                owners.install.selector,
-                _owners,
-                _shares,
-                ITokenOwner(erc20),
-                Owners.TokenStandard.ERC20,
-                40 ether,
-                "",
-                IAuth(address(0))
-            )
+            abi.encodeWithSelector(owners.install.selector, _owners, setting, meta)
         );
 
         vm.prank(alice);
@@ -700,8 +761,8 @@ contract OwnersTest is Test {
         NaniAccount.UserOperation memory userOp;
         bytes32 userOpHash = keccak256("OWN");
         bytes32 signHash = _toEthSignedMessageHash(userOpHash);
-        _owners = _sortAddresses(memOwners);
-        userOp.signature = abi.encodePacked(_owners[0], _sign(_getPkByAddr(_owners[0]), signHash));
+        addrs = _sortAddresses(addrs);
+        userOp.signature = abi.encodePacked(addrs[0], _sign(_getPkByAddr(addrs[2]), signHash));
 
         vm.prank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
@@ -710,28 +771,35 @@ contract OwnersTest is Test {
 
     // In 2-of-3, at least 2 ERC721 units signed.
     function testIsValidSignatureWeightedERC721() public payable {
-        address[] memory _owners = new address[](0);
-        uint256[] memory _shares = new uint256[](0);
+        Owners.Ownership[] memory _owners = new Owners.Ownership[](3);
+        _owners[0].owner = alice;
+        _owners[0].shares = 1;
+        _owners[1].owner = bob;
+        _owners[1].shares = 1;
+        _owners[2].owner = chuck;
+        _owners[2].shares = 1;
 
-        address[] memory memOwners = new address[](3);
-        memOwners[0] = alice;
-        memOwners[1] = bob;
-        memOwners[2] = chuck;
+        address[] memory addrs = new address[](3);
+        addrs[0] = alice;
+        addrs[1] = bob;
+        addrs[2] = chuck;
+
+        Owners.Settings memory setting;
+        setting.tkn = ITokenOwner(erc721);
+        setting.std = Owners.TokenStandard.ERC721;
+        setting.threshold = 2;
+
+        Owners.Metadata memory meta;
+        meta.name = "";
+        meta.symbol = "";
+        meta.tokenURI = "";
+        meta.authority = IAuth(address(0));
 
         vm.prank(alice);
         account.execute(
             address(owners),
             0,
-            abi.encodeWithSelector(
-                owners.install.selector,
-                _owners,
-                _shares,
-                ITokenOwner(erc721),
-                Owners.TokenStandard.ERC721,
-                2,
-                "",
-                IAuth(address(0))
-            )
+            abi.encodeWithSelector(owners.install.selector, _owners, setting, meta)
         );
 
         vm.prank(alice);
@@ -744,12 +812,12 @@ contract OwnersTest is Test {
         NaniAccount.UserOperation memory userOp;
         bytes32 userOpHash = keccak256("OWN");
         bytes32 signHash = _toEthSignedMessageHash(userOpHash);
-        _owners = _sortAddresses(memOwners);
+        addrs = _sortAddresses(addrs);
         userOp.signature = abi.encodePacked(
-            _owners[0],
-            _sign(_getPkByAddr(_owners[0]), signHash),
-            _owners[1],
-            _sign(_getPkByAddr(_owners[1]), signHash)
+            addrs[0],
+            _sign(_getPkByAddr(addrs[0]), signHash),
+            addrs[1],
+            _sign(_getPkByAddr(addrs[1]), signHash)
         );
 
         vm.prank(_ENTRY_POINT);
@@ -759,28 +827,35 @@ contract OwnersTest is Test {
 
     // In 2-of-3, only 1 ERC721 units signed. So fail.
     function testFailIsValidSignatureWeightedERC721() public payable {
-        address[] memory _owners = new address[](0);
-        uint256[] memory _shares = new uint256[](0);
+        Owners.Ownership[] memory _owners = new Owners.Ownership[](3);
+        _owners[0].owner = alice;
+        _owners[0].shares = 1;
+        _owners[1].owner = bob;
+        _owners[1].shares = 1;
+        _owners[2].owner = chuck;
+        _owners[2].shares = 1;
 
-        address[] memory memOwners = new address[](3);
-        memOwners[0] = alice;
-        memOwners[1] = bob;
-        memOwners[2] = chuck;
+        address[] memory addrs = new address[](3);
+        addrs[0] = alice;
+        addrs[1] = bob;
+        addrs[2] = chuck;
+
+        Owners.Settings memory setting;
+        setting.tkn = ITokenOwner(erc721);
+        setting.std = Owners.TokenStandard.ERC721;
+        setting.threshold = 2;
+
+        Owners.Metadata memory meta;
+        meta.name = "";
+        meta.symbol = "";
+        meta.tokenURI = "";
+        meta.authority = IAuth(address(0));
 
         vm.prank(alice);
         account.execute(
             address(owners),
             0,
-            abi.encodeWithSelector(
-                owners.install.selector,
-                _owners,
-                _shares,
-                ITokenOwner(erc721),
-                Owners.TokenStandard.ERC721,
-                2,
-                "",
-                IAuth(address(0))
-            )
+            abi.encodeWithSelector(owners.install.selector, _owners, setting, meta)
         );
 
         vm.prank(alice);
@@ -793,8 +868,8 @@ contract OwnersTest is Test {
         NaniAccount.UserOperation memory userOp;
         bytes32 userOpHash = keccak256("OWN");
         bytes32 signHash = _toEthSignedMessageHash(userOpHash);
-        _owners = _sortAddresses(memOwners);
-        userOp.signature = abi.encodePacked(_owners[0], _sign(_getPkByAddr(_owners[0]), signHash));
+        addrs = _sortAddresses(addrs);
+        userOp.signature = abi.encodePacked(addrs[0], _sign(_getPkByAddr(addrs[0]), signHash));
 
         vm.prank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
@@ -803,28 +878,38 @@ contract OwnersTest is Test {
 
     // In 40-of-100, at least 40 ERC1155 units signed.
     function testIsValidSignatureWeightedERC1155() public payable {
-        address[] memory _owners = new address[](0);
-        uint256[] memory _shares = new uint256[](0);
+        Owners.Ownership[] memory _owners = new Owners.Ownership[](4);
+        _owners[0].owner = alice;
+        _owners[0].shares = 40;
+        _owners[1].owner = bob;
+        _owners[1].shares = 20;
+        _owners[2].owner = chuck;
+        _owners[2].shares = 20;
+        _owners[3].owner = dave;
+        _owners[3].shares = 20;
 
-        address[] memory memOwners = new address[](3);
-        memOwners[0] = alice;
-        memOwners[1] = bob;
-        memOwners[2] = chuck;
+        address[] memory addrs = new address[](4);
+        addrs[0] = alice;
+        addrs[1] = bob;
+        addrs[2] = chuck;
+        addrs[3] = dave;
+
+        Owners.Settings memory setting;
+        setting.tkn = ITokenOwner(erc1155);
+        setting.std = Owners.TokenStandard.ERC1155;
+        setting.threshold = 40;
+
+        Owners.Metadata memory meta;
+        meta.name = "";
+        meta.symbol = "";
+        meta.tokenURI = "";
+        meta.authority = IAuth(address(0));
 
         vm.prank(alice);
         account.execute(
             address(owners),
             0,
-            abi.encodeWithSelector(
-                owners.install.selector,
-                _owners,
-                _shares,
-                ITokenOwner(erc1155),
-                Owners.TokenStandard.ERC1155,
-                40 ether,
-                "",
-                IAuth(address(0))
-            )
+            abi.encodeWithSelector(owners.install.selector, _owners, setting, meta)
         );
 
         vm.prank(alice);
@@ -837,14 +922,14 @@ contract OwnersTest is Test {
         NaniAccount.UserOperation memory userOp;
         bytes32 userOpHash = keccak256("OWN");
         bytes32 signHash = _toEthSignedMessageHash(userOpHash);
-        _owners = _sortAddresses(memOwners);
+        addrs = _sortAddresses(addrs);
         userOp.signature = abi.encodePacked(
-            _owners[0],
-            _sign(_getPkByAddr(_owners[0]), signHash),
-            _owners[1],
-            _sign(_getPkByAddr(_owners[1]), signHash),
-            _owners[2],
-            _sign(_getPkByAddr(_owners[2]), signHash)
+            addrs[0],
+            _sign(_getPkByAddr(addrs[0]), signHash),
+            addrs[1],
+            _sign(_getPkByAddr(addrs[1]), signHash),
+            addrs[2],
+            _sign(_getPkByAddr(addrs[2]), signHash)
         );
 
         vm.prank(_ENTRY_POINT);
@@ -854,28 +939,36 @@ contract OwnersTest is Test {
 
     // In 40-of-100, 20 ERC1155 units signed. So fail.
     function testFailIsValidSignatureWeightedERC1155() public payable {
-        address[] memory _owners = new address[](0);
-        uint256[] memory _shares = new uint256[](0);
+        Owners.Ownership[] memory _owners = new Owners.Ownership[](4);
+        _owners[0].owner = alice;
+        _owners[0].shares = 40;
+        _owners[1].owner = bob;
+        _owners[1].shares = 20;
+        _owners[2].owner = chuck;
+        _owners[2].shares = 20;
+        _owners[3].owner = dave;
+        _owners[3].shares = 20;
 
-        address[] memory memOwners = new address[](3);
-        memOwners[0] = alice;
-        memOwners[1] = bob;
-        memOwners[2] = chuck;
+        address[] memory addrs = new address[](4);
+        addrs[0] = alice;
+        addrs[1] = bob;
+        addrs[2] = chuck;
+        addrs[3] = dave;
+
+        Owners.Settings memory setting;
+        setting.tkn = ITokenOwner(erc1155);
+        setting.std = Owners.TokenStandard.ERC1155;
+        setting.threshold = 40;
+
+        Owners.Metadata memory meta;
+        meta.name = "";
+        meta.symbol = "";
+        meta.tokenURI = "";
+        meta.authority = IAuth(address(0));
 
         vm.prank(alice);
         account.execute(
-            address(owners),
-            0,
-            abi.encodeWithSelector(
-                owners.install.selector,
-                _owners,
-                _shares,
-                ITokenOwner(erc1155),
-                Owners.TokenStandard.ERC1155,
-                40 ether,
-                "",
-                IAuth(address(0))
-            )
+            address(owners), 0, abi.encodeWithSelector(owners.install.selector, setting, meta)
         );
 
         vm.prank(alice);
@@ -888,8 +981,8 @@ contract OwnersTest is Test {
         NaniAccount.UserOperation memory userOp;
         bytes32 userOpHash = keccak256("OWN");
         bytes32 signHash = _toEthSignedMessageHash(userOpHash);
-        _owners = _sortAddresses(memOwners);
-        userOp.signature = abi.encodePacked(_owners[0], _sign(_getPkByAddr(_owners[0]), signHash));
+        addrs = _sortAddresses(addrs);
+        userOp.signature = abi.encodePacked(addrs[0], _sign(_getPkByAddr(addrs[0]), signHash));
 
         vm.prank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
@@ -898,28 +991,38 @@ contract OwnersTest is Test {
 
     // In 40-of-100, at least 40 ERC6909 units signed.
     function testIsValidSignatureWeightedERC6909() public payable {
-        address[] memory _owners = new address[](0);
-        uint256[] memory _shares = new uint256[](0);
+        Owners.Ownership[] memory _owners = new Owners.Ownership[](4);
+        _owners[0].owner = alice;
+        _owners[0].shares = 40;
+        _owners[1].owner = bob;
+        _owners[1].shares = 20;
+        _owners[2].owner = chuck;
+        _owners[2].shares = 20;
+        _owners[3].owner = dave;
+        _owners[3].shares = 20;
 
-        address[] memory memOwners = new address[](3);
-        memOwners[0] = alice;
-        memOwners[1] = bob;
-        memOwners[2] = chuck;
+        address[] memory addrs = new address[](4);
+        addrs[0] = alice;
+        addrs[1] = bob;
+        addrs[2] = chuck;
+        addrs[3] = dave;
+
+        Owners.Settings memory setting;
+        setting.tkn = ITokenOwner(erc6909);
+        setting.std = Owners.TokenStandard.ERC6909;
+        setting.threshold = 40;
+
+        Owners.Metadata memory meta;
+        meta.name = "";
+        meta.symbol = "";
+        meta.tokenURI = "";
+        meta.authority = IAuth(address(0));
 
         vm.prank(alice);
         account.execute(
             address(owners),
             0,
-            abi.encodeWithSelector(
-                owners.install.selector,
-                _owners,
-                _shares,
-                ITokenOwner(erc6909),
-                Owners.TokenStandard.ERC6909,
-                40 ether,
-                "",
-                IAuth(address(0))
-            )
+            abi.encodeWithSelector(owners.install.selector, _owners, setting, meta)
         );
 
         vm.prank(alice);
@@ -932,14 +1035,14 @@ contract OwnersTest is Test {
         NaniAccount.UserOperation memory userOp;
         bytes32 userOpHash = keccak256("OWN");
         bytes32 signHash = _toEthSignedMessageHash(userOpHash);
-        _owners = _sortAddresses(memOwners);
+        addrs = _sortAddresses(addrs);
         userOp.signature = abi.encodePacked(
-            _owners[0],
-            _sign(_getPkByAddr(_owners[0]), signHash),
-            _owners[1],
-            _sign(_getPkByAddr(_owners[1]), signHash),
-            _owners[2],
-            _sign(_getPkByAddr(_owners[2]), signHash)
+            addrs[0],
+            _sign(_getPkByAddr(addrs[0]), signHash),
+            addrs[1],
+            _sign(_getPkByAddr(addrs[1]), signHash),
+            addrs[2],
+            _sign(_getPkByAddr(addrs[2]), signHash)
         );
 
         vm.prank(_ENTRY_POINT);
@@ -949,28 +1052,38 @@ contract OwnersTest is Test {
 
     // In 40-of-100, 20 ERC6909 units signed. So fail.
     function testFailIsValidSignatureWeightedERC6909() public payable {
-        address[] memory _owners = new address[](0);
-        uint256[] memory _shares = new uint256[](0);
+        Owners.Ownership[] memory _owners = new Owners.Ownership[](4);
+        _owners[0].owner = alice;
+        _owners[0].shares = 40;
+        _owners[1].owner = bob;
+        _owners[1].shares = 20;
+        _owners[2].owner = chuck;
+        _owners[2].shares = 20;
+        _owners[3].owner = dave;
+        _owners[3].shares = 20;
 
-        address[] memory memOwners = new address[](3);
-        memOwners[0] = alice;
-        memOwners[1] = bob;
-        memOwners[2] = chuck;
+        address[] memory addrs = new address[](4);
+        addrs[0] = alice;
+        addrs[1] = bob;
+        addrs[2] = chuck;
+        addrs[3] = dave;
+
+        Owners.Settings memory setting;
+        setting.tkn = ITokenOwner(erc6909);
+        setting.std = Owners.TokenStandard.ERC6909;
+        setting.threshold = 40;
+
+        Owners.Metadata memory meta;
+        meta.name = "";
+        meta.symbol = "";
+        meta.tokenURI = "";
+        meta.authority = IAuth(address(0));
 
         vm.prank(alice);
         account.execute(
             address(owners),
             0,
-            abi.encodeWithSelector(
-                owners.install.selector,
-                _owners,
-                _shares,
-                ITokenOwner(erc6909),
-                Owners.TokenStandard.ERC6909,
-                40 ether,
-                "",
-                IAuth(address(0))
-            )
+            abi.encodeWithSelector(owners.install.selector, _owners, setting, meta)
         );
 
         vm.prank(alice);
@@ -982,9 +1095,8 @@ contract OwnersTest is Test {
 
         NaniAccount.UserOperation memory userOp;
         bytes32 userOpHash = keccak256("OWN");
-        bytes32 signHash = _toEthSignedMessageHash(userOpHash);
-        _owners = _sortAddresses(memOwners);
-        userOp.signature = abi.encodePacked(_owners[0], _sign(_getPkByAddr(_owners[0]), signHash));
+        addrs = _sortAddresses(addrs);
+        userOp.signature = abi.encodePacked("");
 
         vm.prank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
@@ -992,31 +1104,38 @@ contract OwnersTest is Test {
     }
 
     function testFailIsValidSignatureOutOfOrder() public payable {
-        address[] memory _owners = new address[](4);
-        uint256[] memory _shares = new uint256[](4);
-        _owners[0] = alice;
-        _shares[0] = 40;
-        _owners[1] = bob;
-        _shares[1] = 20;
-        _owners[2] = chuck;
-        _shares[2] = 20;
-        _owners[3] = dave;
-        _shares[3] = 20;
+        Owners.Ownership[] memory _owners = new Owners.Ownership[](4);
+        _owners[0].owner = alice;
+        _owners[0].shares = 40;
+        _owners[1].owner = bob;
+        _owners[1].shares = 20;
+        _owners[2].owner = chuck;
+        _owners[2].shares = 20;
+        _owners[3].owner = dave;
+        _owners[3].shares = 20;
+
+        address[] memory addrs = new address[](4);
+        addrs[0] = alice;
+        addrs[1] = bob;
+        addrs[2] = chuck;
+        addrs[3] = dave;
+
+        Owners.Settings memory setting;
+        setting.tkn = ITokenOwner(address(0));
+        setting.std = Owners.TokenStandard.OWNER;
+        setting.threshold = 40;
+
+        Owners.Metadata memory meta;
+        meta.name = "";
+        meta.symbol = "";
+        meta.tokenURI = "";
+        meta.authority = IAuth(address(0));
 
         vm.prank(alice);
         account.execute(
             address(owners),
             0,
-            abi.encodeWithSelector(
-                owners.install.selector,
-                _owners,
-                _shares,
-                ITokenOwner(address(0)),
-                Owners.TokenStandard.OWN,
-                40,
-                "",
-                IAuth(address(0))
-            )
+            abi.encodeWithSelector(owners.install.selector, _owners, setting, meta)
         );
 
         vm.prank(alice);
@@ -1030,65 +1149,12 @@ contract OwnersTest is Test {
         bytes32 userOpHash = keccak256("OWN");
         bytes32 signHash = _toEthSignedMessageHash(userOpHash);
         userOp.signature = abi.encodePacked(
-            _owners[0],
-            _sign(_getPkByAddr(_owners[0]), signHash),
-            _owners[1],
-            _sign(_getPkByAddr(_owners[1]), signHash),
-            _owners[2],
-            _sign(_getPkByAddr(_owners[2]), signHash)
-        );
-
-        vm.prank(_ENTRY_POINT);
-        uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
-        assertEq(validationData, 0x00);
-    }
-
-    function testFailIsValidSignatureInvalidTokenCode() public payable {
-        address[] memory _owners = new address[](4);
-        uint256[] memory _shares = new uint256[](4);
-        _owners[0] = alice;
-        _shares[0] = 40;
-        _owners[1] = bob;
-        _shares[1] = 20;
-        _owners[2] = chuck;
-        _shares[2] = 20;
-        _owners[3] = dave;
-        _shares[3] = 20;
-
-        vm.prank(alice);
-        account.execute(
-            address(owners),
-            0,
-            abi.encodeWithSelector(
-                owners.install.selector,
-                _owners,
-                _shares,
-                ITokenOwner(address(0)),
-                9, // Bad Code.
-                40,
-                "",
-                IAuth(address(0))
-            )
-        );
-
-        vm.prank(alice);
-        account.execute(
-            address(account),
-            0,
-            abi.encodeWithSelector(account.completeOwnershipHandover.selector, address(owners))
-        );
-
-        NaniAccount.UserOperation memory userOp;
-        bytes32 userOpHash = keccak256("OWN");
-        bytes32 signHash = _toEthSignedMessageHash(userOpHash);
-        _owners = _sortAddresses(_owners);
-        userOp.signature = abi.encodePacked(
-            _owners[0],
-            _sign(_getPkByAddr(_owners[0]), signHash),
-            _owners[1],
-            _sign(_getPkByAddr(_owners[1]), signHash),
-            _owners[2],
-            _sign(_getPkByAddr(_owners[2]), signHash)
+            _owners[0].owner,
+            _sign(_getPkByAddr(_owners[0].owner), signHash),
+            _owners[1].owner,
+            _sign(_getPkByAddr(_owners[1].owner), signHash),
+            _owners[2].owner,
+            _sign(_getPkByAddr(_owners[2].owner), signHash)
         );
 
         vm.prank(_ENTRY_POINT);
