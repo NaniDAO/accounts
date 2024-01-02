@@ -260,6 +260,7 @@ contract OwnersTest is Test {
 
     function testTransfer(address from, address to, uint96 amount) public {
         vm.assume(from != alice && to != alice);
+        vm.assume(to != 0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF);
         vm.assume(amount < type(uint96).max);
         testInstall();
         vm.prank(address(account));

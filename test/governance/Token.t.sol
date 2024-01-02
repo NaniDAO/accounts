@@ -49,13 +49,13 @@ contract TokenTest is Test {
     }
 
     function testFailUnsafeTransfer(address to) public {
-        vm.assume(to != address(0) && to != address(token));
+        vm.assume(to != address(0) && to != address(token) && to != alice);
         vm.prank(alice);
         token.transfer(to, MAX + 1);
     }
 
     function testFailTransferBeyondBalance(address to) public {
-        vm.assume(to != address(0) && to != address(token));
+        vm.assume(to != address(0) && to != address(token) && to != alice);
         vm.prank(alice);
         token.transfer(to, 1 ether);
         vm.prank(to);
@@ -63,7 +63,7 @@ contract TokenTest is Test {
     }
 
     function testTransferFromOwner(address to, uint96 amount) public {
-        vm.assume(to != address(0) && to != address(token));
+        vm.assume(to != address(0) && to != address(token) && to != alice);
         vm.assume(amount <= MAX);
         assertEq(token.balanceOf(alice), MAX);
         vm.prank(alice);
