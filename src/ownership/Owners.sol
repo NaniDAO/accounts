@@ -202,6 +202,7 @@ contract Owners is ERC6909 {
         virtual
         returns (uint256)
     {
+        bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
         Settings memory set = _settings[account];
         unchecked {
             uint256 pos;
@@ -212,7 +213,7 @@ contract Owners is ERC6909 {
                 if (
                     SignatureCheckerLib.isValidSignatureNow(
                         owner = address(bytes20(signature[pos:pos + 20])),
-                        SignatureCheckerLib.toEthSignedMessageHash(userOpHash),
+                        hash,
                         signature[pos + 20:pos + 85]
                     ) && voted[owner][userOpHash] == 0 // Check double voting.
                 ) {
@@ -224,7 +225,7 @@ contract Owners is ERC6909 {
                             : set.tkn.balanceOf(owner, uint256(uint160(account)));
                 }
             }
-            return votingTally[userOpHash] += tally;
+            return votingTally[hash] += tally;
         }
     }
 

@@ -37,7 +37,7 @@ contract TokenTest is Test {
         assertEq(token.balanceOf(alice), MAX);
     }
 
-    function testTransfer(address to, uint256 amount) public {
+    function testTransfer(address to, uint96 amount) public {
         vm.assume(to != address(0) && to != address(token) && to != alice);
         vm.assume(amount <= MAX);
         assertEq(token.balanceOf(alice), MAX);
@@ -62,7 +62,7 @@ contract TokenTest is Test {
         token.transfer(alice, 1 ether + 1);
     }
 
-    function testTransferFromOwner(address to, uint256 amount) public {
+    function testTransferFromOwner(address to, uint96 amount) public {
         vm.assume(to != address(0) && to != address(token));
         vm.assume(amount <= MAX);
         assertEq(token.balanceOf(alice), MAX);

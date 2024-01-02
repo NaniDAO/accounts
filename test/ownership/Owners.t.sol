@@ -359,7 +359,7 @@ contract OwnersTest is Test {
         testInstall();
         bytes32 userOpHash = keccak256("OWN");
         NaniAccount.UserOperation memory userOp;
-        userOp.signature = bytes("");
+        userOp.signature = "";
         require(userOp.signature.length == 0, "INVALID_LEN");
         userOp.sender = address(account);
 
