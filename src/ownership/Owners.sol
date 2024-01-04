@@ -291,11 +291,10 @@ contract Owners is ERC6909 {
         public
         view
         virtual
-        returns (ITokenOwner tkn, uint88 threshold, TokenStandard std)
+        returns (ITokenOwner, uint88, TokenStandard)
     {
-        tkn = _settings[account].tkn;
-        threshold = _settings[account].threshold;
-        std = _settings[account].std;
+        Settings storage set = _settings[account];
+        return (set.tkn, set.threshold, set.std);
     }
 
     /// @dev Returns the account metadata.
@@ -303,18 +302,10 @@ contract Owners is ERC6909 {
         public
         view
         virtual
-        returns (
-            string memory _name,
-            string memory _symbol,
-            string memory _tokenURI,
-            IAuth _authority
-        )
+        returns (string memory, string memory, string memory, IAuth)
     {
-        uint256 id = uint256(uint160(account));
-        _name = _metadata[id].name;
-        _symbol = _metadata[id].symbol;
-        _tokenURI = _metadata[id].tokenURI;
-        _authority = _metadata[id].authority;
+        Metadata storage meta = _metadata[uint256(uint160(account))];
+        return (meta.name, meta.symbol, meta.tokenURI, meta.authority);
     }
 
     /// @dev Sets new authority contract for the caller account.
