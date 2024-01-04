@@ -264,6 +264,26 @@ contract Owners is ERC6909 {
         IOwnable(msg.sender).requestOwnershipHandover();
     }
 
+    /// ====================== TOKEN OPERATIONS ====================== ///
+
+    /// @dev Mints shares for an owner of the caller account.
+    function mint(address owner, uint96 shares) public payable virtual {
+        uint256 id = uint256(uint160(msg.sender));
+        _metadata[id].totalSupply += shares;
+        _mint(owner, id, shares);
+    }
+
+    /// @dev Burns shares from an owner of the caller account.
+    function burn(address owner, uint96 shares) public payable virtual {
+        uint256 id = uint256(uint160(msg.sender));
+        unchecked {
+            if (_settings[msg.sender].threshold > (_metadata[id].totalSupply -= shares)) {
+                revert InvalidSetting();
+            }
+        }
+        _burn(owner, id, shares);
+    }
+
     /// ===================== OWNERSHIP SETTINGS ===================== ///
 
     /// @dev Returns the account settings.
@@ -302,11 +322,6 @@ contract Owners is ERC6909 {
         emit AuthSet(msg.sender, (_metadata[uint256(uint160(msg.sender))].authority = auth));
     }
 
-    /// @dev Sets new token metadata URI for the caller account.
-    function setURI(string calldata uri) public payable virtual {
-        emit URISet(msg.sender, (_metadata[uint256(uint160(msg.sender))].tokenURI = uri));
-    }
-
     /// @dev Sets new ownership threshold for the caller account.
     function setThreshold(uint88 threshold) public payable virtual {
         Settings storage set = _settings[msg.sender];
@@ -323,35 +338,20 @@ contract Owners is ERC6909 {
         emit ThresholdSet(msg.sender, (set.threshold = threshold));
     }
 
-    /// @dev Sets new token ownership standard for the caller account.
+    /// @dev Sets new token ownership interface standard for the caller account.
     function setToken(ITokenOwner tkn, TokenStandard std) public payable virtual {
         emit TokenSet(msg.sender, _settings[msg.sender].tkn = tkn, _settings[msg.sender].std = std);
     }
 
-    /// ====================== TOKEN OPERATIONS ====================== ///
-
-    /// @dev Mints shares for an owner of the caller account.
-    function mint(address owner, uint96 shares) public payable virtual {
-        uint256 id = uint256(uint160(msg.sender));
-        _metadata[id].totalSupply += shares;
-        _mint(owner, id, shares);
-    }
-
-    /// @dev Burns shares from an owner of the caller account.
-    function burn(address owner, uint96 shares) public payable virtual {
-        uint256 id = uint256(uint160(msg.sender));
-        unchecked {
-            if (_settings[msg.sender].threshold > (_metadata[id].totalSupply -= shares)) {
-                revert InvalidSetting();
-            }
-        }
-        _burn(owner, id, shares);
+    /// @dev Sets new token URI metadata for the caller account.
+    function setURI(string calldata uri) public payable virtual {
+        emit URISet(msg.sender, (_metadata[uint256(uint160(msg.sender))].tokenURI = uri));
     }
 
     /// ========================= OVERRIDES ========================= ///
 
     /// @dev Hook that is called before any transfer of tokens.
-    /// This includes minting and burning. Requests authority for the token transfer.
+    /// This includes minting and burning. Also requests authority for token transfers.
     function _beforeTokenTransfer(address from, address to, uint256 id, uint256 amount)
         internal
         virtual
