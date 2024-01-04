@@ -353,7 +353,7 @@ contract Owners is ERC6909 {
     }
 }
 
-/// @notice Simple interface for ownership requests.
+/// @notice Simple ownership interface for handover requests.
 interface IOwnable {
     function requestOwnershipHandover() external payable;
 }
