@@ -67,7 +67,7 @@ contract Owners is ERC6909 {
 
     /// =========================== ENUMS =========================== ///
 
-    /// @dev The token interface standards enum.
+    /// @dev The token standard interface enum.
     enum TokenStandard {
         OWNER,
         ERC20,
@@ -79,17 +79,17 @@ contract Owners is ERC6909 {
     /// ========================== STORAGE ========================== ///
 
     /// @dev Stores mapping of metadata settings to account token IDs.
-    /// note: IDs are unique to addresses (uint256(uint160(account))).
+    /// note: IDs are unique to addresses (`uint256(uint160(account))`).
     mapping(uint256 id => Metadata) internal _metadata;
 
     /// @dev Stores mapping of ownership settings to accounts.
     mapping(address account => Settings) internal _settings;
 
-    /// @dev Stores mapping of voting tallies to userOp hashes.
-    mapping(bytes32 userOpHash => uint256) public votingTally;
+    /// @dev Stores mapping of voting tallies to signed userOp hashes.
+    mapping(bytes32 signedHash => uint256) public votingTally;
 
-    /// @dev Stores mapping of account owner voting shares cast on userOp hashes.
-    mapping(address owner => mapping(bytes32 userOpHash => uint256 shares)) public voted;
+    /// @dev Stores mapping of account owner voting shares cast on signed userOp hashes.
+    mapping(address owner => mapping(bytes32 signedHash => uint256 shares)) public voted;
 
     /// ====================== ERC6909 METADATA ====================== ///
 
@@ -108,8 +108,7 @@ contract Owners is ERC6909 {
         return _metadata[id].tokenURI;
     }
 
-    /// @dev Stores mapping of share balance supplies to accounts.
-    /// This is used for ownership settings without external tokens.
+    /// @dev Returns the total supply for token `id` using this contract.
     function totalSupply(uint256 id) public view virtual returns (uint256) {
         return _metadata[id].totalSupply;
     }
@@ -123,7 +122,7 @@ contract Owners is ERC6909 {
     /// =================== VALIDATION OPERATIONS =================== ///
 
     /// @dev Validates ERC1271 signature with additional auth logic flow among owners.
-    /// note: This implementation is designed to be the transferred-to owner of accounts.
+    /// note: This implementation is designed to be the ERC-173-owner-of-4337-accounts.
     function isValidSignature(bytes32 hash, bytes calldata signature)
         public
         view
@@ -184,7 +183,7 @@ contract Owners is ERC6909 {
         if (auth != IAuth(address(0))) {
             (address target, uint256 value, bytes memory data) =
                 abi.decode(userOp.callData[4:], (address, uint256, bytes));
-            auth.canCall(msg.sender, target, value, data);
+            auth.validateCall(msg.sender, target, value, data);
         }
         if (
             isValidSignature(
@@ -195,7 +194,7 @@ contract Owners is ERC6909 {
 
     /// ===================== VOTING OPERATIONS ===================== ///
 
-    /// @dev Casts account owner voting shares on a given userOp hash.
+    /// @dev Casts account owner voting shares on a given ERC4337 userOp hash.
     function vote(address account, bytes32 userOpHash, bytes calldata signature)
         public
         payable
@@ -215,10 +214,10 @@ contract Owners is ERC6909 {
                         owner = address(bytes20(signature[pos:pos + 20])),
                         hash,
                         signature[pos + 20:pos + 85]
-                    ) && voted[owner][userOpHash] == 0 // Check double voting.
+                    ) && voted[owner][hash] == 0 // Check double voting.
                 ) {
                     pos += 85;
-                    tally += voted[owner][userOpHash] = set.std == TokenStandard.OWNER
+                    tally += voted[owner][hash] = set.std == TokenStandard.OWNER
                         ? balanceOf(owner, uint256(uint160(account)))
                         : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
                             ? set.tkn.balanceOf(owner)
@@ -265,7 +264,7 @@ contract Owners is ERC6909 {
         IOwnable(msg.sender).requestOwnershipHandover();
     }
 
-    /// ==================== OWNERSHIP OPERATIONS ==================== ///
+    /// ===================== OWNERSHIP SETTINGS ===================== ///
 
     /// @dev Returns the account settings.
     function getSettings(address account)
@@ -359,7 +358,7 @@ contract Owners is ERC6909 {
         override(ERC6909)
     {
         IAuth auth = _metadata[id].authority;
-        if (auth != IAuth(address(0))) auth.canTransfer(from, to, id, amount);
+        if (auth != IAuth(address(0))) auth.validateTransfer(from, to, id, amount);
     }
 }
 
@@ -370,8 +369,14 @@ interface IOwnable {
 
 /// @notice Simple authority interface for contracts.
 interface IAuth {
-    function canTransfer(address, address, uint256, uint256) external payable;
-    function canCall(address, address, uint256, bytes calldata) external payable;
+    function validateTransfer(address, address, uint256, uint256)
+        external
+        payable
+        returns (uint256);
+    function validateCall(address, address, uint256, bytes calldata)
+        external
+        payable
+        returns (uint256);
 }
 
 /// @notice Generalized fungible token ownership interface.
