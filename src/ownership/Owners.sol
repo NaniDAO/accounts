@@ -150,7 +150,7 @@ contract Owners is ERC6909 {
                         tally += set.std == TokenStandard.OWNER
                             ? balanceOf(owner, uint256(uint160(msg.sender)))
                             : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
-                                ? set.tkn.balanceOf(owner)
+                                ? _balanceOf(address(set.tkn), owner)
                                 : set.tkn.balanceOf(owner, uint256(uint160(msg.sender)));
                     } else {
                         return 0xffffffff; // Failure code.
@@ -220,7 +220,7 @@ contract Owners is ERC6909 {
                     tally += voted[owner][hash] = set.std == TokenStandard.OWNER
                         ? balanceOf(owner, uint256(uint160(account)))
                         : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
-                            ? set.tkn.balanceOf(owner)
+                            ? _balanceOf(address(set.tkn), owner)
                             : set.tkn.balanceOf(owner, uint256(uint160(account)));
                 }
             }
@@ -337,6 +337,30 @@ contract Owners is ERC6909 {
     /// @dev Sets new token URI metadata for the caller account.
     function setURI(string calldata uri) public payable virtual {
         emit URISet(msg.sender, (_metadata[uint256(uint160(msg.sender))].tokenURI = uri));
+    }
+
+    /// ====================== INTERNAL HELPERS ====================== ///
+
+    /// @dev Returns the amount of ERC20/721 `token` owned by `account`.
+    /// Returns zero if the `token` does not exist.
+    function _balanceOf(address token, address account)
+        internal
+        view
+        virtual
+        returns (uint256 amount)
+    {
+        assembly ("memory-safe") {
+            mstore(0x14, account) // Store the `account` argument.
+            mstore(0x00, 0x70a08231000000000000000000000000) // `balanceOf(address)`.
+            amount :=
+                mul(
+                    mload(0x20),
+                    and( // The arguments of `and` are evaluated from right to left.
+                        gt(returndatasize(), 0x1f), // At least 32 bytes returned.
+                        staticcall(gas(), token, 0x10, 0x24, 0x20, 0x20)
+                    )
+                )
+        }
     }
 
     /// ========================= OVERRIDES ========================= ///
