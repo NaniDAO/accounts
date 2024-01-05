@@ -395,7 +395,6 @@ contract Owners is ERC6909 {
     }
 
     /// @dev Returns the total supply of ERC1155/6909 `token` `id`.
-    /// Returns zero if the `token` does not exist.
     function _totalSupply(address token, uint256 id)
         internal
         view
@@ -404,8 +403,8 @@ contract Owners is ERC6909 {
     {
         assembly ("memory-safe") {
             mstore(0x00, hex"bd85b039") // `totalSupply(uint256)`.
-            mstore(0x20, id) // Store the `id` argument.
-            supply := mload(staticcall(gas(), token, 0x00, 0x40, 0x20, 0x20))
+            mstore(0x04, id) // Store the `id` argument.
+            supply := mload(staticcall(gas(), token, 0x00, 0x24, 0x20, 0x20))
         }
     }
 
