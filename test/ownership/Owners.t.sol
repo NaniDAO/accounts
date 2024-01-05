@@ -9,7 +9,7 @@ import "@solady/test/utils/mocks/MockERC6909.sol";
 import {LibClone} from "@solady/src/utils/LibClone.sol";
 
 import {Account as NaniAccount} from "../../src/Account.sol";
-import {ITokenOwner, IAuth, Owners} from "../../src/ownership/Owners.sol";
+import {IAuth, Owners} from "../../src/ownership/Owners.sol";
 
 contract MockERC721TotalSupply is MockERC721 {
     uint256 public totalSupply;
@@ -163,8 +163,8 @@ contract OwnersTest is Test {
         _owners[0].shares = 1;
 
         Owners.Settings memory setting;
-        setting.tkn = ITokenOwner(address(0));
-        setting.std = Owners.TokenStandard.OWNER;
+        setting.token = address(0);
+        setting.standard = Owners.Standard.OWNER;
         setting.threshold = 1;
 
         Owners.Metadata memory meta;
@@ -190,12 +190,12 @@ contract OwnersTest is Test {
             abi.encodeWithSelector(account.completeOwnershipHandover.selector, address(owners))
         );
 
-        (ITokenOwner setTkn, uint88 setThreshold, Owners.TokenStandard setStd) =
+        (address setTkn, uint88 setThreshold, Owners.Standard setStd) =
             owners.getSettings(address(account));
 
-        assertEq(address(setTkn), address(setting.tkn));
+        assertEq(address(setTkn), address(setting.token));
         assertEq(uint256(setThreshold), uint256(setting.threshold));
-        assertEq(uint8(setStd), uint8(setting.std));
+        assertEq(uint8(setStd), uint8(setting.standard));
 
         assertEq(owners.tokenURI(accountId), "");
         (,,, IAuth authority) = owners.getMetadata(address(account));
@@ -241,25 +241,25 @@ contract OwnersTest is Test {
         assertEq(owners.tokenURI(accountId), "TEST");
     }
 
-    function testSetToken(ITokenOwner tkn) public {
-        Owners.TokenStandard std = Owners.TokenStandard.OWNER;
+    function testSetToken(address tkn) public {
+        Owners.Standard std = Owners.Standard.OWNER;
         testInstall();
         vm.prank(address(account));
         owners.setToken(tkn, std);
-        (ITokenOwner setTkn,, Owners.TokenStandard setStd) = owners.getSettings(address(account));
+        (address setTkn,, Owners.Standard setStd) = owners.getSettings(address(account));
         assertEq(address(tkn), address(setTkn));
         assertEq(uint8(std), uint8(setStd));
-        std = Owners.TokenStandard.ERC20;
+        std = Owners.Standard.ERC20;
         vm.prank(address(account));
         owners.setToken(tkn, std);
         (setTkn,, setStd) = owners.getSettings(address(account));
         assertEq(address(tkn), address(setTkn));
     }
 
-    function testFailSetTokenInvalidStd(ITokenOwner tkn) public {
+    function testFailSetTokenInvalidStd(address tkn) public {
         testInstall();
         vm.prank(address(account));
-        owners.setToken(tkn, Owners.TokenStandard(uint8(5)));
+        owners.setToken(tkn, Owners.Standard(uint8(5)));
     }
 
     function testSetAuth(IAuth auth) public {
@@ -403,8 +403,8 @@ contract OwnersTest is Test {
         addrs[2] = chuck;
 
         Owners.Settings memory setting;
-        setting.tkn = ITokenOwner(address(0));
-        setting.std = Owners.TokenStandard.OWNER;
+        setting.token = address(0);
+        setting.standard = Owners.Standard.OWNER;
         setting.threshold = 1;
 
         Owners.Metadata memory meta;
@@ -461,8 +461,8 @@ contract OwnersTest is Test {
         addrs[2] = chuck;
 
         Owners.Settings memory setting;
-        setting.tkn = ITokenOwner(address(0));
-        setting.std = Owners.TokenStandard.OWNER;
+        setting.token = address(0);
+        setting.standard = Owners.Standard.OWNER;
         setting.threshold = 1;
 
         Owners.Metadata memory meta;
@@ -517,8 +517,8 @@ contract OwnersTest is Test {
         addrs[2] = chuck;
 
         Owners.Settings memory setting;
-        setting.tkn = ITokenOwner(address(0));
-        setting.std = Owners.TokenStandard.OWNER;
+        setting.token = address(0);
+        setting.standard = Owners.Standard.OWNER;
         setting.threshold = 2;
 
         Owners.Metadata memory meta;
@@ -571,8 +571,8 @@ contract OwnersTest is Test {
         addrs[3] = dave;
 
         Owners.Settings memory setting;
-        setting.tkn = ITokenOwner(address(0));
-        setting.std = Owners.TokenStandard.OWNER;
+        setting.token = address(0);
+        setting.standard = Owners.Standard.OWNER;
         setting.threshold = 40;
 
         Owners.Metadata memory meta;
@@ -632,8 +632,8 @@ contract OwnersTest is Test {
         addrs[3] = dave;
 
         Owners.Settings memory setting;
-        setting.tkn = ITokenOwner(address(0));
-        setting.std = Owners.TokenStandard.OWNER;
+        setting.token = address(0);
+        setting.standard = Owners.Standard.OWNER;
         setting.threshold = 40;
 
         Owners.Metadata memory meta;
@@ -686,8 +686,8 @@ contract OwnersTest is Test {
         addrs[3] = dave;
 
         Owners.Settings memory setting;
-        setting.tkn = ITokenOwner(erc20);
-        setting.std = Owners.TokenStandard.ERC20;
+        setting.token = erc20;
+        setting.standard = Owners.Standard.ERC20;
         setting.threshold = 40;
 
         Owners.Metadata memory meta;
@@ -747,8 +747,8 @@ contract OwnersTest is Test {
         addrs[3] = dave;
 
         Owners.Settings memory setting;
-        setting.tkn = ITokenOwner(erc20);
-        setting.std = Owners.TokenStandard.ERC20;
+        setting.token = erc20;
+        setting.standard = Owners.Standard.ERC20;
         setting.threshold = 40;
 
         Owners.Metadata memory meta;
@@ -798,8 +798,8 @@ contract OwnersTest is Test {
         addrs[2] = chuck;
 
         Owners.Settings memory setting;
-        setting.tkn = ITokenOwner(erc721);
-        setting.std = Owners.TokenStandard.ERC721;
+        setting.token = erc721;
+        setting.standard = Owners.Standard.ERC721;
         setting.threshold = 2;
 
         Owners.Metadata memory meta;
@@ -854,8 +854,8 @@ contract OwnersTest is Test {
         addrs[2] = chuck;
 
         Owners.Settings memory setting;
-        setting.tkn = ITokenOwner(erc721);
-        setting.std = Owners.TokenStandard.ERC721;
+        setting.token = erc721;
+        setting.standard = Owners.Standard.ERC721;
         setting.threshold = 2;
 
         Owners.Metadata memory meta;
@@ -908,8 +908,8 @@ contract OwnersTest is Test {
         addrs[3] = dave;
 
         Owners.Settings memory setting;
-        setting.tkn = ITokenOwner(erc1155);
-        setting.std = Owners.TokenStandard.ERC1155;
+        setting.token = erc1155;
+        setting.standard = Owners.Standard.ERC1155;
         setting.threshold = 40;
 
         Owners.Metadata memory meta;
@@ -969,8 +969,8 @@ contract OwnersTest is Test {
         addrs[3] = dave;
 
         Owners.Settings memory setting;
-        setting.tkn = ITokenOwner(erc1155);
-        setting.std = Owners.TokenStandard.ERC1155;
+        setting.token = erc1155;
+        setting.standard = Owners.Standard.ERC1155;
         setting.threshold = 40;
 
         Owners.Metadata memory meta;
@@ -1021,8 +1021,8 @@ contract OwnersTest is Test {
         addrs[3] = dave;
 
         Owners.Settings memory setting;
-        setting.tkn = ITokenOwner(erc6909);
-        setting.std = Owners.TokenStandard.ERC6909;
+        setting.token = erc6909;
+        setting.standard = Owners.Standard.ERC6909;
         setting.threshold = 40;
 
         Owners.Metadata memory meta;
@@ -1082,8 +1082,8 @@ contract OwnersTest is Test {
         addrs[3] = dave;
 
         Owners.Settings memory setting;
-        setting.tkn = ITokenOwner(erc6909);
-        setting.std = Owners.TokenStandard.ERC6909;
+        setting.token = erc6909;
+        setting.standard = Owners.Standard.ERC6909;
         setting.threshold = 40;
 
         Owners.Metadata memory meta;
@@ -1134,8 +1134,8 @@ contract OwnersTest is Test {
         addrs[3] = dave;
 
         Owners.Settings memory setting;
-        setting.tkn = ITokenOwner(address(0));
-        setting.std = Owners.TokenStandard.OWNER;
+        setting.token = address(0);
+        setting.standard = Owners.Standard.OWNER;
         setting.threshold = 40;
 
         Owners.Metadata memory meta;

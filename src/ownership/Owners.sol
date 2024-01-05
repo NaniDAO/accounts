@@ -24,7 +24,7 @@ contract Owners is ERC6909 {
     event ThresholdSet(address indexed account, uint88 threshold);
 
     /// @dev Logs new token ownership standard for an account.
-    event TokenSet(address indexed account, ITokenOwner tkn, TokenStandard std);
+    event TokenSet(address indexed account, address token, Standard standard);
 
     /// ========================== STRUCTS ========================== ///
 
@@ -45,9 +45,9 @@ contract Owners is ERC6909 {
 
     /// @dev The account ownership settings struct.
     struct Settings {
-        ITokenOwner tkn;
+        address token;
         uint88 threshold;
-        TokenStandard std;
+        Standard standard;
     }
 
     /// @dev The ERC4337 user operation (userOp) struct.
@@ -68,7 +68,7 @@ contract Owners is ERC6909 {
     /// =========================== ENUMS =========================== ///
 
     /// @dev The token standard interface enum.
-    enum TokenStandard {
+    enum Standard {
         OWNER,
         ERC20,
         ERC721,
@@ -147,11 +147,11 @@ contract Owners is ERC6909 {
                     ) {
                         pos += 85;
                         prev = owner;
-                        tally += set.std == TokenStandard.OWNER
+                        tally += set.standard == Standard.OWNER
                             ? balanceOf(owner, uint256(uint160(msg.sender)))
-                            : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
-                                ? _balanceOf(address(set.tkn), owner)
-                                : _balanceOf(address(set.tkn), owner, uint256(uint160(msg.sender)));
+                            : set.standard == Standard.ERC20 || set.standard == Standard.ERC721
+                                ? _balanceOf(set.token, owner)
+                                : _balanceOf(set.token, owner, uint256(uint160(msg.sender)));
                     } else {
                         return 0xffffffff; // Failure code.
                     }
@@ -217,11 +217,11 @@ contract Owners is ERC6909 {
                     ) && voted[owner][hash] == 0 // Check double voting.
                 ) {
                     pos += 85;
-                    tally += voted[owner][hash] = set.std == TokenStandard.OWNER
+                    tally += voted[owner][hash] = set.standard == Standard.OWNER
                         ? balanceOf(owner, uint256(uint160(account)))
-                        : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
-                            ? _balanceOf(address(set.tkn), owner)
-                            : _balanceOf(address(set.tkn), owner, uint256(uint160(account)));
+                        : set.standard == Standard.ERC20 || set.standard == Standard.ERC721
+                            ? _balanceOf(set.token, owner)
+                            : _balanceOf(set.token, owner, uint256(uint160(account)));
                 }
             }
             return votingTally[hash] += tally;
@@ -253,7 +253,7 @@ contract Owners is ERC6909 {
                 _metadata[id].totalSupply += supply;
             }
         }
-        setToken(setting.tkn, setting.std);
+        setToken(setting.token, setting.standard);
         setThreshold(setting.threshold);
         if (bytes(meta.tokenURI).length != 0) setURI(meta.tokenURI);
         if (bytes(meta.name).length != 0) {
@@ -287,14 +287,9 @@ contract Owners is ERC6909 {
     /// ===================== OWNERSHIP SETTINGS ===================== ///
 
     /// @dev Returns the account settings.
-    function getSettings(address account)
-        public
-        view
-        virtual
-        returns (ITokenOwner, uint88, TokenStandard)
-    {
+    function getSettings(address account) public view virtual returns (address, uint88, Standard) {
         Settings storage set = _settings[account];
-        return (set.tkn, set.threshold, set.std);
+        return (set.token, set.threshold, set.standard);
     }
 
     /// @dev Returns the account metadata.
@@ -319,19 +314,23 @@ contract Owners is ERC6909 {
         if (
             threshold
                 > (
-                    set.std == TokenStandard.OWNER
+                    set.standard == Standard.OWNER
                         ? totalSupply(uint256(uint160(msg.sender)))
-                        : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
-                            ? _totalSupply(address(set.tkn))
-                            : set.tkn.totalSupply(uint256(uint160(msg.sender)))
+                        : set.standard == Standard.ERC20 || set.standard == Standard.ERC721
+                            ? _totalSupply(set.token)
+                            : _totalSupply(set.token, uint256(uint160(msg.sender)))
                 ) || threshold == 0
         ) revert InvalidSetting();
         emit ThresholdSet(msg.sender, (set.threshold = threshold));
     }
 
     /// @dev Sets new token ownership interface standard for the caller account.
-    function setToken(ITokenOwner tkn, TokenStandard std) public payable virtual {
-        emit TokenSet(msg.sender, _settings[msg.sender].tkn = tkn, _settings[msg.sender].std = std);
+    function setToken(address token, Standard standard) public payable virtual {
+        emit TokenSet(
+            msg.sender,
+            _settings[msg.sender].token = token,
+            _settings[msg.sender].standard = standard
+        );
     }
 
     /// @dev Sets new token URI metadata for the caller account.
@@ -339,7 +338,7 @@ contract Owners is ERC6909 {
         emit URISet(msg.sender, (_metadata[uint256(uint160(msg.sender))].tokenURI = uri));
     }
 
-    /// ====================== INTERNAL HELPERS ====================== ///
+    /// ======================= TOKEN HELPERS ======================= ///
 
     /// @dev Returns the amount of ERC20/721 `token` owned by `account`.
     /// Returns zero if the `token` does not exist.
@@ -396,6 +395,21 @@ contract Owners is ERC6909 {
         }
     }
 
+    /// @dev Returns the total supply of ERC1155/6909 `token` `id`.
+    /// Returns zero if the `token` does not exist.
+    function _totalSupply(address token, uint256 id)
+        internal
+        view
+        virtual
+        returns (uint256 supply)
+    {
+        assembly ("memory-safe") {
+            mstore(0x00, hex"bd85b039") // `totalSupply(uint256)`.
+            mstore(0x20, id) // Store the `id` argument.
+            supply := mload(staticcall(gas(), token, 0x00, 0x40, 0x20, 0x20))
+        }
+    }
+
     /// ========================= OVERRIDES ========================= ///
 
     /// @dev Hook that is called before any transfer of tokens.
@@ -425,9 +439,4 @@ interface IAuth {
         external
         payable
         returns (uint256);
-}
-
-/// @notice Generalized fungible token ownership interface.
-interface ITokenOwner {
-    function totalSupply(uint256) external view returns (uint256);
 }
