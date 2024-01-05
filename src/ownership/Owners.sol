@@ -322,7 +322,7 @@ contract Owners is ERC6909 {
                     set.std == TokenStandard.OWNER
                         ? totalSupply(uint256(uint160(msg.sender)))
                         : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
-                            ? set.tkn.totalSupply()
+                            ? _totalSupply(address(set.tkn))
                             : set.tkn.totalSupply(uint256(uint160(msg.sender)))
                 ) || threshold == 0
         ) revert InvalidSetting();
@@ -364,7 +364,7 @@ contract Owners is ERC6909 {
     }
 
     /// @dev Returns the amount of ERC1155/6909 `token` `id` owned by `account`.
-    /// Returns zero if the `token` or `id` does not exist.
+    /// Returns zero if the `token` does not exist.
     function _balanceOf(address token, address account, uint256 id)
         internal
         view
@@ -372,12 +372,27 @@ contract Owners is ERC6909 {
         returns (uint256 amount)
     {
         assembly ("memory-safe") {
-            let m := mload(0x40) // Use the free memory pointer.
-            mstore(m, hex"00fdd58e") // `balanceOf(address,uint256)`.
-            mstore(add(m, 0x04), account) // Store the `account` argument.
-            mstore(add(m, 0x24), id) // Store the `id` argument.
-            let success := staticcall(gas(), token, m, 0x44, m, 0x20)
-            if and(success, eq(returndatasize(), 0x20)) { amount := mload(m) }
+            let m := mload(0x40)
+            mstore(add(m, 0x14), account) // Store the `account` argument.
+            mstore(add(m, 0x34), id) // Store the `id` argument.
+            mstore(m, 0x00fdd58e000000000000000000000000) // `balanceOf(address,uint256)`.
+            amount :=
+                mul(
+                    mload(add(m, 0x20)),
+                    and( // The arguments of `and` are evaluated from right to left.
+                        gt(returndatasize(), 0x1f), // At least 32 bytes returned.
+                        staticcall(gas(), token, add(m, 0x10), add(m, 0x44), add(m, 0x20), 0x20)
+                    )
+                )
+        }
+    }
+
+    /// @dev Returns the total supply of ERC20/721 `token`.
+    /// Returns zero if the `token` does not exist.
+    function _totalSupply(address token) internal view virtual returns (uint256 supply) {
+        assembly ("memory-safe") {
+            mstore(0x00, hex"72dd529b") // `totalSupply()`.
+            supply := mload(staticcall(gas(), token, 0x00, 0x20, 0x20, 0x20))
         }
     }
 
@@ -414,6 +429,5 @@ interface IAuth {
 
 /// @notice Generalized fungible token ownership interface.
 interface ITokenOwner {
-    function totalSupply() external view returns (uint256);
     function totalSupply(uint256) external view returns (uint256);
 }
