@@ -151,7 +151,7 @@ contract Owners is ERC6909 {
                             ? balanceOf(owner, uint256(uint160(msg.sender)))
                             : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
                                 ? _balanceOf(address(set.tkn), owner)
-                                : set.tkn.balanceOf(owner, uint256(uint160(msg.sender)));
+                                : _balanceOf(address(set.tkn), owner, uint256(uint160(msg.sender)));
                     } else {
                         return 0xffffffff; // Failure code.
                     }
@@ -221,7 +221,7 @@ contract Owners is ERC6909 {
                         ? balanceOf(owner, uint256(uint160(account)))
                         : set.std == TokenStandard.ERC20 || set.std == TokenStandard.ERC721
                             ? _balanceOf(address(set.tkn), owner)
-                            : set.tkn.balanceOf(owner, uint256(uint160(account)));
+                            : _balanceOf(address(set.tkn), owner, uint256(uint160(account)));
                 }
             }
             return votingTally[hash] += tally;
@@ -363,6 +363,24 @@ contract Owners is ERC6909 {
         }
     }
 
+    /// @dev Returns the amount of ERC1155/6909 `token` `id` owned by `account`.
+    /// Returns zero if the `token` or `id` does not exist.
+    function _balanceOf(address token, address account, uint256 id)
+        internal
+        view
+        virtual
+        returns (uint256 amount)
+    {
+        assembly ("memory-safe") {
+            let m := mload(0x40) // Use the free memory pointer.
+            mstore(m, hex"00fdd58e") // `balanceOf(address,uint256)`.
+            mstore(add(m, 0x04), account) // Store the `account` argument.
+            mstore(add(m, 0x24), id) // Store the `id` argument.
+            let success := staticcall(gas(), token, m, 0x44, m, 0x20)
+            if and(success, eq(returndatasize(), 0x20)) { amount := mload(m) }
+        }
+    }
+
     /// ========================= OVERRIDES ========================= ///
 
     /// @dev Hook that is called before any transfer of tokens.
@@ -396,8 +414,6 @@ interface IAuth {
 
 /// @notice Generalized fungible token ownership interface.
 interface ITokenOwner {
-    function balanceOf(address) external view returns (uint256);
-    function balanceOf(address, uint256) external view returns (uint256);
     function totalSupply() external view returns (uint256);
     function totalSupply(uint256) external view returns (uint256);
 }
