@@ -136,14 +136,13 @@ contract Owners is ERC6909 {
                 address prev;
                 address owner;
                 uint256 tally;
-                // Check if the owners' signature is valid:
                 for (uint256 i; i != signature.length / 85; ++i) {
                     if (
                         SignatureCheckerLib.isValidSignatureNow(
                             owner = address(bytes20(signature[pos:pos + 20])),
                             hash,
                             signature[pos + 20:pos + 85]
-                        ) && prev < owner
+                        ) && prev < owner // Check double voting.
                     ) {
                         pos += 85;
                         prev = owner;
@@ -156,12 +155,17 @@ contract Owners is ERC6909 {
                         return 0xffffffff;
                     }
                 }
-                if (tally >= set.threshold) return this.isValidSignature.selector;
-                else return 0xffffffff;
+                return _returns(tally >= set.threshold);
             }
         }
-        if (votingTally[hash] >= set.threshold) return this.isValidSignature.selector;
-        else return 0xffffffff;
+        result = _returns(votingTally[hash] >= set.threshold);
+    }
+
+    function _returns(bool success) internal pure virtual returns (bytes4 result) {
+        assembly {
+            // `success ? bytes4(keccak256("isValidSignature(bytes32,bytes)")) : 0xffffffff`.
+            result := shl(224, or(0x1626ba7e, sub(0, iszero(success))))
+        }
     }
 
     /// @dev Validates ERC4337 userOp with additional auth logic flow among owners.
