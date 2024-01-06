@@ -374,7 +374,7 @@ contract Owners is ERC6909 {
             mstore(0x14, account) // Store the `account` argument.
             mstore(0x34, id) // Store the `id` argument.
             mstore(0x00, 0x00fdd58e000000000000000000000000) // `balanceOf(address,uint256)`.
-            amount := mload(staticcall(gas(), token, 0x10, 0x44, 0x20, 0x20))
+            amount := mload(staticcall(gas(), token, 0x10, 0x44, 0x00, 0x20))
             mstore(0x34, 0)
         }
     }
@@ -395,9 +395,9 @@ contract Owners is ERC6909 {
         returns (uint256 supply)
     {
         assembly ("memory-safe") {
-            mstore(0x00, hex"3f053e2d") // `totalSupply(uint256)`.
             mstore(0x04, id) // Store the `id` argument.
-            supply := mload(staticcall(gas(), token, 0x00, 0x24, 0x20, 0x20))
+            mstore(0x00, hex"3f053e2d") // `totalSupply(uint256)`.
+            supply := mload(staticcall(gas(), token, 0x00, 0x24, 0x00, 0x20))
         }
     }
 
