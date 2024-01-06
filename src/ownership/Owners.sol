@@ -127,7 +127,7 @@ contract Owners is ERC6909 {
         public
         view
         virtual
-        returns (bytes4)
+        returns (bytes4 result)
     {
         Settings memory set = _settings[msg.sender];
         if (signature.length != 0) {
@@ -153,22 +153,14 @@ contract Owners is ERC6909 {
                                 ? _balanceOf(set.token, owner)
                                 : _balanceOf(set.token, owner, uint256(uint160(msg.sender)));
                     } else {
-                        return 0xffffffff; // Failure code.
+                        return 0xffffffff;
                     }
                 }
                 // Check if the ownership tally has been met:
-                if (tally >= set.threshold) {
-                    return this.isValidSignature.selector;
-                } else {
-                    return 0xffffffff; // Failure code.
-                }
+                if (tally >= set.threshold) return this.isValidSignature.selector;
             }
         } else {
-            if (votingTally[hash] >= set.threshold) {
-                return this.isValidSignature.selector;
-            } else {
-                return 0xffffffff; // Failure code.
-            }
+            if (votingTally[hash] >= set.threshold) return this.isValidSignature.selector;
         }
     }
 
