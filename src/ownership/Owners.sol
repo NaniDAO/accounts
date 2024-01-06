@@ -371,18 +371,18 @@ contract Owners is ERC6909 {
         returns (uint256 amount)
     {
         assembly ("memory-safe") {
-            let m := mload(0x40)
-            mstore(add(m, 0x14), account) // Store the `account` argument.
-            mstore(add(m, 0x34), id) // Store the `id` argument.
-            mstore(m, 0x00fdd58e000000000000000000000000) // `balanceOf(address,uint256)`.
+            mstore(0x14, account) // Store the `account` argument.
+            mstore(0x34, id) // Store the `id` argument.
+            mstore(0x00, 0x00fdd58e000000000000000000000000) // `balanceOf(address,uint256)`.
             amount :=
                 mul(
-                    mload(add(m, 0x20)),
+                    mload(0x20),
                     and( // The arguments of `and` are evaluated from right to left.
                         gt(returndatasize(), 0x1f), // At least 32 bytes returned.
-                        staticcall(gas(), token, add(m, 0x10), add(m, 0x44), add(m, 0x20), 0x20)
+                        staticcall(gas(), token, 0x10, 0x44, 0x20, 0x20)
                     )
                 )
+            mstore(0x34, 0)
         }
     }
 
