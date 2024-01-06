@@ -127,7 +127,7 @@ contract Owners is ERC6909 {
         public
         view
         virtual
-        returns (bytes4 result)
+        returns (bytes4)
     {
         Settings memory set = _settings[msg.sender];
         if (signature.length != 0) {
@@ -152,20 +152,13 @@ contract Owners is ERC6909 {
                                 ? _balanceOf(set.token, owner)
                                 : _balanceOf(set.token, owner, uint256(uint160(msg.sender)));
                     } else {
-                        return 0xffffffff;
+                        return 0xffffffff; // Failure code.
                     }
                 }
-                return _returns(tally >= set.threshold);
+                return _validateReturn(tally >= set.threshold);
             }
         }
-        result = _returns(votingTally[hash] >= set.threshold);
-    }
-
-    function _returns(bool success) internal pure virtual returns (bytes4 result) {
-        assembly {
-            // `success ? bytes4(keccak256("isValidSignature(bytes32,bytes)")) : 0xffffffff`.
-            result := shl(224, or(0x1626ba7e, sub(0, iszero(success))))
-        }
+        return _validateReturn(votingTally[hash] >= set.threshold);
     }
 
     /// @dev Validates ERC4337 userOp with additional auth logic flow among owners.
@@ -188,6 +181,14 @@ contract Owners is ERC6909 {
         ) validationData = 0x01; // Failure code.
     }
 
+    /// @dev Returns validated signature result within the conventional ERC1271 syntax.
+    function _validateReturn(bool success) internal pure virtual returns (bytes4 result) {
+        assembly {
+            // `success ? bytes4(keccak256("isValidSignature(bytes32,bytes)")) : 0xffffffff`.
+            result := shl(224, or(0x1626ba7e, sub(0, iszero(success))))
+        }
+    }
+
     /// ===================== VOTING OPERATIONS ===================== ///
 
     /// @dev Casts account owner voting shares on a given ERC4337 userOp hash.
@@ -197,8 +198,8 @@ contract Owners is ERC6909 {
         virtual
         returns (uint256)
     {
-        bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
         Settings memory set = _settings[account];
+        bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
         unchecked {
             uint256 pos;
             address owner;
