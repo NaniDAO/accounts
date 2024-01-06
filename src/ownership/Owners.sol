@@ -157,9 +157,11 @@ contract Owners is ERC6909 {
                     }
                 }
                 if (tally >= set.threshold) return this.isValidSignature.selector;
+                else return 0xffffffff;
             }
         }
         if (votingTally[hash] >= set.threshold) return this.isValidSignature.selector;
+        else return 0xffffffff;
     }
 
     /// @dev Validates ERC4337 userOp with additional auth logic flow among owners.
