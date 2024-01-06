@@ -204,7 +204,6 @@ contract Owners is ERC6909 {
             uint256 pos;
             address owner;
             uint256 tally;
-            // Check if the owners' signature is valid:
             for (uint256 i; i != signature.length / 85; ++i) {
                 if (
                     SignatureCheckerLib.isValidSignatureNow(
@@ -221,7 +220,7 @@ contract Owners is ERC6909 {
                             : _balanceOf(set.token, owner, uint256(uint160(account)));
                 }
             }
-            return votingTally[hash] += tally;
+            return votingTally[hash] += tally; // Return latest total tally.
         }
     }
 
@@ -246,17 +245,15 @@ contract Owners is ERC6909 {
                     ++i;
                 }
             }
-            unchecked {
-                _metadata[id].totalSupply += supply;
-            }
+            _metadata[id].totalSupply += supply;
         }
-        setToken(setting.token, setting.standard);
         setThreshold(setting.threshold);
-        if (bytes(meta.tokenURI).length != 0) setURI(meta.tokenURI);
+        setToken(setting.token, setting.standard);
         if (bytes(meta.name).length != 0) {
             _metadata[id].name = meta.name;
             _metadata[id].symbol = meta.symbol;
         }
+        if (bytes(meta.tokenURI).length != 0) setURI(meta.tokenURI);
         if (meta.authority != IAuth(address(0))) _metadata[id].authority = meta.authority;
         IOwnable(msg.sender).requestOwnershipHandover();
     }
