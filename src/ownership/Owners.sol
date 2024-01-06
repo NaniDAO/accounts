@@ -402,7 +402,7 @@ contract Owners is ERC6909 {
         returns (uint256 supply)
     {
         assembly ("memory-safe") {
-            mstore(0x00, hex"bd85b039") // `totalSupply(uint256)`.
+            mstore(0x00, 0x3f053e2d) // `totalSupply(uint256)`.
             mstore(0x04, id) // Store the `id` argument.
             supply := mload(staticcall(gas(), token, 0x00, 0x24, 0x20, 0x20))
         }
