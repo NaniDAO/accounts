@@ -374,14 +374,7 @@ contract Owners is ERC6909 {
             mstore(0x14, account) // Store the `account` argument.
             mstore(0x34, id) // Store the `id` argument.
             mstore(0x00, 0x00fdd58e000000000000000000000000) // `balanceOf(address,uint256)`.
-            amount :=
-                mul(
-                    mload(0x20),
-                    and( // The arguments of `and` are evaluated from right to left.
-                        gt(returndatasize(), 0x1f), // At least 32 bytes returned.
-                        staticcall(gas(), token, 0x10, 0x44, 0x20, 0x20)
-                    )
-                )
+            amount := mload(staticcall(gas(), token, 0x10, 0x44, 0x20, 0x20))
             mstore(0x34, 0)
         }
     }
