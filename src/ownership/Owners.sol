@@ -368,7 +368,7 @@ contract Owners is ERC6909 {
     /// @dev Returns the total supply of ERC20/721 `token`.
     function _totalSupply(address token) internal view virtual returns (uint256 supply) {
         assembly ("memory-safe") {
-            mstore(0x00, hex"72dd529b") // `totalSupply()`.
+            mstore(0x00, 0x72dd529b) // `totalSupply()`.
             supply := mload(staticcall(gas(), token, 0x00, 0x04, 0x00, 0x20))
         }
     }
@@ -382,7 +382,7 @@ contract Owners is ERC6909 {
     {
         assembly ("memory-safe") {
             mstore(0x04, id) // Store the `id` argument.
-            mstore(0x00, hex"3f053e2d") // `totalSupply(uint256)`.
+            mstore(0x00, 0x3f053e2d) // `totalSupply(uint256)`.
             supply := mload(staticcall(gas(), token, 0x00, 0x24, 0x00, 0x20))
         }
     }
