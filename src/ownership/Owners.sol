@@ -335,7 +335,6 @@ contract Owners is ERC6909 {
     /// ======================= TOKEN HELPERS ======================= ///
 
     /// @dev Returns the amount of ERC20/721 `token` owned by `account`.
-    /// Returns zero if the `token` does not exist.
     function _balanceOf(address token, address account)
         internal
         view
@@ -345,19 +344,12 @@ contract Owners is ERC6909 {
         assembly ("memory-safe") {
             mstore(0x14, account) // Store the `account` argument.
             mstore(0x00, 0x70a08231000000000000000000000000) // `balanceOf(address)`.
-            amount :=
-                mul(
-                    mload(0x20),
-                    and( // The arguments of `and` are evaluated from right to left.
-                        gt(returndatasize(), 0x1f), // At least 32 bytes returned.
-                        staticcall(gas(), token, 0x10, 0x24, 0x20, 0x20)
-                    )
-                )
+            pop(staticcall(gas(), token, 0x10, 0x24, 0x00, 0x20))
+            amount := mload(0x00)
         }
     }
 
     /// @dev Returns the amount of ERC1155/6909 `token` `id` owned by `account`.
-    /// Returns zero if the `token` does not exist.
     function _balanceOf(address token, address account, uint256 id)
         internal
         view
@@ -409,11 +401,6 @@ contract Owners is ERC6909 {
     }
 }
 
-/// @notice Simple ownership interface for handover requests.
-interface IOwnable {
-    function requestOwnershipHandover() external payable;
-}
-
 /// @notice Simple authority interface for contracts.
 interface IAuth {
     function validateTransfer(address, address, uint256, uint256)
@@ -424,4 +411,9 @@ interface IAuth {
         external
         payable
         returns (uint256);
+}
+
+/// @notice Simple ownership interface for handover requests.
+interface IOwnable {
+    function requestOwnershipHandover() external payable;
 }
