@@ -5,6 +5,7 @@ import {ERC6909} from "@solady/src/tokens/ERC6909.sol";
 import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 
 /// @notice Simple ownership singleton for smart accounts.
+/// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/ownership/Owners.sol)
 /// @dev Integration is best by means of the ERC173 and ERC1271 methods.
 /// @custom:version 0.0.0
 contract Owners is ERC6909 {

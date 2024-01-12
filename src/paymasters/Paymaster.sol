@@ -71,10 +71,9 @@ contract Paymaster {
     ) public payable virtual onlyEntryPoint returns (bytes memory, uint256) {
         (uint48 validUntil, uint48 validAfter) =
             abi.decode(userOp.paymasterAndData[20:84], (uint48, uint48));
-        bytes memory signature = userOp.paymasterAndData[84:];
-
+        bytes calldata signature = userOp.paymasterAndData[84:];
         if (
-            SignatureCheckerLib.isValidSignatureNow(
+            SignatureCheckerLib.isValidSignatureNowCalldata(
                 _OWNER, _hashSignedUserOp(userOp, validUntil, validAfter), signature
             )
         ) {
