@@ -92,7 +92,7 @@ contract Owners is ERC6909 {
     /// @dev Stores mapping of account owner voting shares cast on signed userOp hashes.
     mapping(address owner => mapping(bytes32 signedHash => uint256 shares)) public voted;
 
-    /// ====================== ERC6909 METADATA ====================== ///
+    /// ================= ERC6909 METADATA & SUPPLY ================= ///
 
     /// @dev Returns the name for token `id` using this contract.
     function name(uint256 id) public view virtual override(ERC6909) returns (string memory) {
@@ -225,7 +225,7 @@ contract Owners is ERC6909 {
         }
     }
 
-    /// ================== INSTALLATION OPERATIONS ================== ///
+    /// ======================== INSTALLATION ======================== ///
 
     /// @dev Initializes ownership settings for the caller account.
     /// note: Finalizes with transfer request in two-step pattern.
@@ -240,26 +240,75 @@ contract Owners is ERC6909 {
         if (owners.length != 0) {
             uint96 supply;
             for (uint256 i; i != owners.length;) {
-                _mint(owners[i].owner, id, owners[i].shares);
                 supply += owners[i].shares;
+                _mint(owners[i].owner, id, owners[i].shares);
                 unchecked {
                     ++i;
                 }
             }
             _metadata[id].totalSupply += supply;
         }
-        setThreshold(setting.threshold);
         setToken(setting.token, setting.standard);
+        setThreshold(setting.threshold);
         if (bytes(meta.name).length != 0) {
             _metadata[id].name = meta.name;
             _metadata[id].symbol = meta.symbol;
         }
         if (bytes(meta.tokenURI).length != 0) setURI(meta.tokenURI);
         if (meta.authority != IAuth(address(0))) _metadata[id].authority = meta.authority;
-        IOwnable(msg.sender).requestOwnershipHandover();
+        try IOwnable(msg.sender).requestOwnershipHandover() {} catch {} // Avoid revert.
+    }
+
+    /// ===================== OWNERSHIP SETTINGS ===================== ///
+
+    /// @dev Returns the account settings.
+    function getSettings(address account) public view virtual returns (address, uint88, Standard) {
+        Settings storage set = _settings[account];
+        return (set.token, set.threshold, set.standard);
+    }
+
+    /// @dev Sets new authority contract for the caller account.
+    function setAuth(IAuth auth) public payable virtual {
+        emit AuthSet(msg.sender, (_metadata[uint256(uint160(msg.sender))].authority = auth));
+    }
+
+    /// @dev Sets new token ownership interface standard for the caller account.
+    function setToken(address token, Standard standard) public payable virtual {
+        emit TokenSet(
+            msg.sender,
+            _settings[msg.sender].token = token,
+            _settings[msg.sender].standard = standard
+        );
+    }
+
+    /// @dev Sets new ownership threshold for the caller account.
+    function setThreshold(uint88 threshold) public payable virtual {
+        Settings storage set = _settings[msg.sender];
+        if (
+            threshold
+                > (
+                    set.standard == Standard.OWNER
+                        ? totalSupply(uint256(uint160(msg.sender)))
+                        : set.standard == Standard.ERC20 || set.standard == Standard.ERC721
+                            ? _totalSupply(set.token)
+                            : _totalSupply(set.token, uint256(uint160(msg.sender)))
+                ) || threshold == 0
+        ) revert InvalidSetting();
+        emit ThresholdSet(msg.sender, (set.threshold = threshold));
     }
 
     /// ====================== TOKEN OPERATIONS ====================== ///
+
+    /// @dev Returns the account metadata.
+    function getMetadata(address account)
+        public
+        view
+        virtual
+        returns (string memory, string memory, string memory, IAuth)
+    {
+        Metadata storage meta = _metadata[uint256(uint160(account))];
+        return (meta.name, meta.symbol, meta.tokenURI, meta.authority);
+    }
 
     /// @dev Mints shares for an owner of the caller account.
     function mint(address owner, uint96 shares) public payable virtual {
@@ -279,61 +328,12 @@ contract Owners is ERC6909 {
         _burn(owner, id, shares);
     }
 
-    /// ===================== OWNERSHIP SETTINGS ===================== ///
-
-    /// @dev Returns the account settings.
-    function getSettings(address account) public view virtual returns (address, uint88, Standard) {
-        Settings storage set = _settings[account];
-        return (set.token, set.threshold, set.standard);
-    }
-
-    /// @dev Returns the account metadata.
-    function getMetadata(address account)
-        public
-        view
-        virtual
-        returns (string memory, string memory, string memory, IAuth)
-    {
-        Metadata storage meta = _metadata[uint256(uint160(account))];
-        return (meta.name, meta.symbol, meta.tokenURI, meta.authority);
-    }
-
-    /// @dev Sets new authority contract for the caller account.
-    function setAuth(IAuth auth) public payable virtual {
-        emit AuthSet(msg.sender, (_metadata[uint256(uint160(msg.sender))].authority = auth));
-    }
-
-    /// @dev Sets new ownership threshold for the caller account.
-    function setThreshold(uint88 threshold) public payable virtual {
-        Settings storage set = _settings[msg.sender];
-        if (
-            threshold
-                > (
-                    set.standard == Standard.OWNER
-                        ? totalSupply(uint256(uint160(msg.sender)))
-                        : set.standard == Standard.ERC20 || set.standard == Standard.ERC721
-                            ? _totalSupply(set.token)
-                            : _totalSupply(set.token, uint256(uint160(msg.sender)))
-                ) || threshold == 0
-        ) revert InvalidSetting();
-        emit ThresholdSet(msg.sender, (set.threshold = threshold));
-    }
-
-    /// @dev Sets new token ownership interface standard for the caller account.
-    function setToken(address token, Standard standard) public payable virtual {
-        emit TokenSet(
-            msg.sender,
-            _settings[msg.sender].token = token,
-            _settings[msg.sender].standard = standard
-        );
-    }
-
     /// @dev Sets new token URI metadata for the caller account.
     function setURI(string calldata uri) public payable virtual {
         emit URISet(msg.sender, (_metadata[uint256(uint160(msg.sender))].tokenURI = uri));
     }
 
-    /// ======================= TOKEN HELPERS ======================= ///
+    /// =================== EXTERNAL TOKEN HELPERS =================== ///
 
     /// @dev Returns the amount of ERC20/721 `token` owned by `account`.
     function _balanceOf(address token, address account)
@@ -343,10 +343,10 @@ contract Owners is ERC6909 {
         returns (uint256 amount)
     {
         assembly ("memory-safe") {
-            mstore(0x14, account) // Store the `account` argument.
             mstore(0x00, 0x70a08231000000000000000000000000) // `balanceOf(address)`.
-            pop(staticcall(gas(), token, 0x10, 0x24, 0x00, 0x20))
-            amount := mload(0x00)
+            mstore(0x14, account) // Store the `account` argument.
+            pop(staticcall(gas(), token, 0x10, 0x24, 0x20, 0x20))
+            amount := mload(0x20)
         }
     }
 
@@ -358,18 +358,21 @@ contract Owners is ERC6909 {
         returns (uint256 amount)
     {
         assembly ("memory-safe") {
-            mstore(0x04, account) // Store the `account` argument.
-            mstore(0x18, id) // Store the `id` argument.
-            mstore(0x00, 0x00fdd58e) // `balanceOf(address,uint256)`.
-            amount := mload(staticcall(gas(), token, 0x00, 0x38, 0x00, 0x20))
+            mstore(0x00, 0x00fdd58e000000000000000000000000) // `balanceOf(address,uint256)`.
+            mstore(0x14, account) // Store the `account` argument.
+            mstore(0x34, id) // Store the `id` argument.
+            pop(staticcall(gas(), token, 0x10, 0x44, 0x20, 0x20))
+            amount := mload(0x20)
+            mstore(0x34, 0) // Restore the part of the free memory pointer that was overwritten.
         }
     }
 
     /// @dev Returns the total supply of ERC20/721 `token`.
     function _totalSupply(address token) internal view virtual returns (uint256 supply) {
         assembly ("memory-safe") {
-            mstore(0x00, 0x72dd529b) // `totalSupply()`.
-            supply := mload(staticcall(gas(), token, 0x00, 0x04, 0x00, 0x20))
+            mstore(0x00, 0x18160ddd) // `totalSupply()`.
+            pop(staticcall(gas(), token, 0x1c, 0x04, 0x20, 0x20))
+            supply := mload(0x20)
         }
     }
 
@@ -381,9 +384,10 @@ contract Owners is ERC6909 {
         returns (uint256 supply)
     {
         assembly ("memory-safe") {
-            mstore(0x04, id) // Store the `id` argument.
-            mstore(0x00, 0x3f053e2d) // `totalSupply(uint256)`.
-            supply := mload(staticcall(gas(), token, 0x00, 0x24, 0x00, 0x20))
+            mstore(0x00, 0xbd85b039) // `totalSupply(uint256)`.
+            mstore(0x20, id) // Store the `id` argument.
+            pop(staticcall(gas(), token, 0x1c, 0x24, 0x20, 0x20))
+            supply := mload(0x20)
         }
     }
 
