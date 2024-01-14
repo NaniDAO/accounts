@@ -1,5 +1,5 @@
 # RecoveryValidator
-[Git Source](https://github.com/NaniDAO/accounts/blob/8328e5c25cabbe5c5a4de81be1529d0f8371cfb5/src/validators/RecoveryValidator.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/7ac59b02001a809e2cf6d349a24270ca5342f835/src/validators/RecoveryValidator.sol)
 
 Simple social recovery validator for smart accounts.
 
@@ -12,7 +12,7 @@ and thresholds for such authorizers to validate user operations.*
 ### _settings
 ========================== STORAGE ========================== ///
 
-*Stores mappings of settings to accounts.*
+*Stores mapping of settings to accounts.*
 
 
 ```solidity
@@ -93,7 +93,7 @@ function setDelay(uint32 delay) public payable virtual;
 
 ### setThreshold
 
-*Sets new authorizers' threshold for the caller account.*
+*Sets new authorizer threshold for the caller account.*
 
 
 ```solidity
@@ -172,7 +172,7 @@ event DeadlineSet(address indexed account, uint32 deadline);
 ```
 
 ### ThresholdSet
-*Logs the new authorizers' threshold for an account.*
+*Logs the new authorizer threshold for an account.*
 
 
 ```solidity

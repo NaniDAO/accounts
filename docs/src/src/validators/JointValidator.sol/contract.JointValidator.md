@@ -1,5 +1,5 @@
 # JointValidator
-[Git Source](https://github.com/NaniDAO/accounts/blob/8328e5c25cabbe5c5a4de81be1529d0f8371cfb5/src/validators/JointValidator.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/7ac59b02001a809e2cf6d349a24270ca5342f835/src/validators/JointValidator.sol)
 
 **Author:**
 nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/validators/JointValidator.sol)
@@ -11,7 +11,7 @@ Simple joint ownership validator for smart accounts.
 ### _authorizers
 ========================== STORAGE ========================== ///
 
-*Stores mappings of authorizers to accounts.*
+*Stores mapping of authorizers to accounts.*
 
 
 ```solidity
@@ -48,6 +48,8 @@ function validateUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint2
 ```
 
 ### get
+
+=================== AUTHORIZER OPERATIONS =================== ///
 
 *Returns the authorizers for an account.*
 

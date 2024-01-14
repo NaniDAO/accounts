@@ -1,5 +1,5 @@
 # PermitValidator
-[Git Source](https://github.com/NaniDAO/accounts/blob/8328e5c25cabbe5c5a4de81be1529d0f8371cfb5/src/validators/PermitValidator.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/7ac59b02001a809e2cf6d349a24270ca5342f835/src/validators/PermitValidator.sol)
 
 **Inherits:**
 EIP712
