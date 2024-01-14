@@ -5,7 +5,7 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 
 /// @notice Simple joint ownership validator for smart accounts.
 /// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/validators/JointValidator.sol)
-/// @custom:version 0.0.0
+/// @custom:version 0.0.1
 contract JointValidator {
     /// =========================== EVENTS =========================== ///
 
@@ -51,21 +51,20 @@ contract JointValidator {
     {
         address[] memory authorizers = _authorizers[msg.sender];
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
-        for (uint256 i; i < authorizers.length;) {
+        for (uint256 i; i != authorizers.length;) {
             if (
                 SignatureCheckerLib.isValidSignatureNowCalldata(
                     authorizers[i], hash, userOp.signature
                 )
             ) {
-                validationData = 0x01;
+                validationData = 0x01; // Failure code.
                 break;
             }
             unchecked {
                 ++i;
             }
         }
-        /// @solidity memory-safe-assembly
-        assembly {
+        assembly ("memory-safe") {
             validationData := iszero(validationData)
         }
     }
