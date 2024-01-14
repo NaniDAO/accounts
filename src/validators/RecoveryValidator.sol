@@ -8,7 +8,7 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 /// @dev Operationally this validator works as a one-time recovery
 /// multisig singleton by allowing accounts to program authorizers
 /// and thresholds for such authorizers to validate user operations.
-/// @custom:version 0.0.0
+/// @custom:version 0.0.1
 contract RecoveryValidator {
     /// ======================= CUSTOM ERRORS ======================= ///
 
@@ -96,11 +96,11 @@ contract RecoveryValidator {
         if (bytes4(userOp.callData[132:]) != 0xf2fde38b) revert InvalidExecute();
         Authorizer[] memory authorizers = new Authorizer[](settings.authorizers.length);
         unchecked {
-            for (uint256 i; i < authorizers.length;) {
+            for (uint256 i; i != authorizers.length;) {
                 authorizers[i].signer = settings.authorizers[i];
                 ++i;
             }
-            for (uint256 i; i < settings.threshold;) {
+            for (uint256 i; i != settings.threshold;) {
                 for (uint256 j; j < authorizers.length;) {
                     if (
                         !authorizers[j].matched
@@ -114,7 +114,7 @@ contract RecoveryValidator {
                     } else {
                         ++j;
                         if (j == authorizers.length) {
-                            return 0x01;
+                            return 0x01; // Failure code.
                         }
                     }
                 }
@@ -134,7 +134,7 @@ contract RecoveryValidator {
             if (signature.length % 65 != 0) revert InvalidSetting();
             signatures = new bytes[](signature.length / 65);
             uint256 pos;
-            for (uint256 i; i < signatures.length;) {
+            for (uint256 i; i != signatures.length;) {
                 signatures[i] = signature[pos:pos += 65];
                 ++i;
             }
@@ -179,7 +179,7 @@ contract RecoveryValidator {
     function requestOwnershipHandover(address account) public payable virtual {
         address[] memory authorizers = _settings[account].authorizers;
         bool isAuthorizer;
-        for (uint256 i; i < authorizers.length;) {
+        for (uint256 i; i != authorizers.length;) {
             if (msg.sender == authorizers[i]) {
                 isAuthorizer = true;
                 break;

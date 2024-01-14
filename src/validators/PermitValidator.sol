@@ -118,22 +118,22 @@ contract PermitValidator is EIP712 {
             abi.decode(userOp.signature, (bytes32, bytes));
         address[] memory authorizers = _authorizers[msg.sender];
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
-        for (uint256 i; i < authorizers.length;) {
+        for (uint256 i; i != authorizers.length;) {
             if (SignatureCheckerLib.isValidSignatureNow(authorizers[i], hash, signature)) {
-                validationData = 0x01;
+                validationData = 0x01; // Failure code.
                 break;
             }
             unchecked {
                 ++i;
             }
         }
-        if (validationData == 0x00) return 0x01;
+        if (validationData == 0x00) return 0x01; // Failure code.
         Permit memory permit = _permits[permitHash];
         unchecked {
             uint256 count = permit.timesUsed++;
             if (count >= permit.spans.length) {
                 delete _permits[permitHash];
-                return 0x01;
+                return 0x01; // Failure code.
             }
             validationData = validatePermit(permit, permit.spans[count], userOp.callData);
         }
@@ -180,7 +180,7 @@ contract PermitValidator is EIP712 {
         if (value != 0) permit.allowance -= uint192(value);
         if (bytes4(data) != permit.selector) revert InvalidSelector();
         unchecked {
-            for (uint256 i; i < permit.args.length; ++i) {
+            for (uint256 i; i != permit.args.length; ++i) {
                 bytes memory call =
                     callData[permit.args[i].offset:permit.args[i].offset + permit.args[i].length];
                 validationData = _validateArg(permit.args[i], call);
@@ -291,7 +291,7 @@ contract PermitValidator is EIP712 {
         returns (bool)
     {
         Arg[] memory args = abi.decode(bounds, (Arg[]));
-        for (uint256 i; i < args.length;) {
+        for (uint256 i; i != args.length;) {
             unchecked {
                 ++i;
             }
