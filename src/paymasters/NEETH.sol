@@ -7,7 +7,7 @@ import "@solady/src/utils/FixedPointMathLib.sol";
 
 /// @notice Simple wrapped ERC4337 implementation with paymaster and yield functions.
 /// @dev The strategy for ether (ETH) deposits defaults to Lido for this alpha version.
-/// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/paymasters/NEETH.sol)
+/// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/paymasters/NETH.sol)
 /// @custom:lex The user agrees that the following terms apply to use:
 ///             This smart contract ("NEETH") is being provided as is.
 ///             No guarantee, representation or warranty is being made
@@ -17,14 +17,13 @@ import "@solady/src/utils/FixedPointMathLib.sol";
 /* note:
     Users should be able to get credit for gas using NEETH.
     This means that they can earn NEETH or buy it as ERC20.
-    NEETH should not be just ETH sitting in entry point.
+    NEETH should not be just ETH sitting in Entry Point.
     It should earn yield upon minting from ETH staking.
     Lido is used by default. stETH is minted for ETH.
     NEETH holds the stETH from ETH deposits for user.
-    When users want to pay for entry point user ops,
+    When users want to pay for Entry Point user ops,
     NEETH is burned to unlock the underlying stETH,
     and uniswap that for enough ETH to pay for tx.
-    The user and NEETH owner should earn yield.
 */
 contract NEETH is ERC20 {
     /// ======================= CUSTOM ERRORS ======================= ///
@@ -53,9 +52,6 @@ contract NEETH is ERC20 {
 
     /// @dev Holds a constant postOp cost estimate.
     uint256 internal constant _COST_OF_POST = 15000;
-
-    /// @dev Holds a constant paymaster fee.
-    uint256 internal constant _FEE = 999 gwei;
 
     /// ========================= IMMUTABLES ========================= ///
 
@@ -122,10 +118,8 @@ contract NEETH is ERC20 {
     /// @dev Deposits `msg.value` ETH of the caller and mints NEETH shares for `to`.
     function depositTo(address to) public payable virtual {
         SafeTransferLib.safeTransferETH(_STRATEGY, msg.value); // Get back stETH.
-        _mint(_OWNER, _FEE); // Mint paymaster fee portion.
-        // Mint NEETH per ETH minus fee.
         unchecked {
-            _mint(to, msg.value - _FEE);
+            _mint(to, msg.value); // Mint equal shares.
         }
     }
 
@@ -146,23 +140,6 @@ contract NEETH is ERC20 {
             _burn(from, amount); // Burn NEETH.
             _swap(share, to); // Swap stETH for ETH.
         }
-    }
-
-    /// ===================== STAKING OPERATIONS ===================== ///
-
-    /// @dev Add stake for this paymaster. Further sets a staking delay timestamp.
-    function addStake(uint32 unstakeDelaySec) public payable virtual onlyOwner {
-        NEETH(_ENTRY_POINT).addStake{value: msg.value}(unstakeDelaySec);
-    }
-
-    /// @dev Unlock the stake, in order to withdraw it.
-    function unlockStake() public payable virtual onlyOwner {
-        NEETH(_ENTRY_POINT).unlockStake();
-    }
-
-    /// @dev Withdraw the entire paymaster's stake. Can select a recipient of this withdrawal.
-    function withdrawStake(address payable withdrawAddress) public payable virtual onlyOwner {
-        NEETH(_ENTRY_POINT).withdrawStake(withdrawAddress);
     }
 
     /// =================== VALIDATION OPERATIONS =================== ///
@@ -191,12 +168,28 @@ contract NEETH is ERC20 {
         onlyEntryPoint
     {
         unchecked {
-            uint256 cost = actualGasCost + _COST_OF_POST;
-            uint256 sharesToBurn = _getAmountOutInShares(cost);
+            uint256 sharesToBurn = _getAmountOutInShares(actualGasCost + _COST_OF_POST);
             address sender = abi.decode(context, (address));
             _swap(sharesToBurn, _ENTRY_POINT); // Fund the EntryPoint.
             _burn(sender, sharesToBurn); // Burn cost in sender shares.
         }
+    }
+
+    /// ===================== STAKING OPERATIONS ===================== ///
+
+    /// @dev Add stake for this paymaster. Further sets a staking delay timestamp.
+    function addStake(uint32 unstakeDelaySec) public payable virtual onlyOwner {
+        NEETH(_ENTRY_POINT).addStake{value: msg.value}(unstakeDelaySec);
+    }
+
+    /// @dev Unlock the stake, in order to withdraw it.
+    function unlockStake() public payable virtual onlyOwner {
+        NEETH(_ENTRY_POINT).unlockStake();
+    }
+
+    /// @dev Withdraw the entire paymaster's stake. Can select a recipient of this withdrawal.
+    function withdrawStake(address payable withdrawAddress) public payable virtual onlyOwner {
+        NEETH(_ENTRY_POINT).withdrawStake(withdrawAddress);
     }
 
     /// ====================== SWAP OPERATIONS ====================== ///
