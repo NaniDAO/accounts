@@ -106,7 +106,7 @@ contract PaymentValidator {
         if (plan.validTo.length != 0) {
             for (uint256 i; i < plan.validTo.length;) {
                 if (plan.validTo[i] == target) {
-                    validationData = 0x01;
+                    validationData = 0x01; // Failure code.
                     break;
                 }
                 unchecked {
@@ -118,21 +118,20 @@ contract PaymentValidator {
         // The planned spend must be validated by authorizers.
         address[] memory authorizers = _authorizers[msg.sender];
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
-        for (uint256 i; i < authorizers.length;) {
+        for (uint256 i; i != authorizers.length;) {
             if (
                 SignatureCheckerLib.isValidSignatureNowCalldata(
                     authorizers[i], hash, userOp.signature
                 )
             ) {
-                validationData = 0x01;
+                validationData = 0x01; // Failure code.
                 break;
             }
             unchecked {
                 ++i;
             }
         }
-        /// @solidity memory-safe-assembly
-        assembly {
+        assembly ("memory-safe") {
             validationData := iszero(validationData)
         }
     }
@@ -168,7 +167,7 @@ contract PaymentValidator {
         Plan[] calldata plans
     ) public payable virtual {
         emit AuthorizersSet(msg.sender, (_authorizers[msg.sender] = authorizers));
-        for (uint256 i; i < assets.length;) {
+        for (uint256 i; i != assets.length;) {
             emit PlanSet(msg.sender, assets[i], (_plans[msg.sender][assets[i]] = plans[i]));
             unchecked {
                 ++i;
