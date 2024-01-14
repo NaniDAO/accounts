@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.19;
 
-import {ERC6909} from "@solady/src/tokens/ERC6909.sol";
 import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 
 /// @notice Simple token-bound ownership singleton for smart accounts.
+/// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/ownership/Keys.sol)
 /// @custom:version 0.0.0
 contract Keys {
     /// =========================== EVENTS =========================== ///
@@ -20,8 +20,8 @@ contract Keys {
     /// @dev The NFT ownership settings struct.
     struct Settings {
         INFTOwner nft;
-        IAuth auth;
         uint256 id;
+        IAuth auth;
     }
 
     /// @dev The ERC4337 user operation (userOp) struct.
@@ -60,10 +60,10 @@ contract Keys {
         virtual
         returns (bytes4)
     {
-        Settings memory set = _settings[msg.sender];
+        Settings storage set = _settings[msg.sender];
         address owner;
         if (
-            SignatureCheckerLib.isValidSignatureNow(
+            SignatureCheckerLib.isValidSignatureNowCalldata(
                 owner = address(bytes20(signature[:20])), hash, signature[20:85]
             ) && owner == set.nft.ownerOf(set.id)
         ) {
@@ -102,15 +102,15 @@ contract Keys {
     function install(INFTOwner nft, uint256 id, IAuth auth) public payable virtual {
         setToken(nft, id);
         if (auth != IAuth(address(0))) setAuth(auth);
-        IOwnable(msg.sender).requestOwnershipHandover();
+        try IOwnable(msg.sender).requestOwnershipHandover() {} catch {} // Avoid revert.
     }
 
     /// ===================== OWNERSHIP SETTINGS ===================== ///
 
     /// @dev Returns the account settings.
-    function getSettings(address account) public view virtual returns (INFTOwner, IAuth, uint256) {
+    function getSettings(address account) public view virtual returns (INFTOwner, uint256, IAuth) {
         Settings storage set = _settings[account];
-        return (set.nft, set.auth, set.id);
+        return (set.nft, set.id, set.auth);
     }
 
     /// @dev Sets new authority contract for the caller account.
@@ -124,11 +124,6 @@ contract Keys {
     }
 }
 
-/// @notice Simple ownership interface for handover requests.
-interface IOwnable {
-    function requestOwnershipHandover() external payable;
-}
-
 /// @notice Simple authority interface for contracts.
 interface IAuth {
     function validateCall(address, address, uint256, bytes calldata)
@@ -140,4 +135,9 @@ interface IAuth {
 /// @notice Non-fungible token ownership interface, e.g., ERC721.
 interface INFTOwner {
     function ownerOf(uint256) external view returns (address);
+}
+
+/// @notice Simple ownership interface for handover requests.
+interface IOwnable {
+    function requestOwnershipHandover() external payable;
 }
