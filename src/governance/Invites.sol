@@ -15,6 +15,9 @@ contract Invites is ERC721 {
     /// @dev The time delay is still pending from the last mint.
     error DelayPending();
 
+    /// @dev The `message` exceeds the 20 character limit.
+    error MessageTooLong();
+
     /// ========================= CONSTANTS ========================= ///
 
     /// @dev Timed delay set for each mint.
@@ -53,6 +56,9 @@ contract Invites is ERC721 {
             }
             lastSent[msg.sender] = block.timestamp;
         }
+        if (bytes(message).length > 20) {
+            revert MessageTooLong();
+        }
         uint256 id = uint256(keccak256(bytes(message)));
         messages[id] = message;
         _mint(to, id);
@@ -84,8 +90,8 @@ contract Invites is ERC721 {
                     bytes(
                         abi.encodePacked(
                             '{"name":"',
-                            LibString.concat(unicode"💌", "Invite"),
-                            '","description":"You are cordially invited to alpha test NANI."}',
+                            LibString.concat(unicode"💌", " Invite"),
+                            '","description":"You are cordially invited to alpha test NANI."',
                             ',"image":"',
                             _createImage(id),
                             '"}'
