@@ -5,6 +5,11 @@ import {ERC721} from "@solady/src/tokens/ERC721.sol";
 
 /// @notice Simple NFT contract for sending out custom invites.
 contract Invites is ERC721 {
+    /// ========================= CONSTANTS ========================= ///
+
+    /// @dev Timed delay set for each mint.
+    uint256 public constant delay = 1 hours;
+
     /// ======================= CUSTOM ERRORS ======================= ///
 
     /// @dev The caller is not authorized to call the function.
@@ -12,11 +17,6 @@ contract Invites is ERC721 {
 
     /// @dev The time delay is still pending from the last mint.
     error DelayPending();
-
-    /// ========================= CONSTANTS ========================= ///
-
-    /// @dev Timed delay set for each mint.
-    uint256 public constant delay = 1 hours;
 
     /// ========================== STORAGE ========================== ///
 
@@ -26,6 +26,23 @@ contract Invites is ERC721 {
     /// @dev Timestamp for each user's last invitation sent.
     mapping(address user => uint256 timestamp) public lastSent;
 
+    /// ====================== ERC721 METADATA ====================== ///
+
+    /// @dev Returns the token collection name.
+    function name() public view virtual override returns (string memory) {
+        return "Invites";
+    }
+
+    /// @dev Returns the token collection symbol.
+    function symbol() public view virtual override returns (string memory) {
+        return unicode"💌";
+    }
+
+    /// @dev Returns the Uniform Resource Identifier (URI) for token `id`.
+    function tokenURI(uint256 id) public view virtual override returns (string memory) {
+        return _uris[id];
+    }
+
     /// ======================== CONSTRUCTOR ======================== ///
 
     /// @dev Constructs
@@ -34,7 +51,7 @@ contract Invites is ERC721 {
         _mint(tx.origin, 0);
     }
 
-    /// ============================ MINT ============================ ///
+    /// ====================== INVITATION MINT ====================== ///
 
     /// @dev Sends out invite NFT for `to` with `message` and `uri`.
     /// If not the owner (0) account, `msg.sender` must have NFT,
@@ -58,22 +75,5 @@ contract Invites is ERC721 {
         uint256 tokenId = uint256(keccak256(bytes(message)));
         _uris[tokenId] = uri;
         _mint(to, tokenId);
-    }
-
-    /// ====================== ERC721 METADATA ====================== ///
-
-    /// @dev Returns the token collection name.
-    function name() public view virtual override returns (string memory) {
-        return "Invites";
-    }
-
-    /// @dev Returns the token collection symbol.
-    function symbol() public view virtual override returns (string memory) {
-        return unicode"💌";
-    }
-
-    /// @dev Returns the Uniform Resource Identifier (URI) for token `id`.
-    function tokenURI(uint256 id) public view virtual override returns (string memory) {
-        return _uris[id];
     }
 }
