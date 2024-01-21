@@ -44,17 +44,20 @@ contract Invites is ERC721 {
         payable
         virtual
     {
-        unchecked {
-            if (msg.sender != ownerOf(0) && balanceOf(msg.sender) == 0) {
+        if (msg.sender != ownerOf(0)) {
+            if (balanceOf(msg.sender) == 0) {
                 revert Unauthorized();
             }
-            if (block.timestamp < (lastSent[msg.sender] + delay)) {
-                revert DelayPending();
+            unchecked {
+                if (block.timestamp < (lastSent[msg.sender] + delay)) {
+                    revert DelayPending();
+                }
             }
-            uint256 tokenId = uint256(keccak256(bytes(message)));
-            _uris[tokenId] = uri;
-            _mint(to, tokenId);
+            lastSent[msg.sender] = block.timestamp;
         }
+        uint256 tokenId = uint256(keccak256(bytes(message)));
+        _uris[tokenId] = uri;
+        _mint(to, tokenId);
     }
 
     /// ====================== ERC721 METADATA ====================== ///
