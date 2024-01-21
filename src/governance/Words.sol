@@ -3,7 +3,7 @@ pragma solidity ^0.8.23;
 
 import {ERC721} from "@solady/src/tokens/ERC721.sol";
 
-/// @dev A simple NFT contract for stringly worded IDs.
+/// @dev A simple NFT contract for worded IDs.
 contract Words is ERC721 {
     /// ======================== CONSTRUCTOR ======================== ///
 
