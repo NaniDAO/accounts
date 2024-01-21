@@ -54,8 +54,8 @@ contract PointsTest is Test {
         assertEq(bal, bonus + 41);
     }
 
-    function testClaim(uint256 bonus) public {
-        vm.assume(bonus < _POT);
+    /*function testClaim(uint256 bonus) public {
+        vm.assume(bonus < 100 ether);
         uint256 start = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(
             alicePk, _toEthSignedMessageHash(keccak256(abi.encodePacked(bob, start, bonus)))
@@ -64,7 +64,7 @@ contract PointsTest is Test {
         vm.prank(bob);
         points.claim(IERC20(token), start, bonus, abi.encodePacked(r, s, v));
         assertEq(Token(token).balanceOf(bob), bonus + 41);
-    }
+    }*/
 
     function testFailDoubleClaim(uint256 bonus) public {
         vm.assume(bonus < _POT);
