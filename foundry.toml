@@ -2,6 +2,8 @@
 solc_version = "0.8.23"
 evm_version = "shanghai"
 
+via_ir = true
+
 optimizer = true
 optimizer_runs = 9_999_999
 
@@ -9,9 +11,6 @@ remappings = [
   "@solady=lib/solady/",
   "@forge=lib/forge-std/src/"
 ]
-
-[profile.via-ir]
-via_ir = true
 
 [fmt]
 line_length = 100
