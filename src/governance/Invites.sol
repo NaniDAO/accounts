@@ -6,7 +6,13 @@ import {ERC721} from "@solady/src/tokens/ERC721.sol";
 import {LibString} from "@solady/src/utils/LibString.sol";
 
 /// @notice Simple NFT contract for sending out custom invites.
+/// @dev Recipients can mint new invites after the `delay` passes.
 contract Invites is ERC721 {
+    /// ========================= CONSTANTS ========================= ///
+
+    /// @dev Timed delay set for each mint.
+    uint256 public constant delay = 1 hours;
+
     /// ======================= CUSTOM ERRORS ======================= ///
 
     /// @dev The caller is not authorized to call the function.
@@ -22,7 +28,7 @@ contract Invites is ERC721 {
 
     /// @dev Timed delay set for each mint.
     uint256 public constant delay = 1 hours;
-
+    
     /// ========================== STORAGE ========================== ///
 
     /// @dev Message for each invite.
@@ -31,15 +37,28 @@ contract Invites is ERC721 {
     /// @dev Timestamp for each user's last invitation sent.
     mapping(address user => uint256 timestamp) public lastSent;
 
+    /// ====================== ERC721 METADATA ====================== ///
+
+    /// @dev Returns the token collection name.
+    function name() public view virtual override returns (string memory) {
+        return "Invites";
+    }
+
+    /// @dev Returns the token collection symbol.
+    function symbol() public view virtual override returns (string memory) {
+        return unicode"💌";
+    }
+
     /// ======================== CONSTRUCTOR ======================== ///
 
     /// @dev Constructs
     /// this implementation.
+    /// Initializes owner too.
     constructor() payable {
         _mint(tx.origin, 0);
     }
 
-    /// ============================ MINT ============================ ///
+    /// ====================== INVITATION MINT ====================== ///
 
     /// @dev Sends out invite NFT for `to` with `message`.
     /// If not owner (0) account, `msg.sender` must have NFT,
