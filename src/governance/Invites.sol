@@ -8,11 +8,6 @@ import {LibString} from "@solady/src/utils/LibString.sol";
 /// @notice Simple NFT contract for sending out custom invites.
 /// @dev Recipients can mint new invites after the `delay` passes.
 contract Invites is ERC721 {
-    /// ========================= CONSTANTS ========================= ///
-
-    /// @dev Timed delay set for each mint.
-    uint256 public constant delay = 1 hours;
-
     /// ======================= CUSTOM ERRORS ======================= ///
 
     /// @dev The caller is not authorized to call the function.
@@ -28,7 +23,7 @@ contract Invites is ERC721 {
 
     /// @dev Timed delay set for each mint.
     uint256 public constant delay = 1 hours;
-    
+
     /// ========================== STORAGE ========================== ///
 
     /// @dev Message for each invite.
@@ -37,24 +32,13 @@ contract Invites is ERC721 {
     /// @dev Timestamp for each user's last invitation sent.
     mapping(address user => uint256 timestamp) public lastSent;
 
-    /// ====================== ERC721 METADATA ====================== ///
-
-    /// @dev Returns the token collection name.
-    function name() public view virtual override returns (string memory) {
-        return "Invites";
-    }
-
-    /// @dev Returns the token collection symbol.
-    function symbol() public view virtual override returns (string memory) {
-        return unicode"💌";
-    }
-
     /// ======================== CONSTRUCTOR ======================== ///
 
     /// @dev Constructs
     /// this implementation.
     /// Initializes owner too.
     constructor() payable {
+        messages[0] = "You are patient, zero.";
         _mint(tx.origin, 0);
     }
 
@@ -65,9 +49,7 @@ contract Invites is ERC721 {
     /// as well as pass the timed delay after their first mint.
     function invite(address to, string calldata message) public payable virtual {
         if (msg.sender != ownerOf(0)) {
-            if (balanceOf(msg.sender) == 0) {
-                revert Unauthorized();
-            }
+            if (balanceOf(msg.sender) == 0) revert Unauthorized();
             unchecked {
                 if (block.timestamp < (lastSent[msg.sender] + delay)) {
                     revert DelayPending();
@@ -75,9 +57,7 @@ contract Invites is ERC721 {
             }
             lastSent[msg.sender] = block.timestamp;
         }
-        if (bytes(message).length > 20) {
-            revert MessageTooLong();
-        }
+        if (bytes(message).length > 20) revert MessageTooLong();
         uint256 id = uint256(keccak256(bytes(message)));
         messages[id] = message;
         _mint(to, id);
@@ -86,17 +66,17 @@ contract Invites is ERC721 {
     /// ====================== ERC721 METADATA ====================== ///
 
     /// @dev Returns the token collection name.
-    function name() public view virtual override returns (string memory) {
+    function name() public view virtual override(ERC721) returns (string memory) {
         return "Invites";
     }
 
     /// @dev Returns the token collection symbol.
-    function symbol() public view virtual override returns (string memory) {
+    function symbol() public view virtual override(ERC721) returns (string memory) {
         return unicode"💌";
     }
 
     /// @dev Returns the Uniform Resource Identifier (URI) for token `id`.
-    function tokenURI(uint256 id) public view virtual override returns (string memory) {
+    function tokenURI(uint256 id) public view virtual override(ERC721) returns (string memory) {
         return _createURI(id);
     }
 
@@ -121,6 +101,7 @@ contract Invites is ERC721 {
         );
     }
 
+    /// @dev Creates the image for token `id`.
     function _createImage(uint256 id) internal view virtual returns (string memory) {
         return string(
             abi.encodePacked(

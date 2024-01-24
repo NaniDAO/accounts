@@ -5,6 +5,7 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 
 /// @notice Simple token-bound ownership singleton for smart accounts.
 /// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/ownership/Keys.sol)
+/// @dev The Keys singleton approximates ERC6551 token-bound account ownership with NFTs.
 /// @custom:version 0.0.0
 contract Keys {
     /// =========================== EVENTS =========================== ///
