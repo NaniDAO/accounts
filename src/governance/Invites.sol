@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import {ERC721} from "@solady/src/tokens/ERC721.sol";
 
 /// @notice Simple NFT contract for sending out custom invites.
+/// @dev Recipients can mint new invites after the `delay` passes.
 contract Invites is ERC721 {
     /// ========================= CONSTANTS ========================= ///
 
@@ -47,6 +48,7 @@ contract Invites is ERC721 {
 
     /// @dev Constructs
     /// this implementation.
+    /// Initializes owner too.
     constructor() payable {
         _mint(tx.origin, 0);
     }
