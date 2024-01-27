@@ -1,10 +1,12 @@
 # Keys
-[Git Source](https://github.com/NaniDAO/accounts/blob/7ac59b02001a809e2cf6d349a24270ca5342f835/src/ownership/Keys.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/9816e093f3a0f1ad1a51334704e0815733ea9e74/src/ownership/Keys.sol)
 
 **Author:**
 nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/ownership/Keys.sol)
 
 Simple token-bound ownership singleton for smart accounts.
+
+*The Keys singleton approximates ERC6551 token-bound account ownership with NFTs.*
 
 
 ## State Variables
@@ -62,6 +64,24 @@ function validateUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint2
     returns (uint256 validationData);
 ```
 
+### _ownerOf
+
+*Returns the `owner` of the given `nft` `id`.*
+
+
+```solidity
+function _ownerOf(address nft, uint256 id) internal view virtual returns (address owner);
+```
+
+### _validateReturn
+
+*Returns validated signature result within the conventional ERC1271 syntax.*
+
+
+```solidity
+function _validateReturn(bool success) internal pure virtual returns (bytes4 result);
+```
+
 ### install
 
 ================== INSTALLATION OPERATIONS ================== ///
@@ -73,7 +93,7 @@ https://github.com/Vectorized/solady/blob/main/src/auth/Ownable.sol*
 
 
 ```solidity
-function install(INFTOwner nft, uint256 id, IAuth auth) public payable virtual;
+function install(address nft, uint256 id, IAuth auth) public payable virtual;
 ```
 
 ### getSettings
@@ -84,7 +104,7 @@ function install(INFTOwner nft, uint256 id, IAuth auth) public payable virtual;
 
 
 ```solidity
-function getSettings(address account) public view virtual returns (INFTOwner, uint256, IAuth);
+function getSettings(address account) public view virtual returns (address, uint256, IAuth);
 ```
 
 ### setAuth
@@ -102,7 +122,7 @@ function setAuth(IAuth auth) public payable virtual;
 
 
 ```solidity
-function setToken(INFTOwner nft, uint256 id) public payable virtual;
+function setToken(address nft, uint256 id) public payable virtual;
 ```
 
 ## Events
@@ -121,7 +141,7 @@ event AuthSet(address indexed account, IAuth auth);
 
 
 ```solidity
-event TokenSet(address indexed account, INFTOwner NFT, uint256 id);
+event TokenSet(address indexed account, address NFT, uint256 id);
 ```
 
 ## Structs
@@ -133,7 +153,7 @@ event TokenSet(address indexed account, INFTOwner NFT, uint256 id);
 
 ```solidity
 struct Settings {
-    INFTOwner nft;
+    address nft;
     uint256 id;
     IAuth auth;
 }

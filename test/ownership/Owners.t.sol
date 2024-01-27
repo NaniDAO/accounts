@@ -148,7 +148,7 @@ contract OwnersTest is Test {
     }
 
     function testDeploy() public {
-        owners = new Owners();
+        new Owners();
     }
 
     function testNameAndSymbolAndDecimals(uint256 id) public {

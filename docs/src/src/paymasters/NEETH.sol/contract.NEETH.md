@@ -1,11 +1,11 @@
 # NEETH
-[Git Source](https://github.com/NaniDAO/accounts/blob/7ac59b02001a809e2cf6d349a24270ca5342f835/src/paymasters/NEETH.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/9816e093f3a0f1ad1a51334704e0815733ea9e74/src/paymasters/NEETH.sol)
 
 **Inherits:**
 ERC20
 
 **Author:**
-nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/paymasters/NEETH.sol)
+nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/paymasters/NETH.sol)
 
 Simple wrapped ERC4337 implementation with paymaster and yield functions.
 
@@ -57,15 +57,6 @@ address payable internal constant _STRATEGY = payable(0xae7ab96520DE3A18E5e111B5
 
 ```solidity
 uint256 internal constant _COST_OF_POST = 15000;
-```
-
-
-### _FEE
-*Holds a constant paymaster fee.*
-
-
-```solidity
-uint256 internal constant _FEE = 999 gwei;
 ```
 
 
@@ -172,35 +163,6 @@ function withdraw(uint256 amount) public virtual;
 function withdrawFrom(address from, address to, uint256 amount) public virtual;
 ```
 
-### addStake
-
-===================== STAKING OPERATIONS ===================== ///
-
-*Add stake for this paymaster. Further sets a staking delay timestamp.*
-
-
-```solidity
-function addStake(uint32 unstakeDelaySec) public payable virtual onlyOwner;
-```
-
-### unlockStake
-
-*Unlock the stake, in order to withdraw it.*
-
-
-```solidity
-function unlockStake() public payable virtual onlyOwner;
-```
-
-### withdrawStake
-
-*Withdraw the entire paymaster's stake. Can select a recipient of this withdrawal.*
-
-
-```solidity
-function withdrawStake(address payable withdrawAddress) public payable virtual onlyOwner;
-```
-
 ### validatePaymasterUserOp
 
 =================== VALIDATION OPERATIONS =================== ///
@@ -228,6 +190,35 @@ function postOp(PostOpMode, bytes calldata context, uint256 actualGasCost)
     payable
     virtual
     onlyEntryPoint;
+```
+
+### addStake
+
+===================== STAKING OPERATIONS ===================== ///
+
+*Add stake for this paymaster. Further sets a staking delay timestamp.*
+
+
+```solidity
+function addStake(uint32 unstakeDelaySec) public payable virtual onlyOwner;
+```
+
+### unlockStake
+
+*Unlock the stake, in order to withdraw it.*
+
+
+```solidity
+function unlockStake() public payable virtual onlyOwner;
+```
+
+### withdrawStake
+
+*Withdraw the entire paymaster's stake. Can select a recipient of this withdrawal.*
+
+
+```solidity
+function withdrawStake(address payable withdrawAddress) public payable virtual onlyOwner;
 ```
 
 ### _getAmountOutInETH

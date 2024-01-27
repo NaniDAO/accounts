@@ -1,5 +1,5 @@
 # Token
-[Git Source](https://github.com/NaniDAO/accounts/blob/7ac59b02001a809e2cf6d349a24270ca5342f835/src/governance/Token.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/9816e093f3a0f1ad1a51334704e0815733ea9e74/src/governance/Token.sol)
 
 Simple ERC20 token.
 
