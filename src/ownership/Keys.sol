@@ -14,13 +14,13 @@ contract Keys {
     event AuthSet(address indexed account, IAuth auth);
 
     /// @dev Logs new NFT ownership settings for an account.
-    event TokenSet(address indexed account, INFTOwner NFT, uint256 id);
+    event TokenSet(address indexed account, address NFT, uint256 id);
 
     /// ========================== STRUCTS ========================== ///
 
     /// @dev The NFT ownership settings struct.
     struct Settings {
-        INFTOwner nft;
+        address nft;
         uint256 id;
         IAuth auth;
     }
@@ -62,16 +62,11 @@ contract Keys {
         returns (bytes4)
     {
         Settings storage set = _settings[msg.sender];
-        address owner;
-        if (
+        return _validateReturn(
             SignatureCheckerLib.isValidSignatureNowCalldata(
-                owner = address(bytes20(signature[:20])), hash, signature[20:85]
-            ) && owner == set.nft.ownerOf(set.id)
-        ) {
-            return this.isValidSignature.selector;
-        } else {
-            return 0xffffffff; // Failure code.
-        }
+                _ownerOf(set.nft, set.id), hash, signature
+            )
+        );
     }
 
     /// @dev Validates ERC4337 userOp with additional auth logic flow among owners.
@@ -94,13 +89,31 @@ contract Keys {
         ) validationData = 0x01; // Failure code.
     }
 
+    /// @dev Returns the `owner` of the given `nft` `id`.
+    function _ownerOf(address nft, uint256 id) internal view virtual returns (address owner) {
+        assembly ("memory-safe") {
+            mstore(0x00, 0x6352211e) // `ownerOf(uint256)`.
+            mstore(0x20, id) // Store the `id` argument.
+            pop(staticcall(gas(), nft, 0x1c, 0x24, 0x20, 0x20))
+            owner := mload(0x20)
+        }
+    }
+
+    /// @dev Returns validated signature result within the conventional ERC1271 syntax.
+    function _validateReturn(bool success) internal pure virtual returns (bytes4 result) {
+        assembly ("memory-safe") {
+            // `success ? bytes4(keccak256("isValidSignature(bytes32,bytes)")) : 0xffffffff`.
+            result := shl(224, or(0x1626ba7e, sub(0, iszero(success))))
+        }
+    }
+
     /// ================== INSTALLATION OPERATIONS ================== ///
 
     /// @dev Initializes ownership settings for the caller account.
     /// note: Finalizes with transfer request in two-step pattern.
     /// See, e.g., Ownable.sol:
     /// https://github.com/Vectorized/solady/blob/main/src/auth/Ownable.sol
-    function install(INFTOwner nft, uint256 id, IAuth auth) public payable virtual {
+    function install(address nft, uint256 id, IAuth auth) public payable virtual {
         setToken(nft, id);
         if (auth != IAuth(address(0))) setAuth(auth);
         try IOwnable(msg.sender).requestOwnershipHandover() {} catch {} // Avoid revert.
@@ -109,7 +122,7 @@ contract Keys {
     /// ===================== OWNERSHIP SETTINGS ===================== ///
 
     /// @dev Returns the account settings.
-    function getSettings(address account) public view virtual returns (INFTOwner, uint256, IAuth) {
+    function getSettings(address account) public view virtual returns (address, uint256, IAuth) {
         Settings storage set = _settings[account];
         return (set.nft, set.id, set.auth);
     }
@@ -120,7 +133,7 @@ contract Keys {
     }
 
     /// @dev Sets new NFT ownership details for the caller account.
-    function setToken(INFTOwner nft, uint256 id) public payable virtual {
+    function setToken(address nft, uint256 id) public payable virtual {
         emit TokenSet(msg.sender, _settings[msg.sender].nft = nft, _settings[msg.sender].id = id);
     }
 }
@@ -131,11 +144,6 @@ interface IAuth {
         external
         payable
         returns (uint256);
-}
-
-/// @notice Non-fungible token ownership interface, e.g., ERC721.
-interface INFTOwner {
-    function ownerOf(uint256) external view returns (address);
 }
 
 /// @notice Simple ownership interface for handover requests.
