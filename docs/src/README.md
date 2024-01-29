@@ -29,7 +29,9 @@ Ethereum, Arbitrum, Optimism, Polygon, Base, Sepolia (testnet) | [0x000000000000
 ### Ownership:
 
 * Dagon: [0x0000000000001D4B1320bB3c47380a3D1C3A1A0C](https://etherscan.io/address/0x0000000000001d4b1320bb3c47380a3d1c3a1a0c#code)
+* Summoner [0xDDc31C0272a3c4696124C8df1bCf096090a168B4](https://etherscan.io/address/0xDDc31C0272a3c4696124C8df1bCf096090a168B4#code)
 * Keys: [0x000000000000082ffb07deF3DdfB5D3AFA9b9668](https://etherscan.io/address/0x000000000000082ffb07def3ddfb5d3afa9b9668#code)
+* Keysmith [0x00000000000051C78726c2B0583ee996f58a42b7](https://etherscan.io/address/0x00000000000051C78726c2B0583ee996f58a42b7#code)
 
 ## Blueprint
 
