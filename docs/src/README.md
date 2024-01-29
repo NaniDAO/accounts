@@ -26,6 +26,11 @@ Ethereum, Arbitrum, Optimism, Polygon, Base, Sepolia (testnet) | [0x000000000000
 * Points: [0x00000000007f7396897bf90B00e96EaE4B71d055](https://etherscan.io/address/0x00000000007f7396897bf90b00e96eae4b71d055#code)
 * Token: [0x00000000000025824328358250920B271f348690](https://etherscan.io/address/0x00000000000025824328358250920b271f348690)
 
+### Ownership:
+
+* Dagon: [0x0000000000001D4B1320bB3c47380a3D1C3A1A0C](https://etherscan.io/address/0x0000000000001d4b1320bb3c47380a3d1c3a1a0c#code)
+* Keys: [0x000000000000082ffb07deF3DdfB5D3AFA9b9668](https://etherscan.io/address/0x000000000000082ffb07def3ddfb5d3afa9b9668#code)
+
 ## Blueprint
 
 ```txt

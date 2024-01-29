@@ -14,6 +14,8 @@
     - [Keys](src/ownership/Keys.sol/contract.Keys.md)
     - [IAuth](src/ownership/Keys.sol/interface.IAuth.md)
     - [IOwnable](src/ownership/Keys.sol/interface.IOwnable.md)
+    - [Keysmith](src/ownership/Keysmith.sol/contract.Keysmith.md)
+    - [IAccounts](src/ownership/Keysmith.sol/interface.IAccounts.md)
     - [Owners](src/ownership/Owners.sol/contract.Owners.md)
     - [IAuth](src/ownership/Owners.sol/interface.IAuth.md)
     - [IOwnable](src/ownership/Owners.sol/interface.IOwnable.md)
