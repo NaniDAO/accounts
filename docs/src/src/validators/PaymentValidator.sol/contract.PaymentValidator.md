@@ -1,5 +1,5 @@
 # PaymentValidator
-[Git Source](https://github.com/NaniDAO/accounts/blob/ce662883d04645306a7e3363a72f54ee359035a3/src/validators/PaymentValidator.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/18e4de3b2fb3996b09e97d68ddd15b6c11bd0a87/src/validators/PaymentValidator.sol)
 
 **Author:**
 nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/validators/PaymentValidator.sol)

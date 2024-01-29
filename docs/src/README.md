@@ -21,6 +21,10 @@ Ethereum, Arbitrum, Optimism, Polygon, Base, Sepolia (testnet) | [0x000000000000
 * JointValidator: [0x0000000000bBe5e59600001E15b9A59B42f52b75](https://etherscan.io/address/0x0000000000bbe5e59600001e15b9a59b42f52b75#code)
 * RecoveryValidator: [0x00000000002d3440001c53656DB7aEE3B37E3152](https://etherscan.io/address/0x00000000002d3440001c53656db7aee3b37e3152#code)
 
+### Paymasters:
+
+[0x0000000000002bB5E405174504eEB2AF43ADd753](https://etherscan.io/address/0x0000000000002bB5E405174504eEB2AF43ADd753#code)
+
 ### Governance:
 
 * Points: [0x00000000007f7396897bf90B00e96EaE4B71d055](https://etherscan.io/address/0x00000000007f7396897bf90b00e96eae4b71d055#code)

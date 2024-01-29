@@ -8,7 +8,7 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 /// @dev Operationally this validator works as a one-time recovery
 /// multisig singleton by allowing accounts to program authorizers
 /// and thresholds for such authorizers to validate user operations.
-/// @custom:version 0.0.1
+/// @custom:version 0.0.0
 contract RecoveryValidator {
     /// ======================= CUSTOM ERRORS ======================= ///
 
@@ -52,18 +52,18 @@ contract RecoveryValidator {
         bytes signature;
     }
 
+    /// @dev The authorizer signing struct.
+    struct Authorizer {
+        address signer;
+        bool matched;
+    }
+
     /// @dev The validator settings struct.
     struct Settings {
         uint32 delay;
         uint32 deadline;
         uint192 threshold;
         address[] authorizers;
-    }
-
-    /// @dev The authorizer signing struct.
-    struct Authorizer {
-        address signer;
-        bool matched;
     }
 
     /// ========================== STORAGE ========================== ///
@@ -101,7 +101,7 @@ contract RecoveryValidator {
                 ++i;
             }
             for (uint256 i; i != settings.threshold;) {
-                for (uint256 j; j < authorizers.length;) {
+                for (uint256 j; j != authorizers.length;) {
                     if (
                         !authorizers[j].matched
                             && SignatureCheckerLib.isValidSignatureNow(
@@ -179,20 +179,19 @@ contract RecoveryValidator {
     function requestOwnershipHandover(address account) public payable virtual {
         address[] memory authorizers = _settings[account].authorizers;
         bool isAuthorizer;
-        for (uint256 i; i != authorizers.length;) {
+        for (uint256 i; i != authorizers.length; ++i) {
             if (msg.sender == authorizers[i]) {
                 isAuthorizer = true;
                 break;
             }
-            unchecked {
-                ++i;
-            }
         }
         if (!isAuthorizer) revert Unauthorized();
-        emit DeadlineSet(
-            account,
-            (_settings[account].deadline = uint32(block.timestamp) + _settings[account].delay)
-        );
+        unchecked {
+            emit DeadlineSet(
+                account,
+                (_settings[account].deadline = (uint32(block.timestamp) + _settings[account].delay))
+            );
+        }
     }
 
     /// @dev Cancels authorizer handovers for the caller account.

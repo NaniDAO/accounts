@@ -1,5 +1,5 @@
 # RecoveryValidator
-[Git Source](https://github.com/NaniDAO/accounts/blob/ce662883d04645306a7e3363a72f54ee359035a3/src/validators/RecoveryValidator.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/18e4de3b2fb3996b09e97d68ddd15b6c11bd0a87/src/validators/RecoveryValidator.sol)
 
 Simple social recovery validator for smart accounts.
 
@@ -237,6 +237,17 @@ struct UserOperation {
 }
 ```
 
+### Authorizer
+*The authorizer signing struct.*
+
+
+```solidity
+struct Authorizer {
+    address signer;
+    bool matched;
+}
+```
+
 ### Settings
 *The validator settings struct.*
 
@@ -247,17 +258,6 @@ struct Settings {
     uint32 deadline;
     uint192 threshold;
     address[] authorizers;
-}
-```
-
-### Authorizer
-*The authorizer signing struct.*
-
-
-```solidity
-struct Authorizer {
-    address signer;
-    bool matched;
 }
 ```
 
