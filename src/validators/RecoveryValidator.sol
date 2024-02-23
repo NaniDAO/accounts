@@ -8,7 +8,7 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 /// @dev Operationally this validator works as a one-time recovery
 /// multisig singleton by allowing accounts to program authorizers
 /// and thresholds for such authorizers to validate user operations.
-/// @custom:version 0.0.0
+/// @custom:version 1.0.0
 contract RecoveryValidator {
     /// ======================= CUSTOM ERRORS ======================= ///
 
@@ -20,6 +20,9 @@ contract RecoveryValidator {
 
     /// @dev The caller is not authorized to call the function.
     error Unauthorized();
+
+    /// @dev The recovery deadline is still pending for resolution.
+    error DeadlinePending();
 
     /// =========================== EVENTS =========================== ///
 
@@ -52,6 +55,19 @@ contract RecoveryValidator {
         bytes signature;
     }
 
+    /// @dev The packed ERC4337 userOp struct.
+    struct PackedUserOperation {
+        address sender;
+        uint256 nonce;
+        bytes initCode;
+        bytes callData;
+        bytes32 accountGasLimits;
+        uint256 preVerificationGas;
+        bytes32 gasFees; // `maxPriorityFee` and `maxFeePerGas`.
+        bytes paymasterAndData;
+        bytes signature;
+    }
+
     /// @dev The authorizer signing struct.
     struct Authorizer {
         address signer;
@@ -79,21 +95,39 @@ contract RecoveryValidator {
 
     /// =================== VALIDATION OPERATIONS =================== ///
 
-    /// @dev Validates ERC4337 userOp with additional auth logic flow among authorizers.
-    /// This must be used to execute `transferOwnership` to backup decided by threshold.
+    /// @dev Validates ERC4337 userOp with recovery auth logic flow among authorizers.
     function validateUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint256)
         external
         payable
         virtual
         returns (uint256 validationData)
     {
+        return _validateUserOp(userOpHash, userOp.callData, userOp.signature);
+    }
+
+    /// @dev Validates packed ERC4337 userOp with recovery auth logic flow among authorizers.
+    function validateUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256)
+        external
+        payable
+        virtual
+        returns (uint256 validationData)
+    {
+        return _validateUserOp(userOpHash, userOp.callData, userOp.signature);
+    }
+
+    /// @dev Returns validity of recovery operation based on the signature and calldata of userOp.
+    function _validateUserOp(bytes32 userOpHash, bytes calldata callData, bytes calldata signature)
+        internal
+        virtual
+        returns (uint256 validationData)
+    {
         Settings storage settings = _settings[msg.sender];
         if (settings.deadline == 0) revert Unauthorized();
-        if (block.timestamp < settings.deadline) revert Unauthorized();
-        bytes[] memory signatures = _splitSignature(userOp.signature);
+        if (block.timestamp < settings.deadline) revert DeadlinePending();
+        bytes[] memory signatures = _splitSignature(signature);
         if (signatures.length < settings.threshold) revert Unauthorized();
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
-        if (bytes4(userOp.callData[132:]) != 0xf2fde38b) revert InvalidExecute();
+        if (bytes4(callData[132:]) != 0xf2fde38b) revert InvalidExecute();
         Authorizer[] memory authorizers = new Authorizer[](settings.authorizers.length);
         unchecked {
             for (uint256 i; i != authorizers.length;) {
@@ -143,7 +177,7 @@ contract RecoveryValidator {
 
     /// =================== AUTHORIZER OPERATIONS =================== ///
 
-    /// @dev Returns the account settings.
+    /// @dev Returns the account recovery settings.
     function getSettings(address account) public view virtual returns (Settings memory) {
         return _settings[account];
     }
@@ -201,7 +235,7 @@ contract RecoveryValidator {
 
     /// ================== INSTALLATION OPERATIONS ================== ///
 
-    /// @dev Installs the validator settings for the caller account.
+    /// @dev Installs the recovery validator settings for the caller account.
     function install(uint32 delay, uint192 threshold, address[] calldata authorizers)
         public
         payable
@@ -216,7 +250,7 @@ contract RecoveryValidator {
         emit AuthorizersSet(msg.sender, (_settings[msg.sender].authorizers = authorizers));
     }
 
-    /// @dev Uninstalls the validator settings for the caller account.
+    /// @dev Uninstalls the recovery validator settings for the caller account.
     function uninstall() public payable virtual {
         delete _settings[msg.sender];
         emit DelaySet(msg.sender, 0);
