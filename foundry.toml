@@ -21,3 +21,7 @@ base = "https://rpc.ankr.com/base"
 poly = "https://rpc.ankr.com/polygon"
 opti = "https://rpc.ankr.com/optimism"
 arbi = "https://rpc.ankr.com/arbitrum"
+
+[etherscan]
+arbitrum = {key = "${ARBISCAN_API_KEY}", url = "https://api.arbiscan.io/api" }
+sepolia = {key = "${ETHERSCAN_API_KEY}", url = "https://api-sepolia.etherscan.io/api" }
