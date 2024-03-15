@@ -220,14 +220,25 @@ contract NEETH is ERC20 {
     /// =================== VALIDATION OPERATIONS =================== ///
 
     /// @dev Payment validation: Check NEETH will cover based on balance.
-    function validatePaymasterUserOp(UserOperation calldata userOp, bytes32, /*userOpHash*/ uint256)
+    function validatePaymasterUserOp(UserOperation calldata userOp, bytes32, /*userOpHash*/ uint256 maxCost)
         public
         payable
         virtual
         onlyEntryPoint
         returns (bytes memory, uint256)
     {
-        return (abi.encodePacked(userOp.sender), 0x00);
+        if (balanceOf(userOp.sender) >= maxCost) return (abi.encode(userOp.sender), 0x00);
+        return (abi.encode(userOp.sender), 0x01); // TODO: Check this. 
+    }
+
+    /// @dev Payment validation (packed): Check NEETH will cover based on balance.
+    function validatePaymasterUserOp(
+        PackedUserOperation calldata userOp,
+        bytes32, /*userOpHash*/
+        uint256 maxCost
+    ) public payable virtual onlyEntryPoint returns (bytes memory, uint256) {
+        if (balanceOf(userOp.sender) >= maxCost) return (abi.encode(userOp.sender), 0x00);
+        return (abi.encode(userOp.sender), 0x01);
     }
 
     /// @dev postOp validation 0.6: Check NEETH conditions are otherwise met.
@@ -251,7 +262,7 @@ contract NEETH is ERC20 {
         uint256 actualGasCost,
         uint256 actualUserOpFeePerGas
     ) public payable onlyEntryPoint {
-        uint256 cost = actualGasCost + 30000;
+        uint256 cost = actualGasCost + actualUserOpFeePerGas * 30000;
         (address user) = abi.decode(context, (address));
         _burn(user, _swap(true, -int256(cost)));
         assembly ("memory-safe") {
