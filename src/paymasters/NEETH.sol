@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.25;
+pragma solidity 0.8.25;
 
 import "@solady/src/tokens/ERC20.sol";
 
@@ -76,10 +76,10 @@ contract NEETH is ERC20 {
     /// ========================== STORAGE ========================== ///
 
     /// @dev The DAO fee.
-    uint256 public daoFee;
+    uint128 public daoFee;
 
     /// @dev The postOp cost estimate.
-    uint256 internal _postOpCost;
+    uint128 internal _postOpCost;
 
     /// ========================= MODIFIERS ========================= ///
 
@@ -144,12 +144,12 @@ contract NEETH is ERC20 {
     /// ==================== WITHDRAW OPERATIONS ==================== ///
 
     /// @dev Burns `amount` NEETH (stETH) of caller and returns ETH.
-    function withdraw(uint256 amount) public payable virtual {
+    function withdraw(uint256 amount) public virtual {
         withdrawFrom(msg.sender, msg.sender, amount);
     }
 
     /// @dev Burns `amount` NEETH (stETH) of `from` and sends output ETH for `to`.
-    function withdrawFrom(address from, address to, uint256 amount) public payable virtual {
+    function withdrawFrom(address from, address to, uint256 amount) public virtual {
         if (msg.sender != from) _spendAllowance(from, msg.sender, amount);
         _burn(from, amount); // Burn NEETH.
         _safeTransferETH(to, _swap(true, int256(amount)));
@@ -299,40 +299,47 @@ contract NEETH is ERC20 {
 
     /// @dev Adds stake to EntryPoint (if `old`, version 0.6 is used).
     function addStake(bool old, uint32 unstakeDelaySec) public payable virtual onlyDAO {
-        NEETH(payable(old ? EP06 : EP07)).addStake{value: msg.value}(unstakeDelaySec);
+        IEntryPoint(payable(old ? EP06 : EP07)).addStake{value: msg.value}(unstakeDelaySec);
     }
 
     /// @dev Unlocks stake from EntryPoint (if `old`, version 0.6 is used).
-    function unlockStake(bool old) public payable virtual onlyDAO {
-        NEETH(payable(old ? EP06 : EP07)).unlockStake();
+    function unlockStake(bool old) public virtual onlyDAO {
+        IEntryPoint(payable(old ? EP06 : EP07)).unlockStake();
     }
 
     /// @dev Withdraws stake from EntryPoint (if `old`, version 0.6 is used).
-    function withdrawStake(address payable withdrawAddress) public payable virtual onlyDAO {
-        NEETH(payable(old ? EP06 : EP07)).withdrawStake(withdrawAddress);
+    function withdrawStake(bool old, address payable withdrawAddress) public virtual onlyDAO {
+        IEntryPoint(payable(old ? EP06 : EP07)).withdrawStake(withdrawAddress);
+    }
+
+    /// @dev Withdraws EntryPoint deposits under DAO governance (if `old`, version 0.6 is used).
+    function withdrawTo(bool old, address payable withdrawAddress, uint256 withdrawAmount)
+        public
+        virtual
+        onlyDAO
+    {
+        IEntryPoint(old ? EP06 : EP07).withdrawTo(withdrawAddress, withdrawAmount);
     }
 
     /// =================== GOVERNANCE OPERATIONS =================== ///
 
     /// @dev Sets fee under DAO governance from NEETH minting.
-    function setFee(uint256 _daoFee) public payable virtual onlyDAO {
+    function setFee(uint128 _daoFee) public virtual onlyDAO {
         daoFee = _daoFee;
     }
 
     /// @dev Sets cost estimate under DAO governance from NEETH postOp.
-    function setPostOpCost(uint256 _ostOpCost) public payable virtual onlyDAO {
+    function setPostOpCost(uint128 postOpCost) public virtual onlyDAO {
         _postOpCost = postOpCost;
     }
+}
 
-    /// @dev Withdraws EntryPoint deposits under DAO governance.
-    function withdrawTo(bool old, address payable withdrawAddress, uint256 withdrawAmount)
-        public
-        payable
-        virtual
-        onlyDAO
-    {
-        NEETH(payable(old ? EP06 : EP07)).withdrawTo(withdrawAddress, withdrawAmount);
-    }
+// @dev Simple EntryPoint balance interface.
+interface IEntryPoint {
+    function addStake(uint32) external payable;
+    function unlockStake() external;
+    function withdrawStake(address) external;
+    function withdrawTo(address payable, uint256) external;
 }
 
 /// @dev Simple Uniswap V3 swapping interface.
