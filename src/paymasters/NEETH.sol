@@ -88,10 +88,18 @@ contract NEETH is ERC20 {
         _;
     }
 
-    /// @dev Requires that the caller is the EntryPoint.
-    modifier onlyEntryPoint() virtual {
+    /// @dev Requires that the caller is the EntryPoint (0.6).
+    modifier onlyEntryPoint06() virtual {
         assembly ("memory-safe") {
-            if iszero(or(eq(caller(), EP07), eq(caller(), EP06))) { revert(codesize(), 0x00) }
+            if iszero(eq(caller(), EP06)) { revert(codesize(), 0x00) }
+        }
+        _;
+    }
+
+    /// @dev Requires that the caller is the EntryPoint (0.7).
+    modifier onlyEntryPoint07() virtual {
+        assembly ("memory-safe") {
+            if iszero(eq(caller(), EP07)) { revert(codesize(), 0x00) }
         }
         _;
     }
@@ -230,22 +238,22 @@ contract NEETH is ERC20 {
 
     /// =================== VALIDATION OPERATIONS =================== ///
 
-    /// @dev Payment validation: Check NEETH will cover based on balance.
+    /// @dev Payment validation 0.6: Check NEETH will cover based on balance.
     function validatePaymasterUserOp(
         UserOperation calldata userOp,
         bytes32, /*userOpHash*/
         uint256 maxCost
-    ) public payable virtual onlyEntryPoint returns (bytes memory, uint256) {
+    ) public payable virtual onlyEntryPoint06 returns (bytes memory, uint256) {
         if (balanceOf(userOp.sender) >= maxCost) return (abi.encode(userOp.sender), 0x00);
         return ("", 0x01); // If insufficient NEETH, return fail code and empty context.
     }
 
-    /// @dev Payment validation (packed): Check NEETH will cover based on balance.
+    /// @dev Payment validation 0.7: Check NEETH will cover based on balance.
     function validatePaymasterUserOp(
         PackedUserOperation calldata userOp,
         bytes32, /*userOpHash*/
         uint256 maxCost
-    ) public payable virtual onlyEntryPoint returns (bytes memory, uint256) {
+    ) public payable virtual onlyEntryPoint07 returns (bytes memory, uint256) {
         if (balanceOf(userOp.sender) >= maxCost) return (abi.encode(userOp.sender), 0x00);
         return ("", 0x01); // If insufficient NEETH, return fail code and empty context.
     }
@@ -255,11 +263,11 @@ contract NEETH is ERC20 {
         public
         payable
         virtual
-        onlyEntryPoint
+        onlyEntryPoint06
     {
         unchecked {
             uint256 cost = actualGasCost + 30000;
-            (address user) = abi.decode(context, (address));
+            address user = abi.decode(context, (address));
             _burn(user, _swap(true, -int256(cost)));
             assembly ("memory-safe") {
                 pop(call(gas(), caller(), cost, codesize(), 0x00, codesize(), 0x00))
@@ -273,10 +281,10 @@ contract NEETH is ERC20 {
         bytes calldata context,
         uint256 actualGasCost,
         uint256 actualUserOpFeePerGas
-    ) public payable virtual onlyEntryPoint {
+    ) public payable virtual onlyEntryPoint07 {
         unchecked {
-            uint256 cost = (actualGasCost + actualUserOpFeePerGas) * 30000;
-            (address user) = abi.decode(context, (address));
+            uint256 cost = actualGasCost + actualUserOpFeePerGas * 30000;
+            address user = abi.decode(context, (address));
             _burn(user, _swap(true, -int256(cost)));
             assembly ("memory-safe") {
                 pop(call(gas(), caller(), cost, codesize(), 0x00, codesize(), 0x00))
@@ -308,7 +316,7 @@ contract NEETH is ERC20 {
         daoFee = fee;
     }
 
-    /// @dev Withdraws deposits under DAO governance.
+    /// @dev Withdraws EntryPoint deposits under DAO governance.
     function withdrawTo(bool old, address payable withdrawAddress, uint256 withdrawAmount)
         public
         payable
