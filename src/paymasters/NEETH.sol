@@ -5,7 +5,7 @@ import "@solady/src/tokens/ERC20.sol";
 
 /// @notice Simple wrapped ERC4337 implementation with paymaster and yield functions.
 /// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/paymasters/NEETH.sol)
-/// @custom:version 1.0.0
+/// @custom:version 1.1.1
 contract NEETH is ERC20 {
     /// ========================= CONSTANTS ========================= ///
 
