@@ -9,10 +9,24 @@ contract Keysmith {
 
     constructor() payable {}
 
-    function summon(address nft, uint256 id, bytes12 salt) public payable returns (IAccounts account) {
-        account = IAccounts(FACTORY.createAccount{value: msg.value}(address(this), bytes32(abi.encodePacked(this, salt))));
-        account.execute(KEYS, 0, abi.encodeWithSignature("install(address,uint256,address)", nft, id, address(0)));
-        account.execute(address(account), 0, abi.encodeWithSignature("transferOwnership(address)", KEYS));
+    function summon(address nft, uint256 id, bytes12 salt)
+        public
+        payable
+        returns (IAccounts account)
+    {
+        account = IAccounts(
+            FACTORY.createAccount{value: msg.value}(
+                address(this), bytes32(abi.encodePacked(this, salt))
+            )
+        );
+        account.execute(
+            KEYS,
+            0,
+            abi.encodeWithSignature("install(address,uint256,address)", nft, id, address(0))
+        );
+        account.execute(
+            address(account), 0, abi.encodeWithSignature("transferOwnership(address)", KEYS)
+        );
     }
 }
 
