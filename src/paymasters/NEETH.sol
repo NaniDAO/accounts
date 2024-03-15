@@ -78,6 +78,9 @@ contract NEETH is ERC20 {
     /// @dev The DAO fee.
     uint256 public daoFee;
 
+    /// @dev The postOp cost estimate.
+    uint256 internal _postOpCost;
+
     /// ========================= MODIFIERS ========================= ///
 
     /// @dev Requires that the caller is the DAO.
@@ -266,7 +269,7 @@ contract NEETH is ERC20 {
         onlyEntryPoint06
     {
         unchecked {
-            uint256 cost = actualGasCost + 30000;
+            uint256 cost = actualGasCost + _postOpCost;
             address user = abi.decode(context, (address));
             _burn(user, _swap(true, -int256(cost)));
             assembly ("memory-safe") {
@@ -283,7 +286,7 @@ contract NEETH is ERC20 {
         uint256 actualUserOpFeePerGas
     ) public payable virtual onlyEntryPoint07 {
         unchecked {
-            uint256 cost = actualGasCost + actualUserOpFeePerGas * 30000;
+            uint256 cost = actualGasCost + actualUserOpFeePerGas * _postOpCost;
             address user = abi.decode(context, (address));
             _burn(user, _swap(true, -int256(cost)));
             assembly ("memory-safe") {
@@ -312,8 +315,13 @@ contract NEETH is ERC20 {
     /// =================== GOVERNANCE OPERATIONS =================== ///
 
     /// @dev Sets fee under DAO governance from NEETH minting.
-    function setFee(uint256 fee) public payable virtual onlyDAO {
-        daoFee = fee;
+    function setFee(uint256 _daoFee) public payable virtual onlyDAO {
+        daoFee = _daoFee;
+    }
+
+    /// @dev Sets cost estimate under DAO governance from NEETH postOp.
+    function setPostOpCost(uint256 _ostOpCost) public payable virtual onlyDAO {
+        _postOpCost = postOpCost;
     }
 
     /// @dev Withdraws EntryPoint deposits under DAO governance.

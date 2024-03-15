@@ -2,8 +2,6 @@
 solc_version = "0.8.25"
 evm_version = "cancun"
 
-via_ir = true
-
 optimizer = true
 optimizer_runs = 9_999_999
 
