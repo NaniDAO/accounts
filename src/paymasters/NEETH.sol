@@ -12,9 +12,6 @@ contract NEETH is ERC20 {
     /// @dev The governing DAO address.
     address internal constant DAO = 0xDa000000000000d2885F108500803dfBAaB2f2aA;
 
-    /// @dev The mint fee portion granted over for DAO governance.
-    uint256 internal constant FEE = 0.0000333 ether;
-
     /// @dev The Uniswap V3 pool on Arbitrum for swapping between WETH & stETH.
     address internal constant POOL = 0x35218a1cbaC5Bbc3E57fd9Bd38219D37571b3537;
 
@@ -76,7 +73,20 @@ contract NEETH is ERC20 {
         postOpReverted
     }
 
+    /// ========================== STORAGE ========================== ///
+
+    /// @dev The DAO fee.
+    uint256 public daoFee;
+
     /// ========================= MODIFIERS ========================= ///
+
+    /// @dev Requires that the caller is the DAO.
+    modifier onlyDAO() virtual {
+        assembly ("memory-safe") {
+            if iszero(eq(caller(), DAO)) { revert(codesize(), 0x00) }
+        }
+        _;
+    }
 
     /// @dev Requires that the caller is the EntryPoint.
     modifier onlyEntryPoint() virtual {
@@ -115,8 +125,9 @@ contract NEETH is ERC20 {
     /// DAO receives a grant in order to fund concerns.
     /// This DAO fee will pay for itself quick enough.
     function depositTo(address to) public payable virtual returns (uint256 neeth) {
-        _mint(to, neeth = (_swap(false, int256(msg.value)) /*output stETH*/ - FEE));
-        _mint(DAO, FEE);
+        uint256 fee = daoFee;
+        _mint(to, neeth = (_swap(false, int256(msg.value)) /*output stETH*/ - fee));
+        _mint(DAO, fee);
     }
 
     /// ==================== WITHDRAW OPERATIONS ==================== ///
@@ -220,15 +231,13 @@ contract NEETH is ERC20 {
     /// =================== VALIDATION OPERATIONS =================== ///
 
     /// @dev Payment validation: Check NEETH will cover based on balance.
-    function validatePaymasterUserOp(UserOperation calldata userOp, bytes32, /*userOpHash*/ uint256 maxCost)
-        public
-        payable
-        virtual
-        onlyEntryPoint
-        returns (bytes memory, uint256)
-    {
+    function validatePaymasterUserOp(
+        UserOperation calldata userOp,
+        bytes32, /*userOpHash*/
+        uint256 maxCost
+    ) public payable virtual onlyEntryPoint returns (bytes memory, uint256) {
         if (balanceOf(userOp.sender) >= maxCost) return (abi.encode(userOp.sender), 0x00);
-        return (abi.encode(userOp.sender), 0x01); // TODO: Check this. 
+        return ("", 0x01); // If insufficient NEETH, return fail code and empty context.
     }
 
     /// @dev Payment validation (packed): Check NEETH will cover based on balance.
@@ -238,58 +247,75 @@ contract NEETH is ERC20 {
         uint256 maxCost
     ) public payable virtual onlyEntryPoint returns (bytes memory, uint256) {
         if (balanceOf(userOp.sender) >= maxCost) return (abi.encode(userOp.sender), 0x00);
-        return (abi.encode(userOp.sender), 0x01);
+        return ("", 0x01); // If insufficient NEETH, return fail code and empty context.
     }
 
     /// @dev postOp validation 0.6: Check NEETH conditions are otherwise met.
     function postOp(PostOpMode, bytes calldata context, uint256 actualGasCost)
         public
         payable
+        virtual
         onlyEntryPoint
     {
-        uint256 cost = actualGasCost + 30000;
-        (address user) = abi.decode(context, (address));
-        _burn(user, _swap(true, -int256(cost)));
-        assembly ("memory-safe") {
-            pop(call(gas(), caller(), cost, codesize(), 0x00, codesize(), 0x00))
+        unchecked {
+            uint256 cost = actualGasCost + 30000;
+            (address user) = abi.decode(context, (address));
+            _burn(user, _swap(true, -int256(cost)));
+            assembly ("memory-safe") {
+                pop(call(gas(), caller(), cost, codesize(), 0x00, codesize(), 0x00))
+            }
         }
     }
 
     /// @dev postOp validation 0.7: Check NEETH conditions are otherwise met.
     function postOp(
-        PostOpMode mode,
+        PostOpMode,
         bytes calldata context,
         uint256 actualGasCost,
         uint256 actualUserOpFeePerGas
-    ) public payable onlyEntryPoint {
-        uint256 cost = actualGasCost + actualUserOpFeePerGas * 30000;
-        (address user) = abi.decode(context, (address));
-        _burn(user, _swap(true, -int256(cost)));
-        assembly ("memory-safe") {
-            pop(call(gas(), caller(), cost, codesize(), 0x00, codesize(), 0x00))
+    ) public payable virtual onlyEntryPoint {
+        unchecked {
+            uint256 cost = (actualGasCost + actualUserOpFeePerGas) * 30000;
+            (address user) = abi.decode(context, (address));
+            _burn(user, _swap(true, -int256(cost)));
+            assembly ("memory-safe") {
+                pop(call(gas(), caller(), cost, codesize(), 0x00, codesize(), 0x00))
+            }
         }
     }
 
     /// ===================== STAKING OPERATIONS ===================== ///
 
-    /// @dev Only the DAO may call.
-    modifier onlyDAO() {
-        if (msg.sender != DAO) revert();
-    }
-
     /// @dev Adds stake to EntryPoint (if `old`, version 0.6 is used).
-    function addStake(bool old, uint32 unstakeDelaySec) public payable onlyDAO {
+    function addStake(bool old, uint32 unstakeDelaySec) public payable virtual onlyDAO {
         NEETH(payable(old ? EP06 : EP07)).addStake{value: msg.value}(unstakeDelaySec);
     }
 
     /// @dev Unlocks stake from EntryPoint (if `old`, version 0.6 is used).
-    function unlockStake(bool old) public payable onlyDAO {
+    function unlockStake(bool old) public payable virtual onlyDAO {
         NEETH(payable(old ? EP06 : EP07)).unlockStake();
     }
 
     /// @dev Withdraws stake from EntryPoint (if `old`, version 0.6 is used).
-    function withdrawStake(address payable withdrawAddress) public payable onlyDAO {
+    function withdrawStake(address payable withdrawAddress) public payable virtual onlyDAO {
         NEETH(payable(old ? EP06 : EP07)).withdrawStake(withdrawAddress);
+    }
+
+    /// =================== GOVERNANCE OPERATIONS =================== ///
+
+    /// @dev Sets fee under DAO governance from NEETH minting.
+    function setFee(uint256 fee) public payable virtual onlyDAO {
+        daoFee = fee;
+    }
+
+    /// @dev Withdraws deposits under DAO governance.
+    function withdrawTo(bool old, address payable withdrawAddress, uint256 withdrawAmount)
+        public
+        payable
+        virtual
+        onlyDAO
+    {
+        NEETH(payable(old ? EP06 : EP07)).withdrawTo(withdrawAddress, withdrawAmount);
     }
 }
 
