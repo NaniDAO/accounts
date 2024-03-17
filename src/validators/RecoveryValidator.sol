@@ -8,7 +8,7 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 /// @dev Operationally this validator works as a one-time recovery
 /// multisig singleton by allowing accounts to program authorizers
 /// and thresholds for such authorizers to validate user operations.
-/// @custom:version 1.0.0
+/// @custom:version 1.0.1
 contract RecoveryValidator {
     /// ======================= CUSTOM ERRORS ======================= ///
 
@@ -68,10 +68,10 @@ contract RecoveryValidator {
         bytes signature;
     }
 
-    /// @dev The authorizer signing struct.
+    /// @dev The authorizer matching struct.
     struct Authorizer {
         address signer;
-        bool matched;
+        bytes signature;
     }
 
     /// @dev The validator settings struct.
@@ -124,55 +124,25 @@ contract RecoveryValidator {
         Settings storage settings = _settings[msg.sender];
         if (settings.deadline == 0) revert Unauthorized();
         if (block.timestamp < settings.deadline) revert DeadlinePending();
-        bytes[] memory signatures = _splitSignature(signature);
-        if (signatures.length < settings.threshold) revert Unauthorized();
+        Authorizer[] memory authorizers = abi.decode(signature, (Authorizer[]));
+        if (authorizers.length < settings.threshold) revert Unauthorized();
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
         if (bytes4(callData[132:]) != 0xf2fde38b) revert InvalidExecute();
-        Authorizer[] memory authorizers = new Authorizer[](settings.authorizers.length);
+
         unchecked {
             for (uint256 i; i != authorizers.length;) {
-                authorizers[i].signer = settings.authorizers[i];
-                ++i;
-            }
-            for (uint256 i; i != settings.threshold;) {
-                for (uint256 j; j != authorizers.length;) {
-                    if (
-                        !authorizers[j].matched
-                            && SignatureCheckerLib.isValidSignatureNow(
-                                authorizers[j].signer, hash, signatures[i]
-                            )
-                    ) {
-                        authorizers[j].matched = true;
-                        ++i;
-                        break;
-                    } else {
-                        ++j;
-                        if (j == authorizers.length) {
-                            return 0x01; // Failure code.
-                        }
-                    }
+                if (
+                  SignatureCheckerLib.isValidSignatureNow(
+                            authorizers[i].signer, hash, authorizers[i].signature
+                        )
+                ) {
+                    ++i;
+                } else {
+                    return 0x01; // failure code
                 }
             }
         }
         uninstall(); // Uninstall the recovery settings.
-    }
-
-    /// @dev Returns bytes array from split signature.
-    function _splitSignature(bytes calldata signature)
-        internal
-        view
-        virtual
-        returns (bytes[] memory signatures)
-    {
-        unchecked {
-            if (signature.length % 65 != 0) revert InvalidSetting();
-            signatures = new bytes[](signature.length / 65);
-            uint256 pos;
-            for (uint256 i; i != signatures.length;) {
-                signatures[i] = signature[pos:pos += 65];
-                ++i;
-            }
-        }
     }
 
     /// =================== AUTHORIZER OPERATIONS =================== ///
