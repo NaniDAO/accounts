@@ -69,9 +69,9 @@ contract RecoveryValidator {
     }
 
     /// @dev The authorizer signature struct.
-    struct Authorizer {
+    struct Signature {
         address signer;
-        bytes signature;
+        bytes sign;
     }
 
     /// @dev The validator settings struct.
@@ -124,19 +124,33 @@ contract RecoveryValidator {
         Settings storage settings = _settings[msg.sender];
         if (settings.deadline == 0) revert Unauthorized();
         if (block.timestamp < settings.deadline) revert DeadlinePending();
-        Authorizer[] memory authorizers = abi.decode(signature, (Authorizer[]));
-        if (authorizers.length < settings.threshold) revert Unauthorized();
+        Signature[] memory signatures = abi.decode(signature, (Signature[]));
+        if (signatures.length < settings.threshold) revert Unauthorized();
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
         if (bytes4(callData[132:]) != ITransferOwnership.transferOwnership.selector) {
             revert InvalidCalldata();
         }
+
+        address[] memory authorizers = settings.authorizers;
+        address[] memory recovered = new address[](authorizers.length);
+
         unchecked {
-            for (uint256 i; i != settings.authorizers.length;) {
+            for (uint256 i; i != authorizers.length;) {
+                address signer = signatures[i].signer;
+                bool isAuthorizer = LibSort.searchSorted(authorizers, signer);
+
+                if (!isAuthorizer) return 0x01;
+
+                bool isRecovered = LibSort.searchSorted(recovered, signer);
+
+                if (isRecovered) return 0x01;
+
                 if (
                     SignatureCheckerLib.isValidSignatureNow(
-                        settings.authorizers[i], hash, authorizers[i].signature
+                    signer, hash, signature[i].sign
                     )
                 ) {
+                    recovered[i] = authorizers[i];
                     ++i;
                 } else {
                     return 0x01; // Failure code.
@@ -172,8 +186,7 @@ contract RecoveryValidator {
 
     /// @dev Sets new authorizers for the caller account.
     function setAuthorizers(address[] calldata authorizers) public payable virtual {
-        LibSort.sort(authorizers);
-        LibSort.uniquifySorted(authorizers);
+        LibSort.uniquifySorted(LibSort.sort(authorizers));
         if (_settings[msg.sender].threshold > authorizers.length) revert InvalidSetting();
         emit AuthorizersSet(msg.sender, (_settings[msg.sender].authorizers = authorizers));
     }
@@ -183,13 +196,8 @@ contract RecoveryValidator {
     /// sets a new deadline for the account to cancel request.
     function requestOwnershipHandover(address account) public payable virtual {
         address[] memory authorizers = _settings[account].authorizers;
-        bool isAuthorizer;
-        for (uint256 i; i != authorizers.length; ++i) {
-            if (msg.sender == authorizers[i]) {
-                isAuthorizer = true;
-                break;
-            }
-        }
+        bool isAuthorizer = LibSort.searchSorted(authorizers, account);
+
         if (!isAuthorizer) revert Unauthorized();
         unchecked {
             emit DeadlineSet(
