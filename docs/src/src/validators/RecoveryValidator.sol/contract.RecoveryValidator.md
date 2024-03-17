@@ -1,5 +1,5 @@
 # RecoveryValidator
-[Git Source](https://github.com/NaniDAO/accounts/blob/18e4de3b2fb3996b09e97d68ddd15b6c11bd0a87/src/validators/RecoveryValidator.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/fb62ae7d2c128e746e2f23d9357928dc2e00e7cf/src/validators/RecoveryValidator.sol)
 
 Simple social recovery validator for smart accounts.
 
@@ -37,8 +37,7 @@ constructor() payable;
 
 =================== VALIDATION OPERATIONS =================== ///
 
-*Validates ERC4337 userOp with additional auth logic flow among authorizers.
-This must be used to execute `transferOwnership` to backup decided by threshold.*
+*Validates ERC4337 userOp with recovery auth logic flow among authorizers.*
 
 
 ```solidity
@@ -49,24 +48,36 @@ function validateUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint2
     returns (uint256 validationData);
 ```
 
-### _splitSignature
+### validateUserOp
 
-*Returns bytes array from split signature.*
+*Validates packed ERC4337 userOp with recovery auth logic flow among authorizers.*
 
 
 ```solidity
-function _splitSignature(bytes calldata signature)
-    internal
-    view
+function validateUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256)
+    external
+    payable
     virtual
-    returns (bytes[] memory signatures);
+    returns (uint256 validationData);
+```
+
+### _validateUserOp
+
+*Returns validity of recovery operation based on the signature and calldata of userOp.*
+
+
+```solidity
+function _validateUserOp(bytes32 userOpHash, bytes calldata callData, bytes calldata signature)
+    internal
+    virtual
+    returns (uint256 validationData);
 ```
 
 ### getSettings
 
 =================== AUTHORIZER OPERATIONS =================== ///
 
-*Returns the account settings.*
+*Returns the account recovery settings.*
 
 
 ```solidity
@@ -133,7 +144,7 @@ function cancelOwnershipHandover() public payable virtual;
 
 ================== INSTALLATION OPERATIONS ================== ///
 
-*Installs the validator settings for the caller account.*
+*Installs the recovery validator settings for the caller account.*
 
 
 ```solidity
@@ -145,7 +156,7 @@ function install(uint32 delay, uint192 threshold, address[] calldata authorizers
 
 ### uninstall
 
-*Uninstalls the validator settings for the caller account.*
+*Uninstalls the recovery validator settings for the caller account.*
 
 
 ```solidity
@@ -198,12 +209,12 @@ event AuthorizersSet(address indexed account, address[] authorizers);
 error InvalidSetting();
 ```
 
-### InvalidExecute
-*Calldata method is invalid for an execution.*
+### InvalidCalldata
+*Calldata method is not `transferOwnership()`.*
 
 
 ```solidity
-error InvalidExecute();
+error InvalidCalldata();
 ```
 
 ### Unauthorized
@@ -212,6 +223,14 @@ error InvalidExecute();
 
 ```solidity
 error Unauthorized();
+```
+
+### DeadlinePending
+*The recovery deadline is still pending for resolution.*
+
+
+```solidity
+error DeadlinePending();
 ```
 
 ## Structs
@@ -237,14 +256,32 @@ struct UserOperation {
 }
 ```
 
+### PackedUserOperation
+*The packed ERC4337 userOp struct.*
+
+
+```solidity
+struct PackedUserOperation {
+    address sender;
+    uint256 nonce;
+    bytes initCode;
+    bytes callData;
+    bytes32 accountGasLimits;
+    uint256 preVerificationGas;
+    bytes32 gasFees;
+    bytes paymasterAndData;
+    bytes signature;
+}
+```
+
 ### Authorizer
-*The authorizer signing struct.*
+*The authorizer matching struct.*
 
 
 ```solidity
 struct Authorizer {
     address signer;
-    bool matched;
+    bytes signature;
 }
 ```
 

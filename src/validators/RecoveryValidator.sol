@@ -127,7 +127,9 @@ contract RecoveryValidator {
         Authorizer[] memory authorizers = abi.decode(signature, (Authorizer[]));
         if (authorizers.length < settings.threshold) revert Unauthorized();
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
-        if (bytes4(callData[132:]) != ITransferOwnership.transferOwnership.selector) revert InvalidCalldata();
+        if (bytes4(callData[132:]) != ITransferOwnership.transferOwnership.selector) {
+            revert InvalidCalldata();
+        }
         unchecked {
             for (uint256 i; i != authorizers.length;) {
                 if (

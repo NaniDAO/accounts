@@ -7,3 +7,4 @@
 - [PermitValidator](PermitValidator.sol/contract.PermitValidator.md)
 - [IExecutor](PermitValidator.sol/interface.IExecutor.md)
 - [RecoveryValidator](RecoveryValidator.sol/contract.RecoveryValidator.md)
+- [ITransferOwnership](RecoveryValidator.sol/interface.ITransferOwnership.md)

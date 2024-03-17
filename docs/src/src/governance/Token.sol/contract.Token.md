@@ -1,5 +1,8 @@
 # Token
-[Git Source](https://github.com/NaniDAO/accounts/blob/18e4de3b2fb3996b09e97d68ddd15b6c11bd0a87/src/governance/Token.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/fb62ae7d2c128e746e2f23d9357928dc2e00e7cf/src/governance/Token.sol)
+
+**Author:**
+nani.eth (Nani DAO)
 
 Simple ERC20 token.
 
@@ -15,7 +18,7 @@ string public constant name = "NANI";
 ### symbol
 
 ```solidity
-string public constant symbol = unicode"❂";
+string public constant symbol = unicode"⌘";
 ```
 
 

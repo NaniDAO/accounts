@@ -161,6 +161,11 @@ contract RecoveryValidatorTest is Test {
         assertEq(guardianThree, _guardian3);
     }
 
+    struct Authorizer {
+        address signer;
+        bytes signature;
+    }
+
     function testSocialRecovery() public {
         uint192 key = type(uint192).max;
         address _guardian1 = guardian1;
@@ -198,17 +203,24 @@ contract RecoveryValidatorTest is Test {
 
         NaniAccount.PackedUserOperation memory userOp;
         userOp.sender = address(account);
-        userOp.callData = abi.encodeWithSignature(
-            "transferOwnership(address)",
-            _guardian2
+        userOp.callData = abi.encodeWithSelector(
+            account.execute.selector,
+            address(this),
+            0 ether,
+            abi.encodeWithSelector(account.transferOwnership.selector, _guardian2)
         );
 
         userOp.nonce = 0 | (uint256(key) << 64);
         bytes32 userOpHash = hex"00";
-        userOp.signature = abi.encodePacked(
-            _sign(guardian2key, _toEthSignedMessageHash(userOpHash)),
-            _sign(guardian3key, _toEthSignedMessageHash(userOpHash))
-        );
+
+        Authorizer[] memory authorizers = new Authorizer[](2);
+        authorizers[0].signer = guardian2;
+        authorizers[0].signature = _sign(guardian2key, _toEthSignedMessageHash(userOpHash));
+
+        authorizers[1].signer = guardian3;
+        authorizers[1].signature = _sign(guardian3key, _toEthSignedMessageHash(userOpHash));
+
+        userOp.signature = abi.encodePacked(abi.encode(authorizers[0]), abi.encode(authorizers[1]));
 
         vm.startPrank(_guardian2);
         socialRecoveryValidator.requestOwnershipHandover(address(account));
