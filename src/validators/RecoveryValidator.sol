@@ -68,7 +68,7 @@ contract RecoveryValidator {
         bytes signature;
     }
 
-    /// @dev The authorizer matching struct.
+    /// @dev The authorizer signature struct.
     struct Authorizer {
         address signer;
         bytes signature;
