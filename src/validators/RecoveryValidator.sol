@@ -131,10 +131,10 @@ contract RecoveryValidator {
             revert InvalidCalldata();
         }
         unchecked {
-            for (uint256 i; i != authorizers.length;) {
+            for (uint256 i; i != settings.authorizers.length;) {
                 if (
                     SignatureCheckerLib.isValidSignatureNow(
-                        authorizers[i].signer, hash, authorizers[i].signature
+                        settings.authorizers[i], hash, authorizers[i].signature
                     )
                 ) {
                     ++i;
