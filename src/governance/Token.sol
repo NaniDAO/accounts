@@ -1,23 +1,23 @@
+// ⌘ ⌘ ⌘ ⌘ ⌘ ⌘ ⌘ ⌘ ⌘ ⌘ ⌘ ⌘ ⌘ ⌘ ⌘ ⌘ ⌘ ⌘ ⌘
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.24;
 
 /// @notice Simple ERC20 token.
+/// @author nani.eth (Nani DAO)
 contract Token {
     event Transfer(address indexed from, address indexed to, uint256 amount);
     event Approval(address indexed from, address indexed to, uint256 amount);
 
     string public constant name = "NANI";
-    string public constant symbol = unicode"❂";
+    string public constant symbol = unicode"⌘";
     uint256 public constant decimals = 18;
     uint256 public constant totalSupply = 1e27;
-
+    
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
 
     constructor() payable {
         balanceOf[tx.origin] = totalSupply;
-        balanceOf[address(0)] = type(uint256).max;
-        balanceOf[address(this)] = type(uint256).max;
     }
 
     function approve(address to, uint256 amount) public payable returns (bool) {

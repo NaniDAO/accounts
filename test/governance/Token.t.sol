@@ -23,17 +23,17 @@ contract TokenTest is Test {
         new Token();
     }
 
-    function testNameAndSymbolAndDecimals() public {
+    function testNameAndSymbolAndDecimals() public view {
         assertEq(token.name(), "NANI");
         assertEq(token.symbol(), unicode"❂");
         assertEq(token.decimals(), 18);
     }
 
-    function testTotalSupply() public {
+    function testTotalSupply() public view {
         assertEq(token.totalSupply(), MAX);
     }
 
-    function testInitBalance() public {
+    function testInitBalance() public view {
         assertEq(token.balanceOf(alice), MAX);
     }
 

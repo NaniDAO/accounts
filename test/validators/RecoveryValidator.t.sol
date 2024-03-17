@@ -11,12 +11,12 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 interface IEntryPoint {
     function getNonce(address sender, uint192 key) external view returns (uint256 nonce);
 
-    function getUserOpHash(NaniAccount.UserOperation calldata userOp)
+    function getUserOpHash(NaniAccount.PackedUserOperation calldata userOp)
         external
         view
         returns (bytes32);
 
-    function handleOps(NaniAccount.UserOperation[] calldata ops, address payable beneficiary)
+    function handleOps(NaniAccount.PackedUserOperation[] calldata ops, address payable beneficiary)
         external;
 }
 
@@ -196,13 +196,11 @@ contract RecoveryValidatorTest is Test {
         );
         assertEq(bytes20(bytes32(stored)), bytes20(address(socialRecoveryValidator)));
 
-        NaniAccount.UserOperation memory userOp;
+        NaniAccount.PackedUserOperation memory userOp;
         userOp.sender = address(account);
-        userOp.callData = abi.encodeWithSelector(
-            account.execute.selector,
-            address(this),
-            0 ether,
-            abi.encodeWithSelector(account.transferOwnership.selector, _guardian2)
+        userOp.callData = abi.encodeWithSignature(
+            "transferOwnership(address)",
+            _guardian2
         );
 
         userOp.nonce = 0 | (uint256(key) << 64);
@@ -264,7 +262,7 @@ contract RecoveryValidatorTest is Test {
         );
         assertEq(bytes20(bytes32(stored)), bytes20(address(socialRecoveryValidator)));
 
-        NaniAccount.UserOperation memory userOp;
+        NaniAccount.PackedUserOperation memory userOp;
         userOp.sender = address(account);
         userOp.callData = abi.encodeWithSelector(
             account.execute.selector,
@@ -320,7 +318,7 @@ contract RecoveryValidatorTest is Test {
         );
         assertEq(bytes20(bytes32(stored)), bytes20(address(socialRecoveryValidator)));
 
-        NaniAccount.UserOperation memory userOp;
+        NaniAccount.PackedUserOperation memory userOp;
         userOp.sender = address(account);
         userOp.callData = abi.encodeWithSelector(
             account.execute.selector,
@@ -381,7 +379,7 @@ contract RecoveryValidatorTest is Test {
         );
         assertEq(bytes20(bytes32(stored)), bytes20(address(socialRecoveryValidator)));
 
-        NaniAccount.UserOperation memory userOp;
+        NaniAccount.PackedUserOperation memory userOp;
         userOp.sender = address(account);
         userOp.callData = abi.encodeWithSelector(
             account.execute.selector,
@@ -442,7 +440,7 @@ contract RecoveryValidatorTest is Test {
         );
         assertEq(bytes20(bytes32(stored)), bytes20(address(socialRecoveryValidator)));
 
-        NaniAccount.UserOperation memory userOp;
+        NaniAccount.PackedUserOperation memory userOp;
         userOp.sender = address(account);
         userOp.callData = abi.encodeWithSelector(
             account.execute.selector,

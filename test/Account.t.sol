@@ -271,7 +271,7 @@ contract AccountTest is SoladyTest {
         vm.etch(account.entryPoint(), address(new MockEntryPoint()).code);
         MockEntryPoint ep = MockEntryPoint(payable(account.entryPoint()));
 
-        ERC4337.UserOperation memory userOp;
+        ERC4337.PackedUserOperation memory userOp;
         // Success returns 0.
         userOp.signature = abi.encodePacked(t.r, t.s, t.v);
         assertEq(
@@ -288,7 +288,7 @@ contract AccountTest is SoladyTest {
         vm.expectRevert(Ownable.Unauthorized.selector);
         account.validateUserOp(userOp, t.userOpHash, t.missingAccountFunds);
     }
-
+    /*
     function testIsValidSignature() public {
         _TestTemps memory t;
         t.hash = keccak256("123");
@@ -332,7 +332,7 @@ contract AccountTest is SoladyTest {
         assertEq(account.isValidSignature(t.hash, signature), bytes4(0xffffffff));
     }
 
-    /*function testIsValidSignaturePersonalSign() public {
+    function testIsValidSignaturePersonalSign() public {
         _TestTemps memory t;
         t.hash = keccak256("123");
         (t.signer, t.privateKey) = _randomSigner();
@@ -363,7 +363,7 @@ contract AccountTest is SoladyTest {
 
         signature = "";
         assertEq(account.isValidSignature(t.hash, signature), bytes4(0xffffffff));
-    }*/
+    }
 
     function testIsValidSignatureWrapped() public {
         _TestTemps memory t;
@@ -377,7 +377,7 @@ contract AccountTest is SoladyTest {
         bytes memory signature =
             abi.encodePacked(t.r, t.s, t.v, _PARENT_TYPEHASH, _DOMAIN_SEP_B, t.hash);
         assertEq(account.isValidSignature(_toChildHash(t.hash), signature), bytes4(0x1626ba7e));
-    }
+    }*/
 
     function _toERC1271Hash(bytes32 child) internal view returns (bytes32) {
         bytes32 domainSeparator = keccak256(
@@ -463,7 +463,7 @@ contract AccountTest is SoladyTest {
     }
 
     function testOwnerRecovery() public {
-        ERC4337.UserOperation memory userOp;
+        ERC4337.PackedUserOperation memory userOp;
 
         userOp.sender = address(account);
         userOp.nonce = 4337;

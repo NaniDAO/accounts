@@ -8,15 +8,15 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 /// @dev Operationally this validator works as a one-time recovery
 /// multisig singleton by allowing accounts to program authorizers
 /// and thresholds for such authorizers to validate user operations.
-/// @custom:version 1.0.1
+/// @custom:version 1.1.1
 contract RecoveryValidator {
     /// ======================= CUSTOM ERRORS ======================= ///
 
     /// @dev Inputs are invalid for a setting.
     error InvalidSetting();
 
-    /// @dev Calldata method is invalid for an execution.
-    error InvalidExecute();
+    /// @dev Calldata method is not `transferOwnership()`.
+    error InvalidCalldata();
 
     /// @dev The caller is not authorized to call the function.
     error Unauthorized();
@@ -63,7 +63,7 @@ contract RecoveryValidator {
         bytes callData;
         bytes32 accountGasLimits;
         uint256 preVerificationGas;
-        bytes32 gasFees; // `maxPriorityFee` and `maxFeePerGas`.
+        bytes32 gasFees;
         bytes paymasterAndData;
         bytes signature;
     }
@@ -127,18 +127,17 @@ contract RecoveryValidator {
         Authorizer[] memory authorizers = abi.decode(signature, (Authorizer[]));
         if (authorizers.length < settings.threshold) revert Unauthorized();
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
-        if (bytes4(callData[132:]) != 0xf2fde38b) revert InvalidExecute();
-
+        if (bytes4(callData[132:]) != ITransferOwnership.transferOwnership.selector) revert InvalidCalldata();
         unchecked {
             for (uint256 i; i != authorizers.length;) {
                 if (
-                  SignatureCheckerLib.isValidSignatureNow(
-                            authorizers[i].signer, hash, authorizers[i].signature
-                        )
+                    SignatureCheckerLib.isValidSignatureNow(
+                        authorizers[i].signer, hash, authorizers[i].signature
+                    )
                 ) {
                     ++i;
                 } else {
-                    return 0x01; // failure code
+                    return 0x01; // Failure code.
                 }
             }
         }
@@ -228,4 +227,9 @@ contract RecoveryValidator {
         emit ThresholdSet(msg.sender, 0);
         emit AuthorizersSet(msg.sender, new address[](0));
     }
+}
+
+/// @dev Simple ownership transfer interface.
+interface ITransferOwnership {
+    function transferOwnership(address) external payable;
 }
