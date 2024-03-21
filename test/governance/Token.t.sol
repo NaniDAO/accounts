@@ -25,7 +25,7 @@ contract TokenTest is Test {
 
     function testNameAndSymbolAndDecimals() public view {
         assertEq(token.name(), "NANI");
-        assertEq(token.symbol(), unicode"❂");
+        assertEq(token.symbol(), unicode"⌘");
         assertEq(token.decimals(), 18);
     }
 

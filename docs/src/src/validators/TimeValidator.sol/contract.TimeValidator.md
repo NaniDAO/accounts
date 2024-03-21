@@ -1,22 +1,10 @@
-# JointValidator
-[Git Source](https://github.com/NaniDAO/accounts/blob/33a542184db4330f73d0a20b57e8976a75cb8aba/src/validators/JointValidator.sol)
+# TimeValidator
+[Git Source](https://github.com/NaniDAO/accounts/blob/33a542184db4330f73d0a20b57e8976a75cb8aba/src/validators/TimeValidator.sol)
 
 **Author:**
-nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/validators/JointValidator.sol)
+nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/validators/TimeValidator.sol)
 
-Simple joint ownership validator for smart accounts.
-
-
-## State Variables
-### _authorizers
-========================== STORAGE ========================== ///
-
-*Stores mapping of authorizers to accounts.*
-
-
-```solidity
-mapping(address => address[]) internal _authorizers;
-```
+Simple time window validator for smart accounts.
 
 
 ## Functions
@@ -36,7 +24,7 @@ constructor() payable;
 
 =================== VALIDATION OPERATIONS =================== ///
 
-*Validates ERC4337 userOp with recovery auth logic flow among authorizers.*
+*Validates ERC4337 userOp with time window unpacking and owner validation.*
 
 
 ```solidity
@@ -49,7 +37,7 @@ function validateUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint2
 
 ### validateUserOp
 
-*Validates packed ERC4337 userOp with recovery auth logic flow among authorizers.*
+*Validates packed ERC4337 userOp with time window unpacking and owner validation.*
 
 
 ```solidity
@@ -62,7 +50,7 @@ function validateUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash,
 
 ### _validateUserOp
 
-*Returns validity of userOp based on an authorizer signature.*
+*Returns validity of userOp based on an account owner signature.*
 
 
 ```solidity
@@ -72,44 +60,17 @@ function _validateUserOp(bytes32 userOpHash, bytes calldata signature)
     returns (uint256 validationData);
 ```
 
-### get
+### _packValidationData
 
-=================== AUTHORIZER OPERATIONS =================== ///
-
-*Returns the authorizers for an account.*
+*Returns the packed validation data for userOp based on validation.*
 
 
 ```solidity
-function get(address account) public view virtual returns (address[] memory);
-```
-
-### install
-
-*Installs new authorizers for the caller account.*
-
-
-```solidity
-function install(address[] calldata authorizers) public payable virtual;
-```
-
-### uninstall
-
-*Uninstalls the authorizers for the caller account.*
-
-
-```solidity
-function uninstall() public payable virtual;
-```
-
-## Events
-### AuthorizersSet
-=========================== EVENTS =========================== ///
-
-*Logs new authorizers for an account.*
-
-
-```solidity
-event AuthorizersSet(address indexed account, address[] authorizers);
+function _packValidationData(bool valid, uint48 validUntil, uint48 validAfter)
+    internal
+    pure
+    virtual
+    returns (uint256 validationData);
 ```
 
 ## Structs

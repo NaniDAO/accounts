@@ -1,5 +1,5 @@
 # ITransferOwnership
-[Git Source](https://github.com/NaniDAO/accounts/blob/fb62ae7d2c128e746e2f23d9357928dc2e00e7cf/src/validators/RecoveryValidator.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/33a542184db4330f73d0a20b57e8976a75cb8aba/src/validators/RecoveryValidator.sol)
 
 *Simple ownership transfer interface.*
 
