@@ -5,7 +5,7 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 
 /// @notice Simple joint ownership validator for smart accounts.
 /// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/validators/JointValidator.sol)
-/// @custom:version 0.0.0
+/// @custom:version 1.0.0
 contract JointValidator {
     /// =========================== EVENTS =========================== ///
 
@@ -29,6 +29,19 @@ contract JointValidator {
         bytes signature;
     }
 
+    /// @dev The packed ERC4337 userOp struct.
+    struct PackedUserOperation {
+        address sender;
+        uint256 nonce;
+        bytes initCode;
+        bytes callData;
+        bytes32 accountGasLimits;
+        uint256 preVerificationGas;
+        bytes32 gasFees;
+        bytes paymasterAndData;
+        bytes signature;
+    }
+
     /// ========================== STORAGE ========================== ///
 
     /// @dev Stores mapping of authorizers to accounts.
@@ -42,21 +55,36 @@ contract JointValidator {
 
     /// =================== VALIDATION OPERATIONS =================== ///
 
-    /// @dev Validates ERC4337 userOp with additional auth logic flow among authorizers.
+    /// @dev Validates ERC4337 userOp with recovery auth logic flow among authorizers.
     function validateUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint256)
         external
         payable
         virtual
         returns (uint256 validationData)
     {
+        return _validateUserOp(userOpHash, userOp.signature);
+    }
+
+    /// @dev Validates packed ERC4337 userOp with recovery auth logic flow among authorizers.
+    function validateUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256)
+        external
+        payable
+        virtual
+        returns (uint256 validationData)
+    {
+        return _validateUserOp(userOpHash, userOp.signature);
+    }
+
+    /// @dev Returns validity of userOp based on an authorizer signature.
+    function _validateUserOp(bytes32 userOpHash, bytes calldata signature)
+        internal
+        virtual
+        returns (uint256 validationData)
+    {
         address[] memory authorizers = _authorizers[msg.sender];
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
         for (uint256 i; i != authorizers.length; ++i) {
-            if (
-                SignatureCheckerLib.isValidSignatureNowCalldata(
-                    authorizers[i], hash, userOp.signature
-                )
-            ) {
+            if (SignatureCheckerLib.isValidSignatureNowCalldata(authorizers[i], hash, signature)) {
                 validationData = 0x01; // Failure code.
                 break;
             }

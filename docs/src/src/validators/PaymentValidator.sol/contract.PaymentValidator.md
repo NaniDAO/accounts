@@ -1,5 +1,5 @@
 # PaymentValidator
-[Git Source](https://github.com/NaniDAO/accounts/blob/18e4de3b2fb3996b09e97d68ddd15b6c11bd0a87/src/validators/PaymentValidator.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/33a542184db4330f73d0a20b57e8976a75cb8aba/src/validators/PaymentValidator.sol)
 
 **Author:**
 nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/validators/PaymentValidator.sol)
@@ -8,6 +8,17 @@ Simple payment plan validator for smart accounts.
 
 
 ## State Variables
+### ETH
+========================= CONSTANTS ========================= ///
+
+*The conventional ERC7528 ETH address.*
+
+
+```solidity
+address internal constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+```
+
+
 ### _authorizers
 ========================== STORAGE ========================== ///
 
@@ -45,13 +56,38 @@ constructor() payable;
 
 =================== VALIDATION OPERATIONS =================== ///
 
-*Validates ERC4337 userOp with additional auth logic flow among authorizers.*
+*Validates ERC4337 userOp with payment plan and auth validation.*
 
 
 ```solidity
 function validateUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint256)
-    public
+    external
     payable
+    virtual
+    returns (uint256 validationData);
+```
+
+### validateUserOp
+
+*Validates packed ERC4337 userOp with payment plan and auth validation.*
+
+
+```solidity
+function validateUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256)
+    external
+    payable
+    virtual
+    returns (uint256 validationData);
+```
+
+### _validateUserOp
+
+*Validates userOp with payment plan and auth validation.*
+
+
+```solidity
+function _validateUserOp(bytes32 userOpHash, bytes calldata callData, bytes calldata signature)
+    internal
     virtual
     returns (uint256 validationData);
 ```
@@ -69,7 +105,7 @@ function getAuthorizers(address account) public view virtual returns (address[] 
 
 ### getPlan
 
-*Returns an asset payment plan for an account.*
+*Returns the asset payment plan for an account.*
 
 
 ```solidity
@@ -155,20 +191,20 @@ error InvalidAllowance();
 error InvalidTimestamp();
 ```
 
-### InvalidETHCalldata
-*Calldata is attached to an ether (ETH) spend.*
+### InvalidSelector
+*Invalid selector for the given asset spend.*
 
 
 ```solidity
-error InvalidETHCalldata();
+error InvalidSelector();
 ```
 
-### InvalidCalldata
-*Invalid calldata is attached to asset spend.*
+### InvalidTarget
+*Invalid target for the given asset spend.*
 
 
 ```solidity
-error InvalidCalldata();
+error InvalidTarget();
 ```
 
 ## Structs
@@ -202,6 +238,24 @@ struct UserOperation {
     uint256 preVerificationGas;
     uint256 maxFeePerGas;
     uint256 maxPriorityFeePerGas;
+    bytes paymasterAndData;
+    bytes signature;
+}
+```
+
+### PackedUserOperation
+*The packed ERC4337 userOp struct.*
+
+
+```solidity
+struct PackedUserOperation {
+    address sender;
+    uint256 nonce;
+    bytes initCode;
+    bytes callData;
+    bytes32 accountGasLimits;
+    uint256 preVerificationGas;
+    bytes32 gasFees;
     bytes paymasterAndData;
     bytes signature;
 }

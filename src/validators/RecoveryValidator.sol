@@ -8,15 +8,15 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 /// @dev Operationally this validator works as a one-time recovery
 /// multisig singleton by allowing accounts to program authorizers
 /// and thresholds for such authorizers to validate user operations.
-/// @custom:version 1.0.0
+/// @custom:version 1.1.1
 contract RecoveryValidator {
     /// ======================= CUSTOM ERRORS ======================= ///
 
     /// @dev Inputs are invalid for a setting.
     error InvalidSetting();
 
-    /// @dev Calldata method is invalid for an execution.
-    error InvalidExecute();
+    /// @dev Calldata method is not `transferOwnership()`.
+    error InvalidCalldata();
 
     /// @dev The caller is not authorized to call the function.
     error Unauthorized();
@@ -63,15 +63,15 @@ contract RecoveryValidator {
         bytes callData;
         bytes32 accountGasLimits;
         uint256 preVerificationGas;
-        bytes32 gasFees; // `maxPriorityFee` and `maxFeePerGas`.
+        bytes32 gasFees;
         bytes paymasterAndData;
         bytes signature;
     }
 
-    /// @dev The authorizer signing struct.
-    struct Authorizer {
+    /// @dev The authorizer signature struct.
+    struct Signature {
         address signer;
-        bool matched;
+        bytes sign;
     }
 
     /// @dev The validator settings struct.
@@ -124,55 +124,32 @@ contract RecoveryValidator {
         Settings storage settings = _settings[msg.sender];
         if (settings.deadline == 0) revert Unauthorized();
         if (block.timestamp < settings.deadline) revert DeadlinePending();
-        bytes[] memory signatures = _splitSignature(signature);
+        Signature[] memory signatures = abi.decode(signature, (Signature[]));
         if (signatures.length < settings.threshold) revert Unauthorized();
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
-        if (bytes4(callData[132:]) != 0xf2fde38b) revert InvalidExecute();
-        Authorizer[] memory authorizers = new Authorizer[](settings.authorizers.length);
+        if (bytes4(callData[132:]) != ITransferOwnership.transferOwnership.selector) {
+            revert InvalidCalldata();
+        }
+        address signer;
+        bool isAuthorizer;
+        bool isRecovered;
+        address[] memory recovered = new address[](settings.authorizers.length);
         unchecked {
-            for (uint256 i; i != authorizers.length;) {
-                authorizers[i].signer = settings.authorizers[i];
-                ++i;
-            }
-            for (uint256 i; i != settings.threshold;) {
-                for (uint256 j; j != authorizers.length;) {
-                    if (
-                        !authorizers[j].matched
-                            && SignatureCheckerLib.isValidSignatureNow(
-                                authorizers[j].signer, hash, signatures[i]
-                            )
-                    ) {
-                        authorizers[j].matched = true;
-                        ++i;
-                        break;
-                    } else {
-                        ++j;
-                        if (j == authorizers.length) {
-                            return 0x01; // Failure code.
-                        }
-                    }
+            for (uint256 i; i != settings.authorizers.length;) {
+                signer = signatures[i].signer;
+                (isAuthorizer,) = LibSort.searchSorted(settings.authorizers, signer);
+                if (!isAuthorizer) return 0x01;
+                (isRecovered,) = LibSort.searchSorted(recovered, signer);
+                if (isRecovered) return 0x01;
+                if (SignatureCheckerLib.isValidSignatureNow(signer, hash, signatures[i].sign)) {
+                    recovered[i] = signer;
+                    ++i;
+                } else {
+                    return 0x01; // Failure code.
                 }
             }
         }
         uninstall(); // Uninstall the recovery settings.
-    }
-
-    /// @dev Returns bytes array from split signature.
-    function _splitSignature(bytes calldata signature)
-        internal
-        view
-        virtual
-        returns (bytes[] memory signatures)
-    {
-        unchecked {
-            if (signature.length % 65 != 0) revert InvalidSetting();
-            signatures = new bytes[](signature.length / 65);
-            uint256 pos;
-            for (uint256 i; i != signatures.length;) {
-                signatures[i] = signature[pos:pos += 65];
-                ++i;
-            }
-        }
     }
 
     /// =================== AUTHORIZER OPERATIONS =================== ///
@@ -211,14 +188,7 @@ contract RecoveryValidator {
     /// This function can only be called by an authorizer and
     /// sets a new deadline for the account to cancel request.
     function requestOwnershipHandover(address account) public payable virtual {
-        address[] memory authorizers = _settings[account].authorizers;
-        bool isAuthorizer;
-        for (uint256 i; i != authorizers.length; ++i) {
-            if (msg.sender == authorizers[i]) {
-                isAuthorizer = true;
-                break;
-            }
-        }
+        (bool isAuthorizer,) = LibSort.searchSorted(_settings[account].authorizers, msg.sender);
         if (!isAuthorizer) revert Unauthorized();
         unchecked {
             emit DeadlineSet(
@@ -258,4 +228,9 @@ contract RecoveryValidator {
         emit ThresholdSet(msg.sender, 0);
         emit AuthorizersSet(msg.sender, new address[](0));
     }
+}
+
+/// @dev Simple ownership transfer interface.
+interface ITransferOwnership {
+    function transferOwnership(address) external payable;
 }

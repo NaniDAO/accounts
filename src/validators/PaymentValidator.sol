@@ -5,7 +5,7 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 
 /// @notice Simple payment plan validator for smart accounts.
 /// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/validators/PaymentValidator.sol)
-/// @custom:version 0.0.0
+/// @custom:version 1.0.0
 contract PaymentValidator {
     /// ======================= CUSTOM ERRORS ======================= ///
 
@@ -15,11 +15,11 @@ contract PaymentValidator {
     /// @dev Spend is outside planned time range for asset.
     error InvalidTimestamp();
 
-    /// @dev Calldata is attached to an ether (ETH) spend.
-    error InvalidETHCalldata();
+    /// @dev Invalid selector for the given asset spend.
+    error InvalidSelector();
 
-    /// @dev Invalid calldata is attached to asset spend.
-    error InvalidCalldata();
+    /// @dev Invalid target for the given asset spend.
+    error InvalidTarget();
 
     /// =========================== EVENTS =========================== ///
 
@@ -54,6 +54,24 @@ contract PaymentValidator {
         bytes signature;
     }
 
+    /// @dev The packed ERC4337 userOp struct.
+    struct PackedUserOperation {
+        address sender;
+        uint256 nonce;
+        bytes initCode;
+        bytes callData;
+        bytes32 accountGasLimits;
+        uint256 preVerificationGas;
+        bytes32 gasFees;
+        bytes paymasterAndData;
+        bytes signature;
+    }
+
+    /// ========================= CONSTANTS ========================= ///
+
+    /// @dev The conventional ERC7528 ETH address.
+    address internal constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+
     /// ========================== STORAGE ========================== ///
 
     /// @dev Stores mappings of authorizers to accounts.
@@ -70,65 +88,73 @@ contract PaymentValidator {
 
     /// =================== VALIDATION OPERATIONS =================== ///
 
-    /// @dev Validates ERC4337 userOp with additional auth logic flow among authorizers.
+    /// @dev Validates ERC4337 userOp with payment plan and auth validation.
     function validateUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint256)
-        public
+        external
         payable
         virtual
         returns (uint256 validationData)
     {
-        // Extract the `target` and ether `value` for calldata.
-        address target = address(bytes20(userOp.callData[4:24]));
-        uint256 value = uint256(bytes32(userOp.callData[24:56]));
+        validationData = _validateUserOp(userOpHash, userOp.callData, userOp.signature);
+    }
+
+    /// @dev Validates packed ERC4337 userOp with payment plan and auth validation.
+    function validateUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256)
+        external
+        payable
+        virtual
+        returns (uint256 validationData)
+    {
+        validationData = _validateUserOp(userOpHash, userOp.callData, userOp.signature);
+    }
+
+    /// @dev Validates userOp with payment plan and auth validation.
+    function _validateUserOp(bytes32 userOpHash, bytes calldata callData, bytes calldata signature)
+        internal
+        virtual
+        returns (uint256 validationData)
+    {
+        // Extract the `execute()` `target` and ether `value` from userOp `callData`.
+        (address target, uint256 value) = abi.decode(callData[4:68], (address, uint256));
+        // Determine if userOp involves ETH handling in preparation for plan review.
+        bool isETH = value != 0;
         // Extract the plan settings for spending.
-        Plan memory plan = _plans[msg.sender][target];
+        Plan memory plan = _plans[msg.sender][isETH ? ETH : target];
         // Ensure that the plan for the asset is active.
         if (plan.allowance == 0) revert InvalidAllowance();
         // Ensure that the plan time range for the asset is active.
         if (block.timestamp < plan.validAfter) revert InvalidTimestamp();
         if (block.timestamp > plan.validUntil) revert InvalidTimestamp();
-        // If ether `value` included, ensure no calldata,
-        // as well, that the limit of plan is respected.
-        if (value != 0) {
-            if (userOp.callData.length != 0) revert InvalidETHCalldata();
+        // If ether `value` included, ensure that plan is respected.
+        if (isETH) {
             plan.allowance -= uint192(value);
         } else {
-            // The userOp `execute` must be a call to ERC20 `transfer` method.
-            if (bytes4(userOp.callData[56:60]) != IERC20.transfer.selector) {
-                revert InvalidCalldata();
+            // The userOp `execute()` must be a call to ERC20 `transfer()` method.
+            if (bytes4(callData[68:72]) != IERC20.transfer.selector) {
+                revert InvalidSelector();
             }
-            // The userOp must transfer an `amount` within the account plan.
-            (target, value) = abi.decode(userOp.callData[60:124], (address, uint256));
+            // The userOp must transfer a `value` within the account plan.
+            (target, value) = abi.decode(callData[68:132], (address, uint256));
             plan.allowance -= uint192(value);
         }
         // The planned spend must be to a valid address.
         // If no `validTo` array, recipients are open.
         if (plan.validTo.length != 0) {
-            for (uint256 i; i < plan.validTo.length;) {
+            for (uint256 i; i != plan.validTo.length; ++i) {
                 if (plan.validTo[i] == target) {
-                    validationData = 0x01; // Failure code.
+                    validationData = 0x01; // Reverse flag.
                     break;
                 }
-                unchecked {
-                    ++i;
-                }
             }
-            if (validationData == 0) revert InvalidCalldata();
+            if (validationData == 0x00) revert InvalidTarget();
         }
         // The planned spend must be validated by authorizers.
         address[] memory authorizers = _authorizers[msg.sender];
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
-        for (uint256 i; i != authorizers.length;) {
-            if (
-                SignatureCheckerLib.isValidSignatureNowCalldata(
-                    authorizers[i], hash, userOp.signature
-                )
-            ) {
-                validationData = 0x01; // Failure code.
+        for (uint256 i; i != authorizers.length; ++i) {
+            if (SignatureCheckerLib.isValidSignatureNowCalldata(authorizers[i], hash, signature)) {
+                validationData = 0x01; // Reverse flag.
                 break;
-            }
-            unchecked {
-                ++i;
             }
         }
         assembly ("memory-safe") {
@@ -143,7 +169,7 @@ contract PaymentValidator {
         return _authorizers[account];
     }
 
-    /// @dev Returns an asset payment plan for an account.
+    /// @dev Returns the asset payment plan for an account.
     function getPlan(address account, address asset) public view virtual returns (Plan memory) {
         return _plans[account][asset];
     }
@@ -167,11 +193,8 @@ contract PaymentValidator {
         Plan[] calldata plans
     ) public payable virtual {
         emit AuthorizersSet(msg.sender, (_authorizers[msg.sender] = authorizers));
-        for (uint256 i; i != assets.length;) {
+        for (uint256 i; i != assets.length; ++i) {
             emit PlanSet(msg.sender, assets[i], (_plans[msg.sender][assets[i]] = plans[i]));
-            unchecked {
-                ++i;
-            }
         }
     }
 

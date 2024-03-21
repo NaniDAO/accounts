@@ -19,13 +19,13 @@ contract Account is ERC4337 {
         override
         returns (string memory, string memory)
     {
-        return ("NANI", "0.0.0");
+        return ("NANI", "1.0.0");
     }
 
     /// @dev Validates userOp
     /// with nonce handling.
     function validateUserOp(
-        UserOperation calldata userOp,
+        PackedUserOperation calldata userOp,
         bytes32 userOpHash,
         uint256 missingAccountFunds
     )
@@ -44,8 +44,7 @@ contract Account is ERC4337 {
 
     /// @dev Extends validation by forwarding calldata to validator.
     function _validateUserOp() internal virtual returns (uint256) {
-        /// @solidity memory-safe-assembly
-        assembly {
+        assembly ("memory-safe") {
             calldatacopy(0x00, 0x00, calldatasize())
             if iszero(
                 call(
@@ -63,6 +62,7 @@ contract Account is ERC4337 {
                 returndatacopy(0x00, 0x00, returndatasize())
                 revert(0x00, returndatasize())
             }
+            // Return `validationData` if call succeeds.
             return(0x00, 0x20) // `validationData`.
         }
     }

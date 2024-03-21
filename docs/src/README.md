@@ -18,24 +18,23 @@ Ethereum, Arbitrum, Optimism, Polygon, Base, Sepolia (testnet) | [0x000000000000
 
 ### Plugin Validators:
 
-* JointValidator: [0x0000000000bBe5e59600001E15b9A59B42f52b75](https://etherscan.io/address/0x0000000000bbe5e59600001e15b9a59b42f52b75#code)
-* RecoveryValidator: [0x00000000002d3440001c53656DB7aEE3B37E3152](https://etherscan.io/address/0x00000000002d3440001c53656db7aee3b37e3152#code)
+* JointValidator: [0x000000000000D3D2b2980A7BC509018E4d88e947](https://arbiscan.io/address/0x000000000000D3D2b2980A7BC509018E4d88e947#code)
+* RecoveryValidator: [0x000000000000C8Fd831d95b6297fF13841eb6a84](https://arbiscan.io/address/0x000000000000C8Fd831d95b6297fF13841eb6a84#code)
 
-### Paymasters:
+### Paymaster (NEETH):
 
-[0x0000000000002bB5E405174504eEB2AF43ADd753](https://etherscan.io/address/0x0000000000002bB5E405174504eEB2AF43ADd753#code)
+[0x00000000000009B4AB3f1bC2b029bd7513Fbd8ED](https://arbiscan.io/address/0x00000000000009B4AB3f1bC2b029bd7513Fbd8ED#code)
 
 ### Governance:
 
-* Points: [0x00000000007f7396897bf90B00e96EaE4B71d055](https://etherscan.io/address/0x00000000007f7396897bf90b00e96eae4b71d055#code)
-* Token: [0x00000000000025824328358250920B271f348690](https://etherscan.io/address/0x00000000000025824328358250920b271f348690)
+* Points: [0x00000000007f7396897bf90B00e96EaE4B71d055](https://arbiscan.io/address/0x00000000007f7396897bf90b00e96eae4b71d055#code)
+* Token: [0x000000000000C6A645b0E51C9eCAA4CA580Ed8e8](https://arbiscan.io/address/0x000000000000C6A645b0E51C9eCAA4CA580Ed8e8)
+* Votes: [0x00000000F7000067ED10710A342eC0D09a734Bee](https://arbiscan.io/address/0x00000000f7000067ed10710a342ec0d09a734bee)
+* DAO: [0xDa000000000000d2885F108500803dfBAaB2f2aA](https://arbiscan.io/address/0xDa000000000000d2885F108500803dfBAaB2f2aA#code)
 
 ### Ownership:
 
-* Dagon: [0x0000000000001D4B1320bB3c47380a3D1C3A1A0C](https://etherscan.io/address/0x0000000000001d4b1320bb3c47380a3d1c3a1a0c#code)
-* Summoner [0xDDc31C0272a3c4696124C8df1bCf096090a168B4](https://etherscan.io/address/0xDDc31C0272a3c4696124C8df1bCf096090a168B4#code)
-* Keys: [0x000000000000082ffb07deF3DdfB5D3AFA9b9668](https://etherscan.io/address/0x000000000000082ffb07def3ddfb5d3afa9b9668#code)
-* Keysmith [0x00000000000051C78726c2B0583ee996f58a42b7](https://etherscan.io/address/0x00000000000051C78726c2B0583ee996f58a42b7#code)
+* Dagon: [0x0000000000001ADDcB933DD5028159dc965b5b7f](https://arbiscan.io/address/0x0000000000001ADDcB933DD5028159dc965b5b7f#code)
 
 ## Blueprint
 
