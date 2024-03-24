@@ -128,7 +128,100 @@ contract PaymentValidatorTest is Test {
         assertEq(validity, 0);
     }
 
-    function testETHPaymentPlanInvalidSignature() public {
+    function testFailPaymentPlanInvalidAllowance() public {
+        vm.deal(address(account), 1 ether);
+        account.initialize(owner);
+        address[] memory guardians = new address[](2);
+        guardians[0] = guardian1;
+        guardians[1] = guardian2;
+        address[] memory assets = new address[](1);
+        assets[0] = ETH;
+        Plan[] memory plans = new Plan[](1);
+        address[] memory validTos = new address[](1);
+        validTos[0] = guardian1;
+        plans[0].allowance = 0;
+        plans[0].validAfter = 0;
+        plans[0].validUntil = type(uint32).max;
+        plans[0].validTo = validTos;
+        vm.prank(owner);
+        account.execute(
+            address(validator),
+            0 ether,
+            abi.encodeWithSelector(PaymentValidator.install.selector, guardians, assets, plans)
+        );
+        vm.prank(address(account));
+        PaymentValidator.UserOperation memory userOp;
+        bytes32 hash = bytes32("ok");
+        bytes32 userOpHash = _toEthSignedMessageHash(hash);
+        userOp.sender = address(account);
+        userOp.signature = _sign(guardian1key, userOpHash);
+        userOp.callData = abi.encodeCall(IAccount.execute, (guardian1, 0, ""));
+        uint256 validity = validator.validateUserOp(userOp, hash, 0);
+    }
+
+    function testFailPaymentPlanInvalidAfter() public {
+        vm.deal(address(account), 1 ether);
+        account.initialize(owner);
+        address[] memory guardians = new address[](2);
+        guardians[0] = guardian1;
+        guardians[1] = guardian2;
+        address[] memory assets = new address[](1);
+        assets[0] = ETH;
+        Plan[] memory plans = new Plan[](1);
+        address[] memory validTos = new address[](1);
+        validTos[0] = guardian1;
+        plans[0].allowance = 1 ether;
+        plans[0].validAfter = uint32(block.timestamp + 1);
+        plans[0].validUntil = type(uint32).max;
+        plans[0].validTo = validTos;
+        vm.prank(owner);
+        account.execute(
+            address(validator),
+            0 ether,
+            abi.encodeWithSelector(PaymentValidator.install.selector, guardians, assets, plans)
+        );
+        vm.prank(address(account));
+        PaymentValidator.UserOperation memory userOp;
+        bytes32 hash = bytes32("ok");
+        bytes32 userOpHash = _toEthSignedMessageHash(hash);
+        userOp.sender = address(account);
+        userOp.signature = _sign(guardian1key, userOpHash);
+        userOp.callData = abi.encodeCall(IAccount.execute, (guardian1, 1 ether, ""));
+        uint256 validity = validator.validateUserOp(userOp, hash, 0);
+    }
+
+    function testFailPaymentPlanInvalidUntil() public {
+        vm.deal(address(account), 1 ether);
+        account.initialize(owner);
+        address[] memory guardians = new address[](2);
+        guardians[0] = guardian1;
+        guardians[1] = guardian2;
+        address[] memory assets = new address[](1);
+        assets[0] = ETH;
+        Plan[] memory plans = new Plan[](1);
+        address[] memory validTos = new address[](1);
+        validTos[0] = guardian1;
+        plans[0].allowance = 1 ether;
+        plans[0].validAfter = 0;
+        plans[0].validUntil = uint32(block.timestamp - 1);
+        plans[0].validTo = validTos;
+        vm.prank(owner);
+        account.execute(
+            address(validator),
+            0 ether,
+            abi.encodeWithSelector(PaymentValidator.install.selector, guardians, assets, plans)
+        );
+        vm.prank(address(account));
+        PaymentValidator.UserOperation memory userOp;
+        bytes32 hash = bytes32("ok");
+        bytes32 userOpHash = _toEthSignedMessageHash(hash);
+        userOp.sender = address(account);
+        userOp.signature = _sign(guardian1key, userOpHash);
+        userOp.callData = abi.encodeCall(IAccount.execute, (guardian1, 1 ether, ""));
+        uint256 validity = validator.validateUserOp(userOp, hash, 0);
+    }
+
+    function testETHPaymentPlanFailInvalidSignature() public {
         vm.deal(address(account), 1 ether);
         account.initialize(owner);
         address[] memory guardians = new address[](2);
@@ -151,15 +244,16 @@ contract PaymentValidatorTest is Test {
         );
         vm.prank(address(account));
         PaymentValidator.UserOperation memory userOp;
-        bytes32 userOpHash = _toEthSignedMessageHash(bytes32("ok"));
+        bytes32 hash = bytes32("ok");
+        bytes32 userOpHash = _toEthSignedMessageHash(hash);
         userOp.sender = address(account);
         userOp.signature = _sign(ownerKey, userOpHash);
         userOp.callData = abi.encodeCall(IAccount.execute, (guardian1, 1 ether, ""));
-        uint256 validity = validator.validateUserOp(userOp, userOpHash, 0);
-        assertEq(validity, 1);
+        uint256 validity = validator.validateUserOp(userOp, hash, 0);
+        assertEq(validity, 1); // Error code.
     }
 
-    function testFailETHPaymentPlan() public {
+    function testFailETHPaymentPlanInvalidValue() public {
         vm.deal(address(account), 1 ether);
         account.initialize(owner);
         address[] memory guardians = new address[](2);
@@ -241,12 +335,149 @@ contract PaymentValidatorTest is Test {
         );
         vm.prank(address(account));
         PaymentValidator.UserOperation memory userOp;
-        bytes32 userOpHash = _toEthSignedMessageHash(bytes32("ok"));
+        bytes32 hash = bytes32("ok");
+        bytes32 userOpHash = _toEthSignedMessageHash(hash);
         userOp.sender = address(account);
         userOp.signature = _sign(guardian1key, userOpHash);
         userOp.callData = abi.encodeCall(
             IAccount.execute,
             (address(mockERC20), 0 ether, abi.encodeCall(IERC20.transfer, (guardian1, 1 ether)))
+        );
+        uint256 validity = validator.validateUserOp(userOp, hash, 0);
+        assertEq(validity, 0);
+    }
+
+    function testFailERC20PaymentPlanInvalidSelector() public {
+        account.initialize(owner);
+        address[] memory guardians = new address[](2);
+        guardians[0] = guardian1;
+        guardians[1] = guardian2;
+        address[] memory assets = new address[](1);
+        assets[0] = address(mockERC20);
+        Plan[] memory plans = new Plan[](1);
+        address[] memory validTos = new address[](1);
+        validTos[0] = guardian1;
+        plans[0].allowance = 1 ether;
+        plans[0].validAfter = 0;
+        plans[0].validUntil = type(uint32).max;
+        plans[0].validTo = validTos;
+        vm.prank(owner);
+        account.execute(
+            address(validator),
+            0 ether,
+            abi.encodeWithSelector(PaymentValidator.install.selector, guardians, assets, plans)
+        );
+        vm.prank(address(account));
+        PaymentValidator.UserOperation memory userOp;
+        bytes32 hash = bytes32("ok");
+        bytes32 userOpHash = _toEthSignedMessageHash(hash);
+        userOp.sender = address(account);
+        userOp.signature = _sign(guardian1key, userOpHash);
+        userOp.callData = abi.encodeCall(
+            IAccount.execute,
+            (
+                address(mockERC20),
+                0 ether,
+                abi.encodeCall(IBadCall.notTransfer, (guardian1, 1 ether))
+            )
+        );
+        uint256 validity = validator.validateUserOp(userOp, hash, 0);
+    }
+
+    function testERC20PaymentPlanFailInvalidSignature() public {
+        account.initialize(owner);
+        address[] memory guardians = new address[](2);
+        guardians[0] = guardian1;
+        guardians[1] = guardian2;
+        address[] memory assets = new address[](1);
+        assets[0] = address(mockERC20);
+        Plan[] memory plans = new Plan[](1);
+        address[] memory validTos = new address[](1);
+        validTos[0] = guardian1;
+        plans[0].allowance = 1 ether;
+        plans[0].validAfter = 0;
+        plans[0].validUntil = type(uint32).max;
+        plans[0].validTo = validTos;
+        vm.prank(owner);
+        account.execute(
+            address(validator),
+            0 ether,
+            abi.encodeWithSelector(PaymentValidator.install.selector, guardians, assets, plans)
+        );
+        vm.prank(address(account));
+        PaymentValidator.UserOperation memory userOp;
+        bytes32 hash = bytes32("ok");
+        bytes32 userOpHash = _toEthSignedMessageHash(hash);
+        userOp.sender = address(account);
+        userOp.signature = _sign(ownerKey, userOpHash);
+        userOp.callData = abi.encodeCall(
+            IAccount.execute,
+            (address(mockERC20), 0 ether, abi.encodeCall(IERC20.transfer, (guardian1, 1 ether)))
+        );
+        uint256 validity = validator.validateUserOp(userOp, hash, 0);
+        assertEq(validity, 1);
+    }
+
+    function testFailERC20PaymentPlanInvalidTarget() public {
+        account.initialize(owner);
+        address[] memory guardians = new address[](2);
+        guardians[0] = guardian1;
+        guardians[1] = guardian2;
+        address[] memory assets = new address[](1);
+        assets[0] = address(mockERC20);
+        Plan[] memory plans = new Plan[](1);
+        address[] memory validTos = new address[](1);
+        validTos[0] = guardian1;
+        plans[0].allowance = 1 ether;
+        plans[0].validAfter = 0;
+        plans[0].validUntil = type(uint32).max;
+        plans[0].validTo = validTos;
+        vm.prank(owner);
+        account.execute(
+            address(validator),
+            0 ether,
+            abi.encodeWithSelector(PaymentValidator.install.selector, guardians, assets, plans)
+        );
+        vm.prank(address(account));
+        PaymentValidator.UserOperation memory userOp;
+        bytes32 userOpHash = _toEthSignedMessageHash(bytes32("ok"));
+        userOp.sender = address(account);
+        userOp.signature = _sign(guardian1key, userOpHash);
+        userOp.callData = abi.encodeCall(
+            IAccount.execute,
+            (address(mockERC20), 0 ether, abi.encodeCall(IERC20.transfer, (guardian2, 1 ether)))
+        );
+        validator.validateUserOp(userOp, userOpHash, 0);
+    }
+
+    function testFailERC20PaymentPlanInvalidValue() public {
+        account.initialize(owner);
+        address[] memory guardians = new address[](2);
+        guardians[0] = guardian1;
+        guardians[1] = guardian2;
+        address[] memory assets = new address[](1);
+        assets[0] = address(mockERC20);
+        Plan[] memory plans = new Plan[](1);
+        address[] memory validTos = new address[](1);
+        validTos[0] = guardian1;
+        plans[0].allowance = 1 ether;
+        plans[0].validAfter = 0;
+        plans[0].validUntil = type(uint32).max;
+        plans[0].validTo = validTos;
+        vm.prank(owner);
+        account.execute(
+            address(validator),
+            0 ether,
+            abi.encodeWithSelector(PaymentValidator.install.selector, guardians, assets, plans)
+        );
+        vm.prank(address(account));
+        PaymentValidator.UserOperation memory userOp;
+        bytes32 userOpHash = _toEthSignedMessageHash(bytes32("ok"));
+        userOp.sender = address(account);
+        userOp.signature = _sign(guardian1key, userOpHash);
+        userOp.callData = abi.encodeCall(
+            IAccount.execute,
+            (address(mockERC20), 0 ether, abi.encodeCall(IERC20.transfer, (guardian1, 2 ether)))
         );
         validator.validateUserOp(userOp, userOpHash, 0);
     }
@@ -274,4 +505,8 @@ interface IAccount {
 
 interface IERC20 {
     function transfer(address, uint256) external returns (bool);
+}
+
+interface IBadCall {
+    function notTransfer(address, uint256) external returns (bool);
 }
