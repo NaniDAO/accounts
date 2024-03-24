@@ -119,7 +119,7 @@ contract PaymentValidator {
         // Determine if userOp involves ETH handling in preparation for plan review.
         bool isETH = value != 0;
         // Extract the plan settings for spending.
-        Plan storage plan = _plans[msg.sender][isETH ? ETH : target];
+        Plan memory plan = _plans[msg.sender][isETH ? ETH : target];
         // Ensure that the plan for the asset is active.
         if (plan.allowance == 0) revert InvalidAllowance();
         // Ensure that the plan time range for the asset is active.
