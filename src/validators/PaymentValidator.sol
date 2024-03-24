@@ -5,7 +5,7 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 
 /// @notice Simple payment plan validator for smart accounts.
 /// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/validators/PaymentValidator.sol)
-/// @custom:version 1.0.0
+/// @custom:version 1.1.1
 contract PaymentValidator {
     /// ======================= CUSTOM ERRORS ======================= ///
 
@@ -119,7 +119,7 @@ contract PaymentValidator {
         // Determine if userOp involves ETH handling in preparation for plan review.
         bool isETH = value != 0;
         // Extract the plan settings for spending.
-        Plan memory plan = _plans[msg.sender][isETH ? ETH : target];
+        Plan storage plan = _plans[msg.sender][isETH ? ETH : target];
         // Ensure that the plan for the asset is active.
         if (plan.allowance == 0) revert InvalidAllowance();
         // Ensure that the plan time range for the asset is active.
@@ -130,25 +130,26 @@ contract PaymentValidator {
             plan.allowance -= uint192(value);
         } else {
             // The userOp `execute()` must be a call to ERC20 `transfer()` method.
-            if (bytes4(callData[68:72]) != IERC20.transfer.selector) {
+            if (bytes4(callData[132:136]) != IERC20.transfer.selector) {
                 revert InvalidSelector();
             }
             // The userOp must transfer a `value` within the account plan.
-            (target, value) = abi.decode(callData[68:132], (address, uint256));
+            (target, value) = abi.decode(callData[136:], (address, uint256));
             plan.allowance -= uint192(value);
         }
         // The planned spend must be to a valid address.
         // If no `validTo` array, recipients are open.
+        bool validTarget;
         if (plan.validTo.length != 0) {
             for (uint256 i; i != plan.validTo.length; ++i) {
                 if (plan.validTo[i] == target) {
-                    validationData = 0x01; // Reverse flag.
+                    validTarget = true;
                     break;
                 }
             }
-            if (validationData == 0x00) revert InvalidTarget();
+            if (!validTarget) revert InvalidTarget();
         }
-        // The planned spend must be validated by authorizers.
+        // The planned spend must be validated by an authorizer.
         address[] memory authorizers = _authorizers[msg.sender];
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
         for (uint256 i; i != authorizers.length; ++i) {

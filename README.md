@@ -20,6 +20,7 @@ Ethereum, Arbitrum, Optimism, Polygon, Base, Sepolia (testnet) | [0x000000000000
 
 * JointValidator: [0x000000000000D3D2b2980A7BC509018E4d88e947](https://arbiscan.io/address/0x000000000000D3D2b2980A7BC509018E4d88e947#code)
 * RecoveryValidator: [0x000000000000C8Fd831d95b6297fF13841eb6a84](https://arbiscan.io/address/0x000000000000C8Fd831d95b6297fF13841eb6a84#code)
+* TimeValidator: [0x0000000000cc88B60a89510092742dE01446Ad6a](https://arbiscan.io/address/0x0000000000cc88B60a89510092742dE01446Ad6a#code)
 
 ### Paymaster (NEETH):
 
