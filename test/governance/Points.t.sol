@@ -20,7 +20,7 @@ contract PointsTest is Test {
     address internal token;
 
     uint256 internal constant _POT = 1_000_000_000;
-    address internal constant _ENTRY_POINT = 0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789;
+    address internal constant _ENTRY_POINT = 0x0000000071727De22E5E9d8BAf0edAc6f37da032;
 
     function setUp() public {
         (alice, alicePk) = makeAddrAndKey("alice");
@@ -42,7 +42,7 @@ contract PointsTest is Test {
         account = NaniAccount(payable(address(LibClone.deployERC1967(erc4337))));
         account.initialize(alice);
     }
-    /*
+
     function testCheck(uint256 bonus) public {
         vm.assume(bonus < _POT);
         uint256 start = block.timestamp;
@@ -53,32 +53,6 @@ contract PointsTest is Test {
         uint256 bal = points.check(bob, start, bonus, abi.encodePacked(r, s, v));
         assertEq(bal, bonus + 41);
     }
-
-    function testClaim(uint256 bonus) public {
-        vm.assume(bonus < 100 ether);
-        uint256 start = block.timestamp;
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            alicePk, _toEthSignedMessageHash(keccak256(abi.encodePacked(bob, start, bonus)))
-        );
-        vm.warp(42);
-        vm.prank(bob);
-        points.claim(IERC20(token), start, bonus, abi.encodePacked(r, s, v));
-        assertEq(Token(token).balanceOf(bob), bonus + 41);
-    }
-    
-
-    function testFailDoubleClaim(uint256 bonus) public {
-        vm.assume(bonus < _POT);
-        uint256 start = block.timestamp;
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            alicePk, _toEthSignedMessageHash(keccak256(abi.encodePacked(bob, start, bonus)))
-        );
-        vm.warp(42);
-        vm.prank(bob);
-        points.claim(IERC20(token), start, bonus, abi.encodePacked(r, s, v));
-        assertEq(Token(token).balanceOf(bob), bonus);
-        points.claim(IERC20(token), start, bonus, abi.encodePacked(r, s, v));
-    }*/
 
     function _toEthSignedMessageHash(bytes32 hash) internal pure returns (bytes32 result) {
         assembly ("memory-safe") {

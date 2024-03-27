@@ -1,5 +1,5 @@
 # RecoveryValidator
-[Git Source](https://github.com/NaniDAO/accounts/blob/33a542184db4330f73d0a20b57e8976a75cb8aba/src/validators/RecoveryValidator.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/485961b82d85978443ccbce7f93af4f2cad12381/src/validators/RecoveryValidator.sol)
 
 Simple social recovery validator for smart accounts.
 
@@ -129,6 +129,15 @@ sets a new deadline for the account to cancel request.*
 
 ```solidity
 function requestOwnershipHandover(address account) public payable virtual;
+```
+
+### completeOwnershipHandoverRequest
+
+*Complete ownership handover request based on authorized deadline completion.*
+
+
+```solidity
+function completeOwnershipHandoverRequest(address account) public payable virtual;
 ```
 
 ### cancelOwnershipHandover
