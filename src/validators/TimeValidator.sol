@@ -77,7 +77,7 @@ contract TimeValidator {
             SignatureCheckerLib.isValidSignatureNowCalldata(
                 IOwner(msg.sender).owner(),
                 SignatureCheckerLib.toEthSignedMessageHash(
-                    abi.encodePacked(userOpHash, validUntil, validAfter)
+                    keccak256(abi.encodePacked(userOpHash, validUntil, validAfter))
                 ),
                 signature[12:]
             ),

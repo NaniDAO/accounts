@@ -1,5 +1,5 @@
 # PaymentValidator
-[Git Source](https://github.com/NaniDAO/accounts/blob/485961b82d85978443ccbce7f93af4f2cad12381/src/validators/PaymentValidator.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/1860887bd5c981e1101c3912599ab1867241e8af/src/validators/PaymentValidator.sol)
 
 **Author:**
 nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/validators/PaymentValidator.sol)
@@ -88,6 +88,19 @@ function validateUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash,
 ```solidity
 function _validateUserOp(bytes32 userOpHash, bytes calldata callData, bytes calldata signature)
     internal
+    virtual
+    returns (uint256 validationData);
+```
+
+### _packValidationData
+
+*Returns the packed validation data for userOp based on validation.*
+
+
+```solidity
+function _packValidationData(uint256 valid, uint48 validUntil, uint48 validAfter)
+    internal
+    pure
     virtual
     returns (uint256 validationData);
 ```

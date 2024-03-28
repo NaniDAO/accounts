@@ -11,6 +11,7 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 /// - Send 0.1 ETH to 0x123...789 on 2024-01-01.
 /// - Swap between 1-2 WETH for DAI every 3 days.
 /// - Vote yes on every proposal made by nani.eth.
+/// @custom:version 1.0.0
 contract PermitValidator is EIP712 {
     /// ======================= CUSTOM ERRORS ======================= ///
 
