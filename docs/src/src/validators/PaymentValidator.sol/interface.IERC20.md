@@ -1,5 +1,5 @@
 # IERC20
-[Git Source](https://github.com/NaniDAO/accounts/blob/485961b82d85978443ccbce7f93af4f2cad12381/src/validators/PaymentValidator.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/1860887bd5c981e1101c3912599ab1867241e8af/src/validators/PaymentValidator.sol)
 
 ERC20 interface.
 
