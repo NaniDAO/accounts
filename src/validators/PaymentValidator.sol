@@ -122,9 +122,6 @@ contract PaymentValidator {
         Plan memory plan = _plans[msg.sender][isETH ? ETH : target];
         // Ensure that the plan for the asset is active.
         if (plan.allowance == 0) revert InvalidAllowance();
-        // Ensure that the plan time range for the asset is active.
-        if (block.timestamp < plan.validAfter) revert InvalidTimestamp();
-        if (block.timestamp > plan.validUntil) revert InvalidTimestamp();
         // If ether `value` included, ensure that plan is respected.
         if (isETH) {
             plan.allowance -= uint192(value);
@@ -151,16 +148,26 @@ contract PaymentValidator {
         }
         // The planned spend must be validated by an authorizer.
         address[] memory authorizers = _authorizers[msg.sender];
-        bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
+        bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(
+            keccak256(abi.encodePacked(userOpHash, plan.validUntil, plan.validAfter))
+        );
         for (uint256 i; i != authorizers.length; ++i) {
             if (SignatureCheckerLib.isValidSignatureNowCalldata(authorizers[i], hash, signature)) {
                 validationData = 0x01; // Reverse flag.
                 break;
             }
         }
-        assembly ("memory-safe") {
-            validationData := iszero(validationData)
-        }
+        validationData = _packValidationData(validationData, plan.validUntil, plan.validAfter);
+    }
+
+    /// @dev Returns the packed validation data for userOp based on validation.
+    function _packValidationData(uint256 valid, uint48 validUntil, uint48 validAfter)
+        internal
+        pure
+        virtual
+        returns (uint256 validationData)
+    {
+        validationData = valid == 1 ? 0 : 1 | validUntil << 160 | validAfter << 208;
     }
 
     /// =================== AUTHORIZER OPERATIONS =================== ///
