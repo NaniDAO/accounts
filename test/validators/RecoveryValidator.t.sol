@@ -50,6 +50,11 @@ contract RecoveryValidatorTest is Test {
         uint256 missingAccountFunds;
     }
 
+    struct Signature {
+        address signer;
+        bytes sign;
+    }
+
     function setUp() public {
         // Etch something onto `_ENTRY_POINT` such that we can deploy the account implementation.
         vm.etch(_ENTRY_POINT, hex"00");
@@ -161,11 +166,6 @@ contract RecoveryValidatorTest is Test {
         assertEq(guardianThree, _guardian3);
     }
 
-    struct Signature {
-        address signer;
-        bytes sign;
-    }
-    /*
     function testSocialRecovery() public {
         uint192 key = type(uint192).max;
         address _guardian1 = guardian1;
@@ -220,13 +220,14 @@ contract RecoveryValidatorTest is Test {
         authorizers[1].signer = guardian3;
         authorizers[1].sign = _sign(guardian3key, _toEthSignedMessageHash(userOpHash));
 
-        userOp.signature = abi.encodePacked(abi.encode(authorizers[0]), abi.encode(authorizers[1]));
+        userOp.signature = abi.encode(authorizers);
 
         vm.startPrank(_guardian2);
         socialRecoveryValidator.requestOwnershipHandover(address(account));
 
         // 3 days later with no owner cancellation...
         vm.warp(3 days);
+        socialRecoveryValidator.completeOwnershipHandoverRequest(address(account));
         vm.startPrank(_ENTRY_POINT);
         uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
         if (validationData == 0) {
@@ -240,246 +241,6 @@ contract RecoveryValidatorTest is Test {
         }
         assertEq(account.owner(), _guardian2);
     }
-
-    function testFailSocialRecoveryUnderThreshold() public {
-        uint192 key = type(uint192).max;
-        address _guardian2 = guardian2;
-
-        address[] memory guardians = new address[](2);
-        guardians[0] = _guardian2;
-        guardians[1] = guardian3;
-
-        account.initialize(guardian1);
-
-        NaniAccount.Call[] memory calls = new NaniAccount.Call[](2);
-        calls[0].target = address(socialRecoveryValidator);
-        calls[0].value = 0 ether;
-        calls[0].data =
-            abi.encodeWithSelector(socialRecoveryValidator.install.selector, 2 days, 2, guardians);
-
-        calls[1].target = address(account);
-        calls[1].value = 0 ether;
-        calls[1].data = abi.encodeWithSelector(
-            account.storageStore.selector,
-            bytes32(abi.encodePacked(key)),
-            bytes32(abi.encodePacked(address(socialRecoveryValidator)))
-        );
-
-        vm.startPrank(guardian1);
-        account.executeBatch(calls);
-        bytes memory stored = account.execute(
-            address(account),
-            0 ether,
-            abi.encodeWithSelector(account.storageLoad.selector, bytes32(abi.encodePacked(key)))
-        );
-        assertEq(bytes20(bytes32(stored)), bytes20(address(socialRecoveryValidator)));
-
-        NaniAccount.PackedUserOperation memory userOp;
-        userOp.sender = address(account);
-        userOp.callData = abi.encodeWithSelector(
-            account.execute.selector,
-            address(this),
-            0 ether,
-            abi.encodeWithSelector(account.transferOwnership.selector, _guardian2)
-        );
-
-        userOp.nonce = 0 | (uint256(key) << 64);
-        bytes32 userOpHash = hex"00";
-        userOp.signature =
-            abi.encodePacked(_sign(guardian2key, _toEthSignedMessageHash(userOpHash)));
-
-        vm.startPrank(_guardian2);
-        socialRecoveryValidator.requestOwnershipHandover(address(account));
-
-        // 3 days later with no owner cancellation...
-        vm.warp(3 days);
-        vm.startPrank(_ENTRY_POINT);
-        account.validateUserOp(userOp, userOpHash, 0);
-    }
-
-    function testSocialRecoveryDuplicateSignature() public {
-        uint192 key = type(uint192).max;
-        address _guardian2 = guardian2;
-
-        address[] memory guardians = new address[](2);
-        guardians[0] = _guardian2;
-        guardians[1] = guardian3;
-
-        account.initialize(guardian1);
-
-        NaniAccount.Call[] memory calls = new NaniAccount.Call[](2);
-        calls[0].target = address(socialRecoveryValidator);
-        calls[0].value = 0 ether;
-        calls[0].data =
-            abi.encodeWithSelector(socialRecoveryValidator.install.selector, 2 days, 2, guardians);
-
-        calls[1].target = address(account);
-        calls[1].value = 0 ether;
-        calls[1].data = abi.encodeWithSelector(
-            account.storageStore.selector,
-            bytes32(abi.encodePacked(key)),
-            bytes32(abi.encodePacked(address(socialRecoveryValidator)))
-        );
-
-        vm.startPrank(guardian1);
-        account.executeBatch(calls);
-        bytes memory stored = account.execute(
-            address(account),
-            0 ether,
-            abi.encodeWithSelector(account.storageLoad.selector, bytes32(abi.encodePacked(key)))
-        );
-        assertEq(bytes20(bytes32(stored)), bytes20(address(socialRecoveryValidator)));
-
-        NaniAccount.PackedUserOperation memory userOp;
-        userOp.sender = address(account);
-        userOp.callData = abi.encodeWithSelector(
-            account.execute.selector,
-            address(this),
-            0 ether,
-            abi.encodeWithSelector(account.transferOwnership.selector, _guardian2)
-        );
-
-        userOp.nonce = 0 | (uint256(key) << 64);
-        bytes32 userOpHash = hex"00";
-
-        userOp.signature = abi.encodePacked(
-            _sign(guardian2key, _toEthSignedMessageHash(userOpHash)),
-            _sign(guardian2key, _toEthSignedMessageHash(userOpHash))
-        );
-
-        vm.startPrank(_guardian2);
-        socialRecoveryValidator.requestOwnershipHandover(address(account));
-
-        // 3 days later with no owner cancellation...
-        vm.warp(3 days);
-        vm.startPrank(_ENTRY_POINT);
-        uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
-        console.log("validationData", validationData);
-        assertEq(validationData, 1);
-    }
-
-    function testSocialRecoveryUnauthSignature() public {
-        uint192 key = type(uint192).max;
-        address _guardian2 = guardian2;
-
-        address[] memory guardians = new address[](2);
-        guardians[0] = _guardian2;
-        guardians[1] = guardian3;
-
-        account.initialize(guardian1);
-
-        NaniAccount.Call[] memory calls = new NaniAccount.Call[](2);
-        calls[0].target = address(socialRecoveryValidator);
-        calls[0].value = 0 ether;
-        calls[0].data =
-            abi.encodeWithSelector(socialRecoveryValidator.install.selector, 2 days, 2, guardians);
-
-        calls[1].target = address(account);
-        calls[1].value = 0 ether;
-        calls[1].data = abi.encodeWithSelector(
-            account.storageStore.selector,
-            bytes32(abi.encodePacked(key)),
-            bytes32(abi.encodePacked(address(socialRecoveryValidator)))
-        );
-
-        vm.startPrank(guardian1);
-        account.executeBatch(calls);
-        bytes memory stored = account.execute(
-            address(account),
-            0 ether,
-            abi.encodeWithSelector(account.storageLoad.selector, bytes32(abi.encodePacked(key)))
-        );
-        assertEq(bytes20(bytes32(stored)), bytes20(address(socialRecoveryValidator)));
-
-        NaniAccount.PackedUserOperation memory userOp;
-        userOp.sender = address(account);
-        userOp.callData = abi.encodeWithSelector(
-            account.execute.selector,
-            address(this),
-            0 ether,
-            abi.encodeWithSelector(account.transferOwnership.selector, _guardian2)
-        );
-
-        userOp.nonce = 0 | (uint256(key) << 64);
-        bytes32 userOpHash = hex"00";
-
-        userOp.signature = abi.encodePacked(
-            _sign(guardian2key, _toEthSignedMessageHash(userOpHash)),
-            _sign(guardian4key, _toEthSignedMessageHash(userOpHash))
-        );
-
-        vm.startPrank(_guardian2);
-        socialRecoveryValidator.requestOwnershipHandover(address(account));
-
-        // 3 days later with no owner cancellation...
-        vm.warp(3 days);
-        vm.startPrank(_ENTRY_POINT);
-        uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
-
-        assertEq(validationData, 1);
-    }
-
-    function testSocialRecoveryWeirdSignature() public {
-        uint192 key = type(uint192).max;
-        address _guardian2 = guardian2;
-
-        address[] memory guardians = new address[](2);
-        guardians[0] = _guardian2;
-        guardians[1] = guardian3;
-
-        account.initialize(guardian1);
-
-        NaniAccount.Call[] memory calls = new NaniAccount.Call[](2);
-        calls[0].target = address(socialRecoveryValidator);
-        calls[0].value = 0 ether;
-        calls[0].data =
-            abi.encodeWithSelector(socialRecoveryValidator.install.selector, 2 days, 2, guardians);
-
-        calls[1].target = address(account);
-        calls[1].value = 0 ether;
-        calls[1].data = abi.encodeWithSelector(
-            account.storageStore.selector,
-            bytes32(abi.encodePacked(key)),
-            bytes32(abi.encodePacked(address(socialRecoveryValidator)))
-        );
-
-        vm.startPrank(guardian1);
-        account.executeBatch(calls);
-        bytes memory stored = account.execute(
-            address(account),
-            0 ether,
-            abi.encodeWithSelector(account.storageLoad.selector, bytes32(abi.encodePacked(key)))
-        );
-        assertEq(bytes20(bytes32(stored)), bytes20(address(socialRecoveryValidator)));
-
-        NaniAccount.PackedUserOperation memory userOp;
-        userOp.sender = address(account);
-        userOp.callData = abi.encodeWithSelector(
-            account.execute.selector,
-            address(this),
-            0 ether,
-            abi.encodeWithSelector(account.transferOwnership.selector, _guardian2)
-        );
-
-        userOp.nonce = 0 | (uint256(key) << 64);
-        bytes32 userOpHash = hex"00";
-
-        userOp.signature = abi.encodePacked(
-            _sign(guardian2key, _toEthSignedMessageHash(userOpHash)),
-            _sign(guardian5key, _toEthSignedMessageHash(userOpHash))
-        );
-
-        vm.startPrank(_guardian2);
-        socialRecoveryValidator.requestOwnershipHandover(address(account));
-
-        // 3 days later with no owner cancellation...
-        vm.warp(3 days);
-        vm.startPrank(_ENTRY_POINT);
-        uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
-
-        assertEq(validationData, 1);
-    }
-    */
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 

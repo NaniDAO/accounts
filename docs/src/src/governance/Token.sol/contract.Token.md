@@ -1,5 +1,5 @@
 # Token
-[Git Source](https://github.com/NaniDAO/accounts/blob/33a542184db4330f73d0a20b57e8976a75cb8aba/src/governance/Token.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/485961b82d85978443ccbce7f93af4f2cad12381/src/governance/Token.sol)
 
 **Author:**
 nani.eth (Nani DAO)

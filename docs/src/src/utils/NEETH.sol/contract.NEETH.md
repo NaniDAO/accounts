@@ -38,7 +38,7 @@ IWETH internal constant _WETH = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
 
 
 ```solidity
-address payable internal constant _ENTRY_POINT = payable(0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789);
+address payable internal constant _ENTRY_POINT = payable(0x0000000071727De22E5E9d8BAf0edAc6f37da032);
 ```
 
 

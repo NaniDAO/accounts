@@ -42,7 +42,7 @@ contract PointsTest is Test {
         account = NaniAccount(payable(address(LibClone.deployERC1967(erc4337))));
         account.initialize(alice);
     }
-    /*
+
     function testCheck(uint256 bonus) public {
         vm.assume(bonus < _POT);
         uint256 start = block.timestamp;
@@ -53,32 +53,6 @@ contract PointsTest is Test {
         uint256 bal = points.check(bob, start, bonus, abi.encodePacked(r, s, v));
         assertEq(bal, bonus + 41);
     }
-
-    function testClaim(uint256 bonus) public {
-        vm.assume(bonus < 100 ether);
-        uint256 start = block.timestamp;
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            alicePk, _toEthSignedMessageHash(keccak256(abi.encodePacked(bob, start, bonus)))
-        );
-        vm.warp(42);
-        vm.prank(bob);
-        points.claim(IERC20(token), start, bonus, abi.encodePacked(r, s, v));
-        assertEq(Token(token).balanceOf(bob), bonus + 41);
-    }
-    
-
-    function testFailDoubleClaim(uint256 bonus) public {
-        vm.assume(bonus < _POT);
-        uint256 start = block.timestamp;
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            alicePk, _toEthSignedMessageHash(keccak256(abi.encodePacked(bob, start, bonus)))
-        );
-        vm.warp(42);
-        vm.prank(bob);
-        points.claim(IERC20(token), start, bonus, abi.encodePacked(r, s, v));
-        assertEq(Token(token).balanceOf(bob), bonus);
-        points.claim(IERC20(token), start, bonus, abi.encodePacked(r, s, v));
-    }*/
 
     function _toEthSignedMessageHash(bytes32 hash) internal pure returns (bytes32 result) {
         assembly ("memory-safe") {

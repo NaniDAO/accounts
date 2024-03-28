@@ -8,7 +8,7 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 /// @dev Operationally this validator works as a one-time recovery
 /// multisig singleton by allowing accounts to program authorizers
 /// and thresholds for such authorizers to validate user operations.
-/// @custom:version 1.1.1
+/// @custom:version 1.2.0
 contract RecoveryValidator {
     /// ======================= CUSTOM ERRORS ======================= ///
 
@@ -122,12 +122,11 @@ contract RecoveryValidator {
         returns (uint256 validationData)
     {
         Settings storage settings = _settings[msg.sender];
-        if (settings.deadline == 0) revert Unauthorized();
-        if (block.timestamp < settings.deadline) revert DeadlinePending();
+        if (settings.deadline != type(uint32).max) revert DeadlinePending();
         Signature[] memory signatures = abi.decode(signature, (Signature[]));
         if (signatures.length < settings.threshold) revert Unauthorized();
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
-        if (bytes4(callData[132:]) != ITransferOwnership.transferOwnership.selector) {
+        if (bytes4(callData[132:136]) != ITransferOwnership.transferOwnership.selector) {
             revert InvalidCalldata();
         }
         address signer;
@@ -138,9 +137,9 @@ contract RecoveryValidator {
             for (uint256 i; i != settings.authorizers.length;) {
                 signer = signatures[i].signer;
                 (isAuthorizer,) = LibSort.searchSorted(settings.authorizers, signer);
-                if (!isAuthorizer) return 0x01;
+                if (!isAuthorizer) return 0x01; // Failure code.
                 (isRecovered,) = LibSort.searchSorted(recovered, signer);
-                if (isRecovered) return 0x01;
+                if (isRecovered) return 0x01; // Failure code.
                 if (SignatureCheckerLib.isValidSignatureNow(signer, hash, signatures[i].sign)) {
                     recovered[i] = signer;
                     ++i;
@@ -195,6 +194,16 @@ contract RecoveryValidator {
                 account,
                 (_settings[account].deadline = (uint32(block.timestamp) + _settings[account].delay))
             );
+        }
+    }
+
+    /// @dev Complete ownership handover request based on authorized deadline completion.
+    function completeOwnershipHandoverRequest(address account) public payable virtual {
+        uint32 deadline = _settings[account].deadline;
+        if (block.timestamp > deadline && deadline != 0) {
+            emit DeadlineSet(account, _settings[account].deadline = type(uint32).max);
+        } else {
+            revert DeadlinePending();
         }
     }
 
