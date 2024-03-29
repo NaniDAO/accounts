@@ -43,6 +43,19 @@ contract PermitValidator is EIP712 {
         bytes signature;
     }
 
+    /// @dev The packed ERC4337 userOp struct.
+    struct PackedUserOperation {
+        address sender;
+        uint256 nonce;
+        bytes initCode;
+        bytes callData;
+        bytes32 accountGasLimits;
+        uint256 preVerificationGas;
+        bytes32 gasFees;
+        bytes paymasterAndData;
+        bytes signature;
+    }
+
     /// @dev Permit data struct.
     struct Permit {
         address[] targets;
@@ -97,7 +110,7 @@ contract PermitValidator is EIP712 {
         override
         returns (string memory, string memory)
     {
-        return ("PermitValidator", "0.0.0");
+        return ("PermitValidator", "1.0.0");
     }
 
     /// ======================== CONSTRUCTOR ======================== ///
@@ -110,6 +123,38 @@ contract PermitValidator is EIP712 {
 
     /// @dev Validates ERC4337 userOp with additional auth logic flow among authorizers.
     function validateUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint256)
+        external
+        payable
+        virtual
+        returns (uint256 validationData)
+    {
+        (bytes32 permitHash, bytes memory signature) =
+            abi.decode(userOp.signature, (bytes32, bytes));
+        address[] memory authorizers = _authorizers[msg.sender];
+        bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
+        for (uint256 i; i != authorizers.length;) {
+            if (SignatureCheckerLib.isValidSignatureNow(authorizers[i], hash, signature)) {
+                validationData = 0x01; // Failure code.
+                break;
+            }
+            unchecked {
+                ++i;
+            }
+        }
+        if (validationData == 0x00) return 0x01; // Failure code.
+        Permit memory permit = _permits[permitHash];
+        unchecked {
+            uint256 count = permit.timesUsed++;
+            if (count >= permit.spans.length) {
+                delete _permits[permitHash];
+                return 0x01; // Failure code.
+            }
+            validationData = validatePermit(permit, permit.spans[count], userOp.callData);
+        }
+    }
+
+    /// @dev Validates packed ERC4337 userOp with additional auth logic flow among authorizers.
+    function validateUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256)
         external
         payable
         virtual
@@ -170,12 +215,9 @@ contract PermitValidator is EIP712 {
         virtual
         returns (uint256 validationData)
     {
-        if (span.validAfter != 0 && block.timestamp < span.validAfter) revert PermitLimited();
-        if (span.validUntil != 0 && block.timestamp > span.validUntil) revert PermitLimited();
-        bytes4 selector = bytes4(callData[:4]);
+        if (bytes4(callData[:4]) != IExecutor.execute.selector) revert InvalidSelector();
         (address target, uint256 value, bytes memory data) =
             abi.decode(callData[4:], (address, uint256, bytes));
-        if (selector != IExecutor.execute.selector) revert InvalidSelector();
         (bool found,) = LibSort.searchSorted(permit.targets, target);
         if (!found) revert PermitLimited();
         if (value != 0) permit.allowance -= uint192(value);
@@ -184,9 +226,23 @@ contract PermitValidator is EIP712 {
             for (uint256 i; i != permit.args.length; ++i) {
                 bytes memory call =
                     callData[permit.args[i].offset:permit.args[i].offset + permit.args[i].length];
-                validationData = _validateArg(permit.args[i], call);
+                validationData = _packValidationData(
+                    _validateArg(permit.args[i], call),
+                    uint48(span.validUntil),
+                    uint48(span.validAfter)
+                );
             }
         }
+    }
+
+    /// @dev Returns the packed validation data for userOp based on validation.
+    function _packValidationData(uint256 valid, uint48 validUntil, uint48 validAfter)
+        internal
+        pure
+        virtual
+        returns (uint256 validationData)
+    {
+        validationData = valid | validUntil << 160 | validAfter << 208;
     }
 
     /// @dev Validates a permit argument for a given call data.
@@ -197,7 +253,6 @@ contract PermitValidator is EIP712 {
         returns (uint256 validationData)
     {
         unchecked {
-            // bytes memory _data = callData[arg.offset:arg.offset + 32];
             if (arg._type == Type.Uint) {
                 if (_validateUint(abi.decode(callData, (uint256)), arg.bounds)) return 0x00;
                 return 0x01;

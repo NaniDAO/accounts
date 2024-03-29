@@ -1,5 +1,5 @@
 # PermitValidator
-[Git Source](https://github.com/NaniDAO/accounts/blob/a92c3cc254412087f583cadf96cf750857c126d2/src/validators/PermitValidator.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/f3bc2185db28d87882552dfc1387b652c8de72eb/src/validators/PermitValidator.sol)
 
 **Inherits:**
 EIP712
@@ -79,6 +79,19 @@ function validateUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint2
     returns (uint256 validationData);
 ```
 
+### validateUserOp
+
+*Validates packed ERC4337 userOp with additional auth logic flow among authorizers.*
+
+
+```solidity
+function validateUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256)
+    external
+    payable
+    virtual
+    returns (uint256 validationData);
+```
+
 ### getPermit
 
 ===================== PERMIT OPERATIONS ===================== ///
@@ -122,6 +135,19 @@ function setPermitHash(Permit calldata permit) public payable virtual;
 function validatePermit(Permit memory permit, Span memory span, bytes calldata callData)
     public
     view
+    virtual
+    returns (uint256 validationData);
+```
+
+### _packValidationData
+
+*Returns the packed validation data for userOp based on validation.*
+
+
+```solidity
+function _packValidationData(uint256 valid, uint48 validUntil, uint48 validAfter)
+    internal
+    pure
     virtual
     returns (uint256 validationData);
 ```
@@ -295,6 +321,24 @@ struct UserOperation {
     uint256 preVerificationGas;
     uint256 maxFeePerGas;
     uint256 maxPriorityFeePerGas;
+    bytes paymasterAndData;
+    bytes signature;
+}
+```
+
+### PackedUserOperation
+*The packed ERC4337 userOp struct.*
+
+
+```solidity
+struct PackedUserOperation {
+    address sender;
+    uint256 nonce;
+    bytes initCode;
+    bytes callData;
+    bytes32 accountGasLimits;
+    uint256 preVerificationGas;
+    bytes32 gasFees;
     bytes paymasterAndData;
     bytes signature;
 }

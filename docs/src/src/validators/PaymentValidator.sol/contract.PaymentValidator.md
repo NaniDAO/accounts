@@ -1,5 +1,5 @@
 # PaymentValidator
-[Git Source](https://github.com/NaniDAO/accounts/blob/a92c3cc254412087f583cadf96cf750857c126d2/src/validators/PaymentValidator.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/f3bc2185db28d87882552dfc1387b652c8de72eb/src/validators/PaymentValidator.sol)
 
 **Author:**
 nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/validators/PaymentValidator.sol)
@@ -194,14 +194,6 @@ event PlanSet(address indexed account, address asset, Plan plan);
 
 ```solidity
 error InvalidAllowance();
-```
-
-### InvalidTimestamp
-*Spend is outside planned time range for asset.*
-
-
-```solidity
-error InvalidTimestamp();
 ```
 
 ### InvalidSelector

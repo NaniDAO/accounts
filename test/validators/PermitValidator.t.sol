@@ -138,55 +138,6 @@ contract PermitValidatorTest is Test, TestPlus {
         );
     }
 
-    function testTimePermissions() public {
-        PermitValidator.Span[] memory spans = new PermitValidator.Span[](3);
-        spans[0] = PermitValidator.Span({
-            validAfter: uint32(block.timestamp),
-            validUntil: uint32(block.timestamp + 100000)
-        });
-        spans[1] = PermitValidator.Span({
-            validAfter: uint32(block.timestamp + 100000),
-            validUntil: uint32(block.timestamp + 200000)
-        });
-        spans[2] = PermitValidator.Span({
-            validAfter: uint32(block.timestamp + 200000),
-            validUntil: uint32(block.timestamp + 300000)
-        });
-        // count should be a random value between 0-2
-        uint256 count = uint256(block.timestamp) % 3;
-
-        address[] memory targets = getTargets(0, alice);
-        string memory intent = "ping alice";
-
-        PermitValidator.Permit memory permit = createPermit(
-            targets, uint192(0), uint32(0), bytes4(0), intent, spans, new PermitValidator.Arg[](0)
-        );
-
-        uint256 assertion = (
-            spans[count].validAfter > block.timestamp && spans[count].validUntil < block.timestamp
-        ) ? 0 : 1;
-
-        if (assertion == 1) {
-            vm.expectRevert();
-            permissions.validatePermit(
-                permit,
-                spans[count],
-                abi.encodeWithSelector(NaniAccount(account).execute.selector, alice, 0, hex"0000")
-            );
-        } else {
-            assertEq(
-                permissions.validatePermit(
-                    permit,
-                    spans[count],
-                    abi.encodeWithSelector(
-                        NaniAccount(account).execute.selector, alice, 0, hex"0000"
-                    )
-                ),
-                0
-            );
-        }
-    }
-
     function testUintPermission(uint256 amt, uint256 min, uint256 max) public {
         vm.assume(amt > min || amt < max);
         if ((amt < min) || (amt > max)) return;

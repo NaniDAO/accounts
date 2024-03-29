@@ -119,9 +119,7 @@ contract PaymentValidatorTest is Test {
         );
         vm.prank(address(account));
         PaymentValidator.UserOperation memory userOp;
-        bytes32 userOpHash = _toEthSignedMessageHash(
-            keccak256(abi.encodePacked(bytes32("ok"), plans[0].validUntil, plans[0].validAfter))
-        );
+        bytes32 userOpHash = _toEthSignedMessageHash(bytes32("ok"));
         userOp.sender = address(account);
         userOp.signature = _sign(guardian1key, userOpHash);
         userOp.callData = abi.encodeCall(IAccount.execute, (guardian1, 1 ether, ""));
@@ -152,9 +150,7 @@ contract PaymentValidatorTest is Test {
         );
         vm.prank(address(account));
         PaymentValidator.UserOperation memory userOp;
-        bytes32 userOpHash = _toEthSignedMessageHash(
-            keccak256(abi.encodePacked(bytes32("ok"), plans[0].validUntil, plans[0].validAfter))
-        );
+        bytes32 userOpHash = _toEthSignedMessageHash(bytes32("ok"));
         userOp.sender = address(account);
         userOp.signature = _sign(guardian1key, userOpHash);
         userOp.callData = abi.encodeCall(IAccount.execute, (guardian1, 0, ""));
@@ -184,9 +180,7 @@ contract PaymentValidatorTest is Test {
         );
         vm.prank(address(account));
         PaymentValidator.UserOperation memory userOp;
-        bytes32 userOpHash = _toEthSignedMessageHash(
-            keccak256(abi.encodePacked(bytes32("ok"), plans[0].validUntil, plans[0].validAfter))
-        );
+        bytes32 userOpHash = _toEthSignedMessageHash(bytes32("ok"));
         userOp.sender = address(account);
         userOp.signature = _sign(ownerKey, userOpHash);
         userOp.callData = abi.encodeCall(IAccount.execute, (guardian1, 1 ether, ""));
@@ -217,9 +211,7 @@ contract PaymentValidatorTest is Test {
         );
         vm.prank(address(account));
         PaymentValidator.UserOperation memory userOp;
-        bytes32 userOpHash = _toEthSignedMessageHash(
-            keccak256(abi.encodePacked(bytes32("ok"), plans[0].validUntil, plans[0].validAfter))
-        );
+        bytes32 userOpHash = _toEthSignedMessageHash(bytes32("ok"));
         userOp.sender = address(account);
         userOp.signature = _sign(guardian1key, userOpHash);
         userOp.callData = abi.encodeCall(IAccount.execute, (guardian1, 2 ether, ""));
@@ -249,9 +241,7 @@ contract PaymentValidatorTest is Test {
         );
         vm.prank(address(account));
         PaymentValidator.UserOperation memory userOp;
-        bytes32 userOpHash = _toEthSignedMessageHash(
-            keccak256(abi.encodePacked(bytes32("ok"), plans[0].validUntil, plans[0].validAfter))
-        );
+        bytes32 userOpHash = _toEthSignedMessageHash(bytes32("ok"));
         userOp.sender = address(account);
         userOp.signature = _sign(guardian1key, userOpHash);
         userOp.callData = abi.encodeCall(IAccount.execute, (guardian2, 2 ether, ""));
@@ -280,9 +270,7 @@ contract PaymentValidatorTest is Test {
         );
         vm.prank(address(account));
         PaymentValidator.UserOperation memory userOp;
-        bytes32 userOpHash = _toEthSignedMessageHash(
-            keccak256(abi.encodePacked(bytes32("ok"), plans[0].validUntil, plans[0].validAfter))
-        );
+        bytes32 userOpHash = _toEthSignedMessageHash(bytes32("ok"));
         userOp.sender = address(account);
         userOp.signature = _sign(guardian1key, userOpHash);
         userOp.callData = abi.encodeCall(
@@ -315,9 +303,7 @@ contract PaymentValidatorTest is Test {
         );
         vm.prank(address(account));
         PaymentValidator.UserOperation memory userOp;
-        bytes32 userOpHash = _toEthSignedMessageHash(
-            keccak256(abi.encodePacked(bytes32("ok"), plans[0].validUntil, plans[0].validAfter))
-        );
+        bytes32 userOpHash = _toEthSignedMessageHash(bytes32("ok"));
         userOp.sender = address(account);
         userOp.signature = _sign(guardian1key, userOpHash);
         userOp.callData = abi.encodeCall(
@@ -353,9 +339,7 @@ contract PaymentValidatorTest is Test {
         );
         vm.prank(address(account));
         PaymentValidator.UserOperation memory userOp;
-        bytes32 userOpHash = _toEthSignedMessageHash(
-            keccak256(abi.encodePacked(bytes32("ok"), plans[0].validUntil, plans[0].validAfter))
-        );
+        bytes32 userOpHash = _toEthSignedMessageHash(bytes32("ok"));
         userOp.sender = address(account);
         userOp.signature = _sign(ownerKey, userOpHash);
         userOp.callData = abi.encodeCall(
@@ -388,9 +372,7 @@ contract PaymentValidatorTest is Test {
         );
         vm.prank(address(account));
         PaymentValidator.UserOperation memory userOp;
-        bytes32 userOpHash = _toEthSignedMessageHash(
-            keccak256(abi.encodePacked(bytes32("ok"), plans[0].validUntil, plans[0].validAfter))
-        );
+        bytes32 userOpHash = _toEthSignedMessageHash(bytes32("ok"));
         userOp.sender = address(account);
         userOp.signature = _sign(guardian1key, userOpHash);
         userOp.callData = abi.encodeCall(
@@ -422,9 +404,7 @@ contract PaymentValidatorTest is Test {
         );
         vm.prank(address(account));
         PaymentValidator.UserOperation memory userOp;
-        bytes32 userOpHash = _toEthSignedMessageHash(
-            keccak256(abi.encodePacked(bytes32("ok"), plans[0].validUntil, plans[0].validAfter))
-        );
+        bytes32 userOpHash = _toEthSignedMessageHash(bytes32("ok"));
         userOp.sender = address(account);
         userOp.signature = _sign(guardian1key, userOpHash);
         userOp.callData = abi.encodeCall(

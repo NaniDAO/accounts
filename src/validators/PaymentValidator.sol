@@ -12,9 +12,6 @@ contract PaymentValidator {
     /// @dev Spend exceeds the planned allowance for asset.
     error InvalidAllowance();
 
-    /// @dev Spend is outside planned time range for asset.
-    error InvalidTimestamp();
-
     /// @dev Invalid selector for the given asset spend.
     error InvalidSelector();
 
@@ -148,9 +145,7 @@ contract PaymentValidator {
         }
         // The planned spend must be validated by an authorizer.
         address[] memory authorizers = _authorizers[msg.sender];
-        bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(
-            keccak256(abi.encodePacked(userOpHash, plan.validUntil, plan.validAfter))
-        );
+        bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
         for (uint256 i; i != authorizers.length; ++i) {
             if (SignatureCheckerLib.isValidSignatureNowCalldata(authorizers[i], hash, signature)) {
                 validationData = 0x01; // Reverse flag.
