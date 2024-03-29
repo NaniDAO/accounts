@@ -17,6 +17,7 @@
     - [NEETH](src/paymasters/NEETH.sol/contract.NEETH.md)
     - [IEntryPoint](src/paymasters/NEETH.sol/interface.IEntryPoint.md)
     - [ISwapRouter](src/paymasters/NEETH.sol/interface.ISwapRouter.md)
+    - [Paymaster](src/paymasters/Paymaster.sol/contract.Paymaster.md)
   - [❱ validators](src/validators/README.md)
     - [JointValidator](src/validators/JointValidator.sol/contract.JointValidator.md)
     - [PaymentValidator](src/validators/PaymentValidator.sol/contract.PaymentValidator.md)

@@ -1,5 +1,5 @@
 # IExecutor
-[Git Source](https://github.com/NaniDAO/accounts/blob/1860887bd5c981e1101c3912599ab1867241e8af/src/validators/PermitValidator.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/a92c3cc254412087f583cadf96cf750857c126d2/src/validators/PermitValidator.sol)
 
 Executor interface.
 

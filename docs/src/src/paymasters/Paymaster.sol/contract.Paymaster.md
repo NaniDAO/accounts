@@ -1,5 +1,5 @@
 # Paymaster
-[Git Source](https://github.com/NaniDAO/accounts/blob/fb62ae7d2c128e746e2f23d9357928dc2e00e7cf/src/paymasters/Paymaster.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/a92c3cc254412087f583cadf96cf750857c126d2/src/paymasters/Paymaster.sol)
 
 **Author:**
 nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/paymasters/Paymaster.sol)
@@ -8,41 +8,32 @@ Simple ERC4337 Paymaster.
 
 
 ## State Variables
-### _ENTRY_POINT
+### ENTRY_POINT
 ========================= CONSTANTS ========================= ///
 
-*The canonical ERC4337 EntryPoint contract.*
+*The canonical ERC4337 EntryPoint contract (0.7).*
 
 
 ```solidity
-address payable internal constant _ENTRY_POINT = payable(0x0000000071727De22E5E9d8BAf0edAc6f37da032);
+address internal constant ENTRY_POINT = 0x0000000071727De22E5E9d8BAf0edAc6f37da032;
 ```
 
 
-### _OWNER
+### OWNER
 ========================= IMMUTABLES ========================= ///
 
 *Holds an immutable owner for this contract.*
 
 
 ```solidity
-address payable internal immutable _OWNER;
+address internal immutable OWNER;
 ```
 
 
 ## Functions
-### onlyEntryPoint
+### onlyOwner
 
 ========================= MODIFIERS ========================= ///
-
-*Requires that the caller is the EntryPoint.*
-
-
-```solidity
-modifier onlyEntryPoint() virtual;
-```
-
-### onlyOwner
 
 *Requires that the caller is the owner.*
 
@@ -59,7 +50,7 @@ modifier onlyOwner() virtual;
 
 
 ```solidity
-constructor(address payable owner) payable;
+constructor(address owner) payable;
 ```
 
 ### validatePaymasterUserOp
@@ -70,25 +61,24 @@ constructor(address payable owner) payable;
 
 
 ```solidity
-function validatePaymasterUserOp(UserOperation calldata userOp, bytes32, uint256)
+function validatePaymasterUserOp(PackedUserOperation calldata userOp, bytes32, uint256)
     public
     payable
     virtual
-    onlyEntryPoint
     returns (bytes memory, uint256);
 ```
 
 ### _hashSignedUserOp
 
-*Returns the eth-signed message hash of the userOp within context of paymaster and user.*
+*Returns the eth-signed message hash of the userOp within the context of the paymaster and user.*
 
 
 ```solidity
-function _hashSignedUserOp(UserOperation calldata userOp, uint48 validUntil, uint48 validAfter)
-    internal
-    view
-    virtual
-    returns (bytes32);
+function _hashSignedUserOp(
+    PackedUserOperation calldata userOp,
+    uint48 validUntil,
+    uint48 validAfter
+) internal view virtual returns (bytes32);
 ```
 
 ### _packValidationData
@@ -133,35 +123,22 @@ function unlockStake() public payable virtual onlyOwner;
 function withdrawStake(address payable withdrawAddress) public payable virtual onlyOwner;
 ```
 
-## Errors
-### Unauthorized
-======================= CUSTOM ERRORS ======================= ///
-
-*The caller is not authorized to call the function.*
-
-
-```solidity
-error Unauthorized();
-```
-
 ## Structs
-### UserOperation
+### PackedUserOperation
 ========================== STRUCTS ========================== ///
 
-*The ERC4337 user operation (userOp) struct.*
+*The packed ERC4337 userOp struct (0.7).*
 
 
 ```solidity
-struct UserOperation {
+struct PackedUserOperation {
     address sender;
     uint256 nonce;
     bytes initCode;
     bytes callData;
-    uint256 callGasLimit;
-    uint256 verificationGasLimit;
+    bytes32 accountGasLimits;
     uint256 preVerificationGas;
-    uint256 maxFeePerGas;
-    uint256 maxPriorityFeePerGas;
+    bytes32 gasFees;
     bytes paymasterAndData;
     bytes signature;
 }
