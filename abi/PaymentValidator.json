@@ -1,0 +1,420 @@
+[
+    {
+      "type": "constructor",
+      "inputs": [],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "getAuthorizers",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address[]",
+          "internalType": "address[]"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getPlan",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "asset",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct PaymentValidator.Plan",
+          "components": [
+            {
+              "name": "allowance",
+              "type": "uint192",
+              "internalType": "uint192"
+            },
+            {
+              "name": "validAfter",
+              "type": "uint32",
+              "internalType": "uint32"
+            },
+            {
+              "name": "validUntil",
+              "type": "uint32",
+              "internalType": "uint32"
+            },
+            {
+              "name": "validTo",
+              "type": "address[]",
+              "internalType": "address[]"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "install",
+      "inputs": [
+        {
+          "name": "authorizers",
+          "type": "address[]",
+          "internalType": "address[]"
+        },
+        {
+          "name": "assets",
+          "type": "address[]",
+          "internalType": "address[]"
+        },
+        {
+          "name": "plans",
+          "type": "tuple[]",
+          "internalType": "struct PaymentValidator.Plan[]",
+          "components": [
+            {
+              "name": "allowance",
+              "type": "uint192",
+              "internalType": "uint192"
+            },
+            {
+              "name": "validAfter",
+              "type": "uint32",
+              "internalType": "uint32"
+            },
+            {
+              "name": "validUntil",
+              "type": "uint32",
+              "internalType": "uint32"
+            },
+            {
+              "name": "validTo",
+              "type": "address[]",
+              "internalType": "address[]"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "setAuthorizers",
+      "inputs": [
+        {
+          "name": "authorizers",
+          "type": "address[]",
+          "internalType": "address[]"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "setPlan",
+      "inputs": [
+        {
+          "name": "asset",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "plan",
+          "type": "tuple",
+          "internalType": "struct PaymentValidator.Plan",
+          "components": [
+            {
+              "name": "allowance",
+              "type": "uint192",
+              "internalType": "uint192"
+            },
+            {
+              "name": "validAfter",
+              "type": "uint32",
+              "internalType": "uint32"
+            },
+            {
+              "name": "validUntil",
+              "type": "uint32",
+              "internalType": "uint32"
+            },
+            {
+              "name": "validTo",
+              "type": "address[]",
+              "internalType": "address[]"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "uninstall",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "validateUserOp",
+      "inputs": [
+        {
+          "name": "userOp",
+          "type": "tuple",
+          "internalType": "struct PaymentValidator.PackedUserOperation",
+          "components": [
+            {
+              "name": "sender",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "nonce",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "initCode",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "callData",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "accountGasLimits",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            },
+            {
+              "name": "preVerificationGas",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "gasFees",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            },
+            {
+              "name": "paymasterAndData",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "signature",
+              "type": "bytes",
+              "internalType": "bytes"
+            }
+          ]
+        },
+        {
+          "name": "userOpHash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "validationData",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "validateUserOp",
+      "inputs": [
+        {
+          "name": "userOp",
+          "type": "tuple",
+          "internalType": "struct PaymentValidator.UserOperation",
+          "components": [
+            {
+              "name": "sender",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "nonce",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "initCode",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "callData",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "callGasLimit",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "verificationGasLimit",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "preVerificationGas",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "maxFeePerGas",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "maxPriorityFeePerGas",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "paymasterAndData",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "signature",
+              "type": "bytes",
+              "internalType": "bytes"
+            }
+          ]
+        },
+        {
+          "name": "userOpHash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "validationData",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "event",
+      "name": "AuthorizersSet",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "authorizers",
+          "type": "address[]",
+          "indexed": false,
+          "internalType": "address[]"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "PlanSet",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "asset",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "plan",
+          "type": "tuple",
+          "indexed": false,
+          "internalType": "struct PaymentValidator.Plan",
+          "components": [
+            {
+              "name": "allowance",
+              "type": "uint192",
+              "internalType": "uint192"
+            },
+            {
+              "name": "validAfter",
+              "type": "uint32",
+              "internalType": "uint32"
+            },
+            {
+              "name": "validUntil",
+              "type": "uint32",
+              "internalType": "uint32"
+            },
+            {
+              "name": "validTo",
+              "type": "address[]",
+              "internalType": "address[]"
+            }
+          ]
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "InvalidAllowance",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidSelector",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidTarget",
+      "inputs": []
+    }
+  ]

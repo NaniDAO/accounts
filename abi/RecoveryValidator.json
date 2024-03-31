@@ -13,6 +13,19 @@
   },
   {
     "type": "function",
+    "name": "completeOwnershipHandoverRequest",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
     "name": "getAuthorizers",
     "inputs": [
       {
