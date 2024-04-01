@@ -8,7 +8,6 @@
     - [IERC20](src/governance/Points.sol/interface.IERC20.md)
     - [IERC1271](src/governance/Points.sol/interface.IERC1271.md)
     - [Token](src/governance/Token.sol/contract.Token.md)
-    - [Words](src/governance/Words.sol/contract.Words.md)
   - [❱ ownership](src/ownership/README.md)
     - [Keys](src/ownership/Keys.sol/contract.Keys.md)
     - [IAuth](src/ownership/Keys.sol/interface.IAuth.md)
