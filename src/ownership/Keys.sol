@@ -6,7 +6,7 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 /// @notice Simple token-bound ownership singleton for smart accounts.
 /// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/ownership/Keys.sol)
 /// @dev The Keys singleton approximates ERC6551 token-bound account ownership with NFTs.
-/// @custom:version 0.0.0
+/// @custom:version 1.0.0
 contract Keys {
     /// =========================== EVENTS =========================== ///
 
@@ -25,17 +25,15 @@ contract Keys {
         IAuth auth;
     }
 
-    /// @dev The ERC4337 user operation (userOp) struct.
-    struct UserOperation {
+    /// @dev The packed ERC4337 userOp struct (0.7).
+    struct PackedUserOperation {
         address sender;
         uint256 nonce;
         bytes initCode;
         bytes callData;
-        uint256 callGasLimit;
-        uint256 verificationGasLimit;
+        bytes32 accountGasLimits;
         uint256 preVerificationGas;
-        uint256 maxFeePerGas;
-        uint256 maxPriorityFeePerGas;
+        bytes32 gasFees;
         bytes paymasterAndData;
         bytes signature;
     }
@@ -72,7 +70,7 @@ contract Keys {
     /// @dev Validates ERC4337 userOp with additional auth logic flow among owners.
     /// note: This is expected to be called in a validator plugin-like userOp flow.
     function validateUserOp(
-        UserOperation calldata userOp,
+        PackedUserOperation calldata userOp,
         bytes32 userOpHash,
         uint256 /*missingAccountFunds*/
     ) public payable virtual returns (uint256 validationData) {
