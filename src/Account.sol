@@ -43,7 +43,7 @@ contract Account is ERC4337 {
     }
 
     /// @dev Extends validation by forwarding calldata to validator.
-    function _validateUserOp() internal virtual returns (uint256) {
+    function _validateUserOp() internal virtual returns (uint256 validationData) {
         assembly ("memory-safe") {
             calldatacopy(0x00, 0x00, calldatasize())
             if iszero(
@@ -63,7 +63,7 @@ contract Account is ERC4337 {
                 revert(0x00, returndatasize())
             }
             // Return `validationData` if call succeeds.
-            return(0x00, 0x20) // `validationData`.
+            validationData := mload(0x00)
         }
     }
 }
