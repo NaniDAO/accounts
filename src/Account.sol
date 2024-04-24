@@ -16,7 +16,7 @@ contract Account is ERC4337 {
         internal
         pure
         virtual
-        override(ERC4337)
+        override
         returns (string memory, string memory)
     {
         return ("NANI", "1.0.0");
@@ -72,7 +72,7 @@ contract Account is ERC4337 {
         public
         view
         virtual
-        override(ERC4337)
+        override
         returns (bytes4 result)
     {
         if (signature.length == 128) {
