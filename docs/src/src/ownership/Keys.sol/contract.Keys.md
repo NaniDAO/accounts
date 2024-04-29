@@ -1,5 +1,5 @@
 # Keys
-[Git Source](https://github.com/NaniDAO/accounts/blob/fd90579c871d0f59555da77a20211a8d3c53e980/src/ownership/Keys.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/4789484b1daa1e7826eeec6833ca9b47824ee8b6/src/ownership/Keys.sol)
 
 **Author:**
 nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/ownership/Keys.sol)
@@ -57,7 +57,7 @@ note: This is expected to be called in a validator plugin-like userOp flow.*
 
 
 ```solidity
-function validateUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint256)
+function validateUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256)
     public
     payable
     virtual
@@ -159,21 +159,19 @@ struct Settings {
 }
 ```
 
-### UserOperation
-*The ERC4337 user operation (userOp) struct.*
+### PackedUserOperation
+*The packed ERC4337 userOp struct (0.7).*
 
 
 ```solidity
-struct UserOperation {
+struct PackedUserOperation {
     address sender;
     uint256 nonce;
     bytes initCode;
     bytes callData;
-    uint256 callGasLimit;
-    uint256 verificationGasLimit;
+    bytes32 accountGasLimits;
     uint256 preVerificationGas;
-    uint256 maxFeePerGas;
-    uint256 maxPriorityFeePerGas;
+    bytes32 gasFees;
     bytes paymasterAndData;
     bytes signature;
 }

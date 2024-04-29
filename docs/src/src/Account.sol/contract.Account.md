@@ -1,5 +1,5 @@
 # Account
-[Git Source](https://github.com/NaniDAO/accounts/blob/fd90579c871d0f59555da77a20211a8d3c53e980/src/Account.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/4789484b1daa1e7826eeec6833ca9b47824ee8b6/src/Account.sol)
 
 **Inherits:**
 ERC4337
@@ -63,6 +63,6 @@ function validateUserOp(
 
 
 ```solidity
-function _validateUserOp() internal virtual returns (uint256);
+function _validateUserOp() internal virtual returns (uint256 validationData);
 ```
 

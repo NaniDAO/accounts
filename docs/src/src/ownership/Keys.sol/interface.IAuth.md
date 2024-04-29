@@ -1,5 +1,5 @@
 # IAuth
-[Git Source](https://github.com/NaniDAO/accounts/blob/fd90579c871d0f59555da77a20211a8d3c53e980/src/ownership/Keys.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/4789484b1daa1e7826eeec6833ca9b47824ee8b6/src/ownership/Keys.sol)
 
 Simple authority interface for contracts.
 
