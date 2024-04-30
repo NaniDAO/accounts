@@ -1,5 +1,5 @@
 # Account
-[Git Source](https://github.com/NaniDAO/accounts/blob/fd90579c871d0f59555da77a20211a8d3c53e980/src/Account.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/63982073a58fb6da94e594d61906f20468a541f4/src/Account.sol)
 
 **Inherits:**
 ERC4337
@@ -7,7 +7,7 @@ ERC4337
 **Author:**
 nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/Account.sol)
 
-Simple extendable smart account implementation.
+Simple extendable smart account implementation. Includes secp256r1 auth.
 
 
 ## Functions
@@ -51,18 +51,32 @@ function validateUserOp(
     external
     payable
     virtual
-    override
+    override(ERC4337)
     onlyEntryPoint
     payPrefund(missingAccountFunds)
-    returns (uint256);
+    returns (uint256 validationData);
 ```
 
 ### _validateUserOp
 
-*Extends validation by forwarding calldata to validator.*
+*Extends ERC4337 userOp validation with ERC7582 plugin validator flow.*
 
 
 ```solidity
-function _validateUserOp() internal virtual returns (uint256);
+function _validateUserOp() internal virtual returns (uint256 validationData);
+```
+
+### isValidSignature
+
+*Extends ERC1271 signature verification with secp256r1.*
+
+
+```solidity
+function isValidSignature(bytes32 hash, bytes calldata signature)
+    public
+    view
+    virtual
+    override
+    returns (bytes4 result);
 ```
 
