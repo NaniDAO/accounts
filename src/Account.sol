@@ -93,4 +93,36 @@ contract Account is ERC4337 {
             result = super.isValidSignature(hash, signature);
         }
     }
+
+    /// @dev Validate `userOp.signature` for the `userOpHash`.
+    function _validateSignature(PackedUserOperation calldata userOp, bytes32 userOpHash)
+        internal
+        virtual
+        override(ERC4337)
+        returns (uint256 validationData)
+    {
+        bool success;
+        if (userOp.signature.length == 128) {
+            success = P256.verifySignature(
+                SignatureCheckerLib.toEthSignedMessageHash(userOpHash),
+                uint256(bytes32(userOp.signature[:32])),
+                uint256(bytes32(userOp.signature[32:64])),
+                uint256(bytes32(userOp.signature[64:96])),
+                uint256(bytes32(userOp.signature[96:128]))
+            )
+                && storageLoad(bytes32(userOp.signature[64:96])) /*x*/
+                    == bytes32(userOp.signature[96:128]); /*y*/
+        } else {
+            success = SignatureCheckerLib.isValidSignatureNowCalldata(
+                owner(), SignatureCheckerLib.toEthSignedMessageHash(userOpHash), userOp.signature
+            );
+        }
+        assembly ("memory-safe") {
+            // Returns 0 if the recovered address matches the owner.
+            // Else returns 1, which is equivalent to:
+            // `(success ? 0 : 1) | (uint256(validUntil) << 160) | (uint256(validAfter) << (160 + 48))`
+            // where `validUntil` is 0 (indefinite) and `validAfter` is 0.
+            validationData := iszero(success)
+        }
+    }
 }
