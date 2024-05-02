@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.19;
 
-import {P256} from "@solady/src/utils/P256.sol";
-import {SignatureCheckerLib, ERC4337} from "@solady/src/accounts/ERC4337.sol";
+import {ERC4337} from "@solady/src/accounts/ERC4337.sol";
 
-/// @notice Simple extendable smart account implementation. Includes secp256r1 auth.
+/// @notice Simple extendable smart account implementation. Includes plugin tooling.
 /// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/Account.sol)
 contract Account is ERC4337 {
     /// @dev Constructs
@@ -36,14 +35,14 @@ contract Account is ERC4337 {
         override(ERC4337)
         onlyEntryPoint
         payPrefund(missingAccountFunds)
-        returns (uint256 validationData)
+        returns (uint256)
     {
         return userOp.nonce < type(uint64).max
             ? _validateSignature(userOp, userOpHash)
             : _validateUserOp();
     }
 
-    /// @dev Extends ERC4337 userOp validation with ERC7582 plugin validator flow.
+    /// @dev Extends ERC4337 userOp validation with stored ERC7582 validator plugins.
     function _validateUserOp() internal virtual returns (uint256 validationData) {
         assembly ("memory-safe") {
             calldatacopy(0x00, 0x00, calldatasize())
@@ -68,61 +67,19 @@ contract Account is ERC4337 {
         }
     }
 
-    /// @dev Extends ERC1271 signature verification with secp256r1.
+    /// @dev Extends ERC1271 signature verification with stored validator plugin.
     function isValidSignature(bytes32 hash, bytes calldata signature)
         public
         view
         virtual
         override
-        returns (bytes4 result)
+        returns (bytes4)
     {
-        if (signature.length == 128) {
-            bool success = P256.verifySignature(
-                SignatureCheckerLib.toEthSignedMessageHash(hash),
-                uint256(bytes32(signature[:32])),
-                uint256(bytes32(signature[32:64])),
-                uint256(bytes32(signature[64:96])),
-                uint256(bytes32(signature[96:128]))
-            ) && storageLoad(bytes32(signature[64:96])) /*x*/ == bytes32(signature[96:128]); /*y*/
-            assembly ("memory-safe") {
-                // `success ? bytes4(keccak256("isValidSignature(bytes32,bytes)")) : 0xffffffff`.
-                // We use `0xffffffff` for invalid, in convention with the reference implementation.
-                result := shl(224, or(0x1626ba7e, sub(0, iszero(success))))
-            }
+        address validator = address(bytes20(storageLoad(this.isValidSignature.selector)));
+        if (validator == address(0)) {
+            return super.isValidSignature(hash, signature);
         } else {
-            result = super.isValidSignature(hash, signature);
-        }
-    }
-
-    /// @dev Validate `userOp.signature` for the `userOpHash`.
-    function _validateSignature(PackedUserOperation calldata userOp, bytes32 userOpHash)
-        internal
-        virtual
-        override(ERC4337)
-        returns (uint256 validationData)
-    {
-        bool success;
-        if (userOp.signature.length == 128) {
-            success = P256.verifySignature(
-                SignatureCheckerLib.toEthSignedMessageHash(userOpHash),
-                uint256(bytes32(userOp.signature[:32])),
-                uint256(bytes32(userOp.signature[32:64])),
-                uint256(bytes32(userOp.signature[64:96])),
-                uint256(bytes32(userOp.signature[96:128]))
-            )
-                && storageLoad(bytes32(userOp.signature[64:96])) /*x*/
-                    == bytes32(userOp.signature[96:128]); /*y*/
-        } else {
-            success = SignatureCheckerLib.isValidSignatureNowCalldata(
-                owner(), SignatureCheckerLib.toEthSignedMessageHash(userOpHash), userOp.signature
-            );
-        }
-        assembly ("memory-safe") {
-            // Returns 0 if the recovered address matches the owner.
-            // Else returns 1, which is equivalent to:
-            // `(success ? 0 : 1) | (uint256(validUntil) << 160) | (uint256(validAfter) << (160 + 48))`
-            // where `validUntil` is 0 (indefinite) and `validAfter` is 0.
-            validationData := iszero(success)
+            return Account(payable(validator)).isValidSignature(hash, signature);
         }
     }
 }
