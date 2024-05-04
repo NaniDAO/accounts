@@ -10,11 +10,11 @@ Build the foundry project with `forge build`. Run contract tests with `forge tes
 
 ## Deployments
 
-***v0.0.0***
+***v1.0.0***
 
 Chain           | Factory                                 | Implementation                          | Commit
 ----------------|-----------------------------------------|-----------------------------------------|------------------------------------------
-Ethereum, Arbitrum, Optimism, Polygon, Base, Sepolia (testnet) | [0x0000000000001C732C15f21364Ded10Dc753feFe](https://etherscan.io/address/0x0000000000001C732C15f21364Ded10Dc753feFe#code) | [0x000000000000832Dd14268F74994ACE35799432c](https://etherscan.io/address/0x000000000000832Dd14268F74994ACE35799432c#code) | [77bc49fdf9f9695af1971cc6573500dfc7fb9786](https://github.com/NaniDAO/Account/commit/77bc49fdf9f9695af1971cc6573500dfc7fb9786)
+Ethereum, Arbitrum, Optimism, Base, Zora, Blast, Polygon, Sepolia (testnet), Holesky (testnet) | [0x0000000000001C732C15f21364Ded10Dc753feFe](https://etherscan.io/address/0x0000000000001C732C15f21364Ded10Dc753feFe#code) | [0x000000000000832Dd14268F74994ACE35799432c](https://etherscan.io/address/0x000000000000832Dd14268F74994ACE35799432c#code) | [62e6273586d89aaf1fbab7524d5d1d692b2b6b69](https://github.com/NaniDAO/Account/commit/62e6273586d89aaf1fbab7524d5d1d692b2b6b69)
 
 ### [Plugin Validators](https://ethereum-magicians.org/t/erc-7582-modular-accounts-with-delegated-validation/17640):
 
