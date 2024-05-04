@@ -1,5 +1,5 @@
 # Auth
-[Git Source](https://github.com/NaniDAO/accounts/blob/63982073a58fb6da94e594d61906f20468a541f4/src/authority/Auth.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/5fb58fdce3270268f936c106a598fde6c6147d24/src/authority/Auth.sol)
 
 Simple onchain authority protocol.
 
