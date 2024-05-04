@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import {ERC4337} from "@solady/src/accounts/ERC4337.sol";
 
-/// @notice Simple extendable smart account implementation.
+/// @notice Simple extendable smart account implementation. Includes plugin tooling.
 /// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/Account.sol)
 contract Account is ERC4337 {
     /// @dev Constructs
@@ -32,7 +32,7 @@ contract Account is ERC4337 {
         external
         payable
         virtual
-        override
+        override(ERC4337)
         onlyEntryPoint
         payPrefund(missingAccountFunds)
         returns (uint256)
@@ -42,7 +42,7 @@ contract Account is ERC4337 {
             : _validateUserOp();
     }
 
-    /// @dev Extends validation by forwarding calldata to validator.
+    /// @dev Extends ERC4337 userOp validation with stored ERC7582 validator plugins.
     function _validateUserOp() internal virtual returns (uint256 validationData) {
         assembly ("memory-safe") {
             calldatacopy(0x00, 0x00, calldatasize())
@@ -64,6 +64,22 @@ contract Account is ERC4337 {
             }
             // Return `validationData` if call succeeds.
             validationData := mload(0x00)
+        }
+    }
+
+    /// @dev Extends ERC1271 signature verification with stored validator plugin.
+    function isValidSignature(bytes32 hash, bytes calldata signature)
+        public
+        view
+        virtual
+        override
+        returns (bytes4)
+    {
+        address validator = address(bytes20(storageLoad(this.isValidSignature.selector)));
+        if (validator == address(0)) {
+            return super.isValidSignature(hash, signature);
+        } else {
+            return Account(payable(validator)).isValidSignature(hash, signature);
         }
     }
 }

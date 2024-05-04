@@ -227,7 +227,7 @@
     ],
     "outputs": [
       {
-        "name": "result",
+        "name": "",
         "type": "bytes4",
         "internalType": "bytes4"
       }
@@ -516,6 +516,11 @@
   {
     "type": "error",
     "name": "AlreadyInitialized",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "FnSelectorNotRecognized",
     "inputs": []
   },
   {

@@ -1,5 +1,5 @@
 # IOwner
-[Git Source](https://github.com/NaniDAO/accounts/blob/4789484b1daa1e7826eeec6833ca9b47824ee8b6/src/validators/TimeValidator.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/f0c8220c401dbeac318e2c473ed4b690138c26f6/src/validators/TimeValidator.sol)
 
 *Simple ownership interface for smart accounts.*
 

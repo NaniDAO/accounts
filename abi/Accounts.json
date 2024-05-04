@@ -3,15 +3,11 @@
     "type": "constructor",
     "inputs": [
       {
-        "name": "erc4337",
+        "name": "Account",
         "type": "address",
         "internalType": "address"
       }
     ],
-    "stateMutability": "payable"
-  },
-  {
-    "type": "fallback",
     "stateMutability": "payable"
   },
   {
@@ -37,25 +33,6 @@
       }
     ],
     "stateMutability": "payable"
-  },
-  {
-    "type": "function",
-    "name": "get",
-    "inputs": [
-      {
-        "name": "selector",
-        "type": "bytes4",
-        "internalType": "bytes4"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "executor",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -101,23 +78,5 @@
       }
     ],
     "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "set",
-    "inputs": [
-      {
-        "name": "selector",
-        "type": "bytes4",
-        "internalType": "bytes4"
-      },
-      {
-        "name": "executor",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "payable"
   }
 ]

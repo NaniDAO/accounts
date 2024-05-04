@@ -1,5 +1,5 @@
 # Accounts
-[Git Source](https://github.com/NaniDAO/accounts/blob/4789484b1daa1e7826eeec6833ca9b47824ee8b6/src/Accounts.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/f0c8220c401dbeac318e2c473ed4b690138c26f6/src/Accounts.sol)
 
 **Inherits:**
 ERC4337Factory
@@ -7,54 +7,14 @@ ERC4337Factory
 **Author:**
 nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/Accounts.sol)
 
-Simple extendable smart account factory implementation.
-
-
-## State Variables
-### _OWNER
-*Holds an immutable owner.*
-
-
-```solidity
-address internal immutable _OWNER;
-```
+Simple extendable smart account factory. ERC1271/ERC4337. Version 1.0.0.
 
 
 ## Functions
 ### constructor
 
-*Constructs this factory to deploy the implementation.
-Additionally, sets owner account for peripheral concerns.*
-
 
 ```solidity
-constructor(address erc4337) payable ERC4337Factory(erc4337);
-```
-
-### get
-
-*Tracks mappings of selectors to executors the owner has delegated to.*
-
-
-```solidity
-function get(bytes4 selector) public view virtual returns (address executor);
-```
-
-### set
-
-*Delegates peripheral call concerns. Can only be called by owner.*
-
-
-```solidity
-function set(bytes4 selector, address executor) public payable virtual;
-```
-
-### fallback
-
-*Falls back to delegated calls.*
-
-
-```solidity
-fallback() external payable;
+constructor(address Account) payable ERC4337Factory(Account);
 ```
 
