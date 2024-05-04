@@ -58,6 +58,7 @@ note: This is expected to be called in a validator plugin-like userOp flow.*
 
 ```solidity
 function validateUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256)
+function validateUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256)
     public
     payable
     virtual
@@ -161,16 +162,21 @@ struct Settings {
 
 ### PackedUserOperation
 *The packed ERC4337 userOp struct (0.7).*
+### PackedUserOperation
+*The packed ERC4337 userOp struct (0.7).*
 
 
 ```solidity
+struct PackedUserOperation {
 struct PackedUserOperation {
     address sender;
     uint256 nonce;
     bytes initCode;
     bytes callData;
     bytes32 accountGasLimits;
+    bytes32 accountGasLimits;
     uint256 preVerificationGas;
+    bytes32 gasFees;
     bytes32 gasFees;
     bytes paymasterAndData;
     bytes signature;

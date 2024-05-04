@@ -16,7 +16,9 @@ Chain           | Factory                                 | Implementation      
 ----------------|-----------------------------------------|-----------------------------------------|------------------------------------------
 Ethereum, Arbitrum, Optimism, Polygon, Base, Sepolia (testnet) | [0x0000000000001C732C15f21364Ded10Dc753feFe](https://etherscan.io/address/0x0000000000001C732C15f21364Ded10Dc753feFe#code) | [0x000000000000832Dd14268F74994ACE35799432c](https://etherscan.io/address/0x000000000000832Dd14268F74994ACE35799432c#code) | [77bc49fdf9f9695af1971cc6573500dfc7fb9786](https://github.com/NaniDAO/Account/commit/77bc49fdf9f9695af1971cc6573500dfc7fb9786)
 
-### Plugin Validators:
+### [Plugin Validators](https://ethereum-magicians.org/t/erc-7582-modular-accounts-with-delegated-validation/17640):
+
+Utilizes [ERC7582 minimal modular account](https://github.com/NaniDAO/7582-account) interface.
 
 * JointValidator: [0x000000000000D3D2b2980A7BC509018E4d88e947](https://arbiscan.io/address/0x000000000000D3D2b2980A7BC509018E4d88e947#code)
 * RecoveryValidator: [0x000000000000B498889a6371092C19f0ddfCaAf6](https://arbiscan.io/address/0x000000000000B498889a6371092C19f0ddfCaAf6#code)
@@ -29,7 +31,7 @@ Ethereum, Arbitrum, Optimism, Polygon, Base, Sepolia (testnet) | [0x000000000000
 * Paymaster: [0x0000000000008408e0fB32deEC73ebFFFbc5165E](https://arbiscan.io/address/0x0000000000008408e0fB32deEC73ebFFFbc5165E#code)
 * NEETH: [0x00000000000009B4AB3f1bC2b029bd7513Fbd8ED](https://arbiscan.io/address/0x00000000000009B4AB3f1bC2b029bd7513Fbd8ED#code)
 
-### Governance:
+### [Governance](https://github.com/NaniDAO/NaniDAO):
 
 * Points: [0x00000000007f7396897bf90B00e96EaE4B71d055](https://arbiscan.io/address/0x00000000007f7396897bf90b00e96eae4b71d055#code)
 * Token: [0x000000000000C6A645b0E51C9eCAA4CA580Ed8e8](https://arbiscan.io/address/0x000000000000C6A645b0E51C9eCAA4CA580Ed8e8)
@@ -38,8 +40,14 @@ Ethereum, Arbitrum, Optimism, Polygon, Base, Sepolia (testnet) | [0x000000000000
 
 ### Ownership:
 
-* Dagon: [0x0000000000001ADDcB933DD5028159dc965b5b7f](https://arbiscan.io/address/0x0000000000001ADDcB933DD5028159dc965b5b7f#code)
+* [Dagon](https://github.com/Moloch-Mystics/dagon): [0x0000000000001ADDcB933DD5028159dc965b5b7f](https://arbiscan.io/address/0x0000000000001ADDcB933DD5028159dc965b5b7f#code)
 * Keys: [0x000000000000B418eE0A5B649462Fb851B266522](https://arbiscan.io/address/0x000000000000B418eE0A5B649462Fb851B266522#code)
+
+### Agents:
+
+* [NANI](https://github.com/NaniDAO/NANI): [0x000000000000641b6A7B74F177bAbDB4417718EF](https://arbiscan.io/address/0x000000000000641b6a7b74f177babdb4417718ef#code)
+* [IE](https://github.com/NaniDAO/ie): [0x1e00003a669bb466d6B49800000099E1abDD6600](https://arbiscan.io/address/0x1e00003a669bb466d6b49800000099e1abdd6600#code)
+* Akashic: [0x000000000000394793B2Fe854281CeE09a98bdBC](https://arbiscan.io/address/0x000000000000394793B2Fe854281CeE09a98bdBC#code)
 
 ## Blueprint
 
