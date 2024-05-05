@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.19;
 
+import {EIP712, SignatureCheckerLib, ERC1271} from "@solady/src/accounts/ERC1271.sol";
 import {ERC4337} from "@solady/src/accounts/ERC4337.sol";
 
 /// @notice Simple extendable smart account implementation. Includes plugin tooling.
@@ -37,9 +38,32 @@ contract Account is ERC4337 {
         payPrefund(missingAccountFunds)
         returns (uint256)
     {
-        return userOp.nonce < type(uint64).max
-            ? _validateSignature(userOp, userOpHash)
-            : _validateUserOp();
+        return
+            userOp.nonce < type(uint64).max ? _validateUserOpSignature(userOp) : _validateUserOp();
+    }
+
+    /// @dev Validate `userOp.signature` for the encoded ERC712 `userOp`.
+    function _validateUserOpSignature(PackedUserOperation calldata userOp)
+        internal
+        virtual
+        returns (uint256 validationData)
+    {
+        bool success = SignatureCheckerLib.isValidSignatureNowCalldata(
+            owner(),
+            EIP712._hashTypedData(
+                keccak256(
+                    abi.encode(keccak256("ValidateUserOp(PackedUserOperation userOp)"), userOp)
+                )
+            ),
+            userOp.signature
+        );
+        assembly ("memory-safe") {
+            // Returns 0 if the recovered address matches the owner.
+            // Else returns 1, which is equivalent to:
+            // `(success ? 0 : 1) | (uint256(validUntil) << 160) | (uint256(validAfter) << (160 + 48))`
+            // where `validUntil` is 0 (indefinite) and `validAfter` is 0.
+            validationData := iszero(success)
+        }
     }
 
     /// @dev Extends ERC4337 userOp validation with stored ERC7582 validator plugins.
