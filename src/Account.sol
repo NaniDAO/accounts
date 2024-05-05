@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.19;
 
-import {EIP712, SignatureCheckerLib, ERC1271} from "@solady/src/accounts/ERC1271.sol";
 import {ERC4337} from "@solady/src/accounts/ERC4337.sol";
+import {EIP712, SignatureCheckerLib, ERC1271} from "@solady/src/accounts/ERC1271.sol";
 
 /// @notice Simple extendable smart account implementation. Includes plugin tooling.
 /// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/Account.sol)
@@ -17,7 +17,7 @@ contract Account is ERC4337 {
         internal
         pure
         virtual
-        override
+        override(EIP712)
         returns (string memory, string memory)
     {
         return ("NANI", "1.0.0");
@@ -27,7 +27,7 @@ contract Account is ERC4337 {
     /// with nonce handling.
     function validateUserOp(
         PackedUserOperation calldata userOp,
-        bytes32 userOpHash,
+        bytes32,
         uint256 missingAccountFunds
     )
         external
@@ -96,7 +96,7 @@ contract Account is ERC4337 {
         public
         view
         virtual
-        override
+        override(ERC1271)
         returns (bytes4)
     {
         address validator = address(bytes20(storageLoad(this.isValidSignature.selector)));
