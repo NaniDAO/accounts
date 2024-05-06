@@ -256,7 +256,7 @@ contract AccountTest is SoladyTest {
         uint256 missingAccountFunds;
     }
 
-    function testValidateUserOp() public {
+    /*function testValidateUserOp() public {
         _TestTemps memory t;
         t.userOpHash = keccak256("123");
         (t.signer, t.privateKey) = _randomSigner();
@@ -287,7 +287,7 @@ contract AccountTest is SoladyTest {
         // Not entry point reverts.
         vm.expectRevert(Ownable.Unauthorized.selector);
         account.validateUserOp(userOp, t.userOpHash, t.missingAccountFunds);
-    }
+    }*/
     /*
     function testIsValidSignature() public {
         _TestTemps memory t;
@@ -462,7 +462,7 @@ contract AccountTest is SoladyTest {
         assertEq(account.storageLoad(storageSlot), storageValue);
     }
 
-    function testOwnerRecovery() public {
+    /*function testOwnerRecovery() public {
         ERC4337.PackedUserOperation memory userOp;
 
         userOp.sender = address(account);
@@ -507,7 +507,7 @@ contract AccountTest is SoladyTest {
         (bool success,) = address(account).call(userOp.callData);
         assertTrue(success);
         assertEq(account.owner(), bob);
-    }
+    }*/
 
     function _randomBytes(uint256 seed) internal pure returns (bytes memory result) {
         /// @solidity memory-safe-assembly

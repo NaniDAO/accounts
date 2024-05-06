@@ -7,6 +7,11 @@ import {EIP712, SignatureCheckerLib, ERC1271} from "@solady/src/accounts/ERC1271
 /// @notice Simple extendable smart account implementation. Includes plugin tooling.
 /// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/Account.sol)
 contract Account is ERC4337 {
+    /// @dev EIP712 typehash as defined in https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct.
+    bytes32 internal constant _VALIDATE_TYPEHASH = keccak256(
+        "ValidateUserOp(address sender, uint256 nonce, bytes initCode, bytes callData, bytes32 accountGasLimits, uint256 preVerificationGas, bytes32 gasFees, bytes paymasterAndData, uint48 validUntil, uint48 validAfter)"
+    );
+
     /// @dev Constructs
     /// this implementation.
     constructor() payable {}
@@ -20,7 +25,7 @@ contract Account is ERC4337 {
         override(EIP712)
         returns (string memory, string memory)
     {
-        return ("NANI", "1.0.0");
+        return ("NANI", "1.1.0");
     }
 
     /// @dev Validates userOp
@@ -42,28 +47,43 @@ contract Account is ERC4337 {
             userOp.nonce < type(uint64).max ? _validateUserOpSignature(userOp) : _validateUserOp();
     }
 
-    /// @dev Validate `userOp.signature` for the encoded ERC712 `userOp`.
+    /// @dev Validates `userOp.signature` for the EIP712-encoded `userOp`.
     function _validateUserOpSignature(PackedUserOperation calldata userOp)
         internal
         virtual
-        returns (uint256 validationData)
+        returns (uint256)
     {
-        bool success = SignatureCheckerLib.isValidSignatureNowCalldata(
-            owner(),
-            EIP712._hashTypedData(
-                keccak256(
-                    abi.encode(keccak256("ValidateUserOp(PackedUserOperation userOp)"), userOp)
-                )
-            ),
-            userOp.signature
+        (uint48 validUntil, uint48 validAfter) =
+            (uint48(bytes6(userOp.signature[:6])), uint48(bytes6(userOp.signature[6:12])));
+        bool valid = SignatureCheckerLib.isValidSignatureNowCalldata(
+            owner(), __hashTypedData(userOp, validUntil, validAfter), userOp.signature[12:]
         );
-        assembly ("memory-safe") {
-            // Returns 0 if the recovered address matches the owner.
-            // Else returns 1, which is equivalent to:
-            // `(success ? 0 : 1) | (uint256(validUntil) << 160) | (uint256(validAfter) << (160 + 48))`
-            // where `validUntil` is 0 (indefinite) and `validAfter` is 0.
-            validationData := iszero(success)
-        }
+        return (valid ? 0 : 1) | (uint256(validUntil) << 160) | (uint256(validAfter) << 208);
+    }
+
+    /// @dev Encodes `userOp` and extracted time window within EIP712 syntax.
+    function __hashTypedData(
+        PackedUserOperation calldata userOp,
+        uint48 validUntil,
+        uint48 validAfter
+    ) internal view virtual returns (bytes32) {
+        return EIP712._hashTypedData(
+            keccak256(
+                abi.encode(
+                    _VALIDATE_TYPEHASH,
+                    userOp.sender,
+                    userOp.nonce,
+                    userOp.initCode,
+                    userOp.callData,
+                    userOp.accountGasLimits,
+                    userOp.preVerificationGas,
+                    userOp.gasFees,
+                    userOp.paymasterAndData,
+                    validUntil,
+                    validAfter
+                )
+            )
+        );
     }
 
     /// @dev Extends ERC4337 userOp validation with stored ERC7582 validator plugins.
@@ -91,7 +111,7 @@ contract Account is ERC4337 {
         }
     }
 
-    /// @dev Extends ERC1271 signature verification with stored validator plugin.
+    /// @dev Validates ERC1271 signature with stored validator plugin.
     function isValidSignature(bytes32 hash, bytes calldata signature)
         public
         view
