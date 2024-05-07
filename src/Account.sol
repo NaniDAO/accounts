@@ -25,7 +25,7 @@ contract Account is ERC4337 {
         override(EIP712)
         returns (string memory, string memory)
     {
-        return ("NANI", "1.1.0");
+        return ("NANI", "1.1.1");
     }
 
     /// @dev Validates userOp
@@ -102,28 +102,23 @@ contract Account is ERC4337 {
                     0x20
                 )
             ) {
-                // Bubble up the revert if the call reverts.
                 returndatacopy(0x00, 0x00, returndatasize())
                 revert(0x00, returndatasize())
             }
-            // Return `validationData` if call succeeds.
             validationData := mload(0x00)
         }
     }
 
-    /// @dev Validates ERC1271 signature with stored validator plugin.
+    /// @dev Validates ERC1271 signature. Plugin activated if stored.
     function isValidSignature(bytes32 hash, bytes calldata signature)
         public
         view
         virtual
         override(ERC1271)
-        returns (bytes4)
+        returns (bytes4 result)
     {
         address validator = address(bytes20(storageLoad(this.isValidSignature.selector)));
-        if (validator == address(0)) {
-            return super.isValidSignature(hash, signature);
-        } else {
-            return Account(payable(validator)).isValidSignature(hash, signature);
-        }
+        if (validator == address(0)) return super.isValidSignature(hash, signature);
+        else return Account(payable(validator)).isValidSignature(hash, signature);
     }
 }
