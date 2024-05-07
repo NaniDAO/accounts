@@ -8,9 +8,9 @@ import {EIP712, SignatureCheckerLib, ERC1271} from "@solady/src/accounts/ERC1271
 /// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/Account.sol)
 contract Account is ERC4337 {
     /// @dev EIP712 typehash as defined in https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct.
-    bytes32 internal constant _VALIDATE_TYPEHASH = keccak256(
-        "ValidateUserOp(address sender, uint256 nonce, bytes initCode, bytes callData, bytes32 accountGasLimits, uint256 preVerificationGas, bytes32 gasFees, bytes paymasterAndData, uint48 validUntil, uint48 validAfter)"
-    );
+    /// Derived from `userOp` without the signature and the time fields of `validUntil` and `validAfter`.
+    bytes32 internal constant _VALIDATE_TYPEHASH =
+        0xb8f6de4ba18fb77b2026a08a6271fc5cf62f64321fe0677831dadc734a4c6970;
 
     /// @dev Constructs
     /// this implementation.
