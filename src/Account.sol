@@ -10,7 +10,7 @@ contract Account is ERC4337 {
     /// @dev EIP712 typehash as defined in https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct.
     /// Derived from `userOp` without the signature and the time fields of `validUntil` and `validAfter`.
     bytes32 internal constant _VALIDATE_TYPEHASH =
-        0xb8f6de4ba18fb77b2026a08a6271fc5cf62f64321fe0677831dadc734a4c6970;
+        0xa9a214c6f6d90f71d094504e32920cfd4d8d53e5d7cf626f9a26c88af60081c7;
 
     /// @dev Constructs
     /// this implementation.

@@ -607,9 +607,8 @@ contract AccountTest is SoladyTest {
     bytes32 internal constant _DOMAIN_TYPEHASH =
         0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
 
-    bytes32 internal constant _VALIDATE_TYPEHASH = keccak256(
-        "ValidateUserOp(address sender, uint256 nonce, bytes initCode, bytes callData, bytes32 accountGasLimits, uint256 preVerificationGas, bytes32 gasFees, bytes paymasterAndData, uint48 validUntil, uint48 validAfter)"
-    );
+    bytes32 internal constant _VALIDATE_TYPEHASH =
+        0xa9a214c6f6d90f71d094504e32920cfd4d8d53e5d7cf626f9a26c88af60081c7;
 
     function _hash712(
         ERC4337.PackedUserOperation memory userOp,
