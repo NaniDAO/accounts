@@ -92,7 +92,7 @@ contract Account is ERC4337 {
         );
     }
 
-    /// @dev Keccak function over calldata. More efficient than letting solidity do it.
+    /// @dev Keccak function over calldata. This is more efficient than letting solidity do it.
     function _calldataKeccak(bytes calldata data) internal pure virtual returns (bytes32 hash) {
         assembly ("memory-safe") {
             let mem := mload(0x40)
