@@ -649,12 +649,12 @@ contract AccountTest is SoladyTest {
                 _VALIDATE_TYPEHASH,
                 userOp.sender,
                 userOp.nonce,
-                userOp.initCode,
-                userOp.callData,
+                keccak256(userOp.initCode),
+                keccak256(userOp.callData),
                 userOp.accountGasLimits,
                 userOp.preVerificationGas,
                 userOp.gasFees,
-                userOp.paymasterAndData,
+                keccak256(userOp.paymasterAndData),
                 validUntil,
                 validAfter
             )
