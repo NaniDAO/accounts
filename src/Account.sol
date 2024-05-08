@@ -77,19 +77,29 @@ contract Account is ERC4337 {
                     _VALIDATE_TYPEHASH,
                     digest, // Optimize.
                     userOp.nonce,
-                    userOp.initCode.length == 0 ? bytes32(0) : keccak256(userOp.initCode),
-                    keccak256(userOp.callData),
+                    userOp.initCode.length == 0 ? bytes32(0) : _calldataKeccak(userOp.initCode),
+                    _calldataKeccak(userOp.callData),
                     userOp.accountGasLimits,
                     userOp.preVerificationGas,
                     userOp.gasFees,
                     userOp.paymasterAndData.length == 0
                         ? bytes32(0)
-                        : keccak256(userOp.paymasterAndData),
+                        : _calldataKeccak(userOp.paymasterAndData),
                     validUntil,
                     validAfter
                 )
             )
         );
+    }
+
+    /// @dev Keccak function over calldata. More efficient than letting solidity do it.
+    function _calldataKeccak(bytes calldata data) internal pure virtual returns (bytes32 hash) {
+        assembly ("memory-safe") {
+            let mem := mload(0x40)
+            let len := data.length
+            calldatacopy(mem, data.offset, len)
+            hash := keccak256(mem, len)
+        }
     }
 
     /// @dev Extends ERC4337 userOp validation with stored ERC7582 validator plugins.
