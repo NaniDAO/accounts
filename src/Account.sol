@@ -66,23 +66,25 @@ contract Account is ERC4337 {
         PackedUserOperation calldata userOp,
         uint48 validUntil,
         uint48 validAfter
-    ) internal view virtual returns (bytes32) {
-        address sender;
+    ) internal view virtual returns (bytes32 digest) {
+        // We will use `digest` to store the `userOp.sender` to save a bit of gas.
         assembly ("memory-safe") {
-            sender := calldataload(userOp)
+            digest := calldataload(userOp)
         }
         return EIP712._hashTypedData(
             keccak256(
                 abi.encode(
                     _VALIDATE_TYPEHASH,
-                    sender,
+                    digest, // Optimize.
                     userOp.nonce,
                     userOp.initCode.length == 0 ? bytes32(0) : keccak256(userOp.initCode),
                     keccak256(userOp.callData),
                     userOp.accountGasLimits,
                     userOp.preVerificationGas,
                     userOp.gasFees,
-                    userOp.initCode.length == 0 ? bytes32(0) : keccak256(userOp.paymasterAndData),
+                    userOp.paymasterAndData.length == 0
+                        ? bytes32(0)
+                        : keccak256(userOp.paymasterAndData),
                     validUntil,
                     validAfter
                 )
