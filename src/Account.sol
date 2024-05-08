@@ -67,11 +67,15 @@ contract Account is ERC4337 {
         uint48 validUntil,
         uint48 validAfter
     ) internal view virtual returns (bytes32) {
+        address sender;
+        assembly ("memory-safe") {
+            sender := calldataload(userOp)
+        }
         return EIP712._hashTypedData(
             keccak256(
                 abi.encode(
                     _VALIDATE_TYPEHASH,
-                    userOp.sender,
+                    sender,
                     userOp.nonce,
                     userOp.initCode.length == 0 ? bytes32(0) : keccak256(userOp.initCode),
                     keccak256(userOp.callData),
