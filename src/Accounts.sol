@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import {ERC4337Factory} from "@solady/src/accounts/ERC4337Factory.sol";
 
-/// @notice Simple extendable smart account factory. ERC1271/ERC4337. Version 1.0.0.
+/// @notice Simple extendable smart account factory. ERC1271/ERC4337. Version 1.1.1.
 /// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/Accounts.sol)
 contract Accounts is ERC4337Factory {
     constructor(address Account) payable ERC4337Factory(Account) {}
