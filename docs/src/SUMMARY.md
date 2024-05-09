@@ -2,7 +2,6 @@
 - [Home](README.md)
 # src
   - [❱ authority](src/authority/README.md)
-    - [Auth](src/authority/Auth.sol/contract.Auth.md)
     - [Guard](src/authority/Guard.sol/contract.Guard.md)
     - [IERC20](src/authority/Guard.sol/interface.IERC20.md)
     - [IOwnable](src/authority/Guard.sol/interface.IOwnable.md)

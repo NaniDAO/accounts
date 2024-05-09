@@ -20,14 +20,14 @@ Build the foundry project with `forge build`. Run contract tests with `forge tes
 
 Chain           | Factory                                 | Implementation                          | Commit
 ----------------|-----------------------------------------|-----------------------------------------|------------------------------------------
-Ethereum, Arbitrum / Nova, Optimism, Base, Zora, Blast, Gnosis, Polygon / zkEVM, BNB, Avalanche & testnets | [0x0000000000001C732C15f21364Ded10Dc753feFe](https://etherscan.io/address/0x0000000000001C732C15f21364Ded10Dc753feFe#code) | [0x000000000000120234A3A6926bCF3173E007876e](https://etherscan.io/address/0x000000000000120234A3A6926bCF3173E007876e#code) | [62e6273586d89aaf1fbab7524d5d1d692b2b6b69](https://github.com/NaniDAO/Account/commit/62e6273586d89aaf1fbab7524d5d1d692b2b6b69)
+Ethereum, Arbitrum / Nova, Optimism, Base, Zora, Blast, Gnosis, Polygon / zkEVM, BNB, Avalanche & testnets | [0x000000000000D7d630383B775342a83589950fb6](https://etherscan.io/address/0x000000000000D7d630383B775342a83589950fb6#code) | [0x000000000000120234A3A6926bCF3173E007876e](https://etherscan.io/address/0x000000000000120234A3A6926bCF3173E007876e#code) | [62e6273586d89aaf1fbab7524d5d1d692b2b6b69](https://github.com/NaniDAO/Account/commit/62e6273586d89aaf1fbab7524d5d1d692b2b6b69)
 
 ### [Plugin Validators](https://ethereum-magicians.org/t/erc-7582-modular-accounts-with-delegated-validation/17640):
 
 Utilizes [`ERC7582` minimal modular account](https://github.com/NaniDAO/7582-account) interface.
 
 #### JointValidator: [0x000000000000D3D2b2980A7BC509018E4d88e947](https://arbiscan.io/address/0x000000000000D3D2b2980A7BC509018E4d88e947#code)
-> Add joint owners to your smart account with full rights
+> Add joint owners to your smart account with full concurrent rights
 #### RecoveryValidator: [0x000000000000B498889a6371092C19f0ddfCaAf6](https://arbiscan.io/address/0x000000000000B498889a6371092C19f0ddfCaAf6#code)
 > Add backups to your smart account (can set time delay and *m/n* scheme)
 #### PaymentValidator: [0x00000000000032CD4FAE890F90e61e6864e44aa7](https://arbiscan.io/address/0x00000000000032CD4FAE890F90e61e6864e44aa7#code)
@@ -45,17 +45,17 @@ Utilizes [`ERC7582` minimal modular account](https://github.com/NaniDAO/7582-acc
 ### Plugin Guards:
 
 #### Guard: [0x00000000000076a46Ae808b2eDAE7b3f64EF5b31](https://arbiscan.io/address/0x00000000000076a46ae808b2edae7b3f64ef5b31#code)
-> set asset restrictions on smart account (*i.e.*, "can't spend more than 0.1 ETH")
+> hard checks for smart accounts (*i.e.*, "can't spend more than 0.1 ETH")
 
 ### Paymaster:
 
 #### NEETH: [0x00000000000009B4AB3f1bC2b029bd7513Fbd8ED](https://arbiscan.io/address/0x00000000000009B4AB3f1bC2b029bd7513Fbd8ED#code)
-> stake ETH and use yield to sponsor transactions (self-paying gas)
+> magic paymaster: stake ETH and use Lido yield to sponsor transactions
 
 ### Finance:
 
 #### [Ragequitter](https://github.com/Moloch-Mystics/ragequit): [0x0000000000008743D388E5279B2A9EF87A3115Ae](https://arbiscan.io/address/0x0000000000008743d388e5279b2a9ef87a3115ae#code)
-> fund a smart account and give refund receipts to contributors
+> fund smart accounts and give moloch-style refunds to contributors
 
 ### Agency:
 
@@ -64,10 +64,10 @@ Utilizes [`ERC7582` minimal modular account](https://github.com/NaniDAO/7582-acc
 #### [NANI](https://github.com/NaniDAO/NANI): [0x000000000000641b6A7B74F177bAbDB4417718EF](https://arbiscan.io/address/0x000000000000641b6a7b74f177babdb4417718ef#code)
 > check community models and verified function calls (agent helper)
 #### Akashic: [0x000000000000394793B2Fe854281CeE09a98bdBC](https://arbiscan.io/address/0x000000000000394793B2Fe854281CeE09a98bdBC#code)
-> onchain knowledge base with DAO governance of topics
+> onchain knowledge base with DAO governance of topics (embeddings)
 
 ### [Governance](https://github.com/NaniDAO/NaniDAO):
-> incentivized testing and model training; community safeguards
+> incentivized testing and model training; community AI alignment
 
 * Points: [0x00000000007f7396897bf90B00e96EaE4B71d055](https://arbiscan.io/address/0x00000000007f7396897bf90b00e96eae4b71d055#code)
 * Token: [0x000000000000C6A645b0E51C9eCAA4CA580Ed8e8](https://arbiscan.io/address/0x000000000000C6A645b0E51C9eCAA4CA580Ed8e8)
