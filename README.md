@@ -40,7 +40,12 @@ Utilizes [`ERC7582` minimal modular account](https://github.com/NaniDAO/7582-acc
 #### [Dagon](https://github.com/Moloch-Mystics/dagon): [0x0000000000001ADDcB933DD5028159dc965b5b7f](https://arbiscan.io/address/0x0000000000001ADDcB933DD5028159dc965b5b7f#code)
 > token-weighted ownership (simulates *multisig m/n* and *DAO* voting)
 #### Keys: [0x000000000000B418eE0A5B649462Fb851B266522](https://arbiscan.io/address/0x000000000000B418eE0A5B649462Fb851B266522#code)
-> token-bound ownership (NFTs are owners, i.e., "my Milady is my key")
+> token-bound ownership (NFTs are owners, *i.e.*, "my Milady is my key")
+
+### Plugin Guards:
+
+#### Guard: [0x00000000000076a46Ae808b2eDAE7b3f64EF5b31](https://arbiscan.io/address/0x00000000000076a46ae808b2edae7b3f64ef5b31#code)
+> set asset restrictions on smart account (*i.e.*, "can't spend more than 0.1 ETH")
 
 ### Paymaster:
 
