@@ -1,5 +1,5 @@
 # Accounts
-[Git Source](https://github.com/NaniDAO/accounts/blob/62e6273586d89aaf1fbab7524d5d1d692b2b6b69/src/Accounts.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/02ab93bee68a899f7f84b457acff5201adfd6806/src/Accounts.sol)
 
 **Inherits:**
 ERC4337Factory
@@ -7,7 +7,7 @@ ERC4337Factory
 **Author:**
 nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/Accounts.sol)
 
-Simple extendable smart account factory. ERC1271/ERC4337. Version 1.0.0.
+Simple extendable smart account factory. ERC1271/ERC4337. Version 1.1.1.
 
 
 ## Functions

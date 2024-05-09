@@ -1,5 +1,5 @@
 # IERC1271
-[Git Source](https://github.com/NaniDAO/accounts/blob/62e6273586d89aaf1fbab7524d5d1d692b2b6b69/src/governance/Points.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/02ab93bee68a899f7f84b457acff5201adfd6806/src/governance/Points.sol)
 
 ERC1271 interface.
 

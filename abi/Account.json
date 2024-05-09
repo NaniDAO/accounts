@@ -418,7 +418,7 @@
         ]
       },
       {
-        "name": "userOpHash",
+        "name": "",
         "type": "bytes32",
         "internalType": "bytes32"
       },

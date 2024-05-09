@@ -1,5 +1,5 @@
 # Paymaster
-[Git Source](https://github.com/NaniDAO/accounts/blob/62e6273586d89aaf1fbab7524d5d1d692b2b6b69/src/paymasters/Paymaster.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/02ab93bee68a899f7f84b457acff5201adfd6806/src/paymasters/Paymaster.sol)
 
 **Author:**
 nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/paymasters/Paymaster.sol)
@@ -79,6 +79,15 @@ function _hashSignedUserOp(
     uint48 validUntil,
     uint48 validAfter
 ) internal view virtual returns (bytes32);
+```
+
+### _calldataKeccak
+
+*Keccak function over calldata. This is more efficient than letting solidity do it.*
+
+
+```solidity
+function _calldataKeccak(bytes calldata data) internal pure virtual returns (bytes32 hash);
 ```
 
 ### _packValidationData
