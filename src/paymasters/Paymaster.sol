@@ -86,8 +86,8 @@ contract Paymaster {
                 abi.encode(
                     userOp.sender,
                     userOp.nonce,
-                    keccak256(userOp.initCode),
-                    keccak256(userOp.callData),
+                    userOp.initCode.length == 0 ? bytes32(0) : _calldataKeccak(userOp.initCode),
+                    _calldataKeccak(userOp.callData),
                     userOp.accountGasLimits,
                     uint256(bytes32(userOp.paymasterAndData[20:52])),
                     userOp.preVerificationGas,
@@ -101,6 +101,16 @@ contract Paymaster {
         );
     }
 
+    /// @dev Keccak function over calldata. This is more efficient than letting solidity do it.
+    function _calldataKeccak(bytes calldata data) internal pure virtual returns (bytes32 hash) {
+        assembly ("memory-safe") {
+            let mem := mload(0x40)
+            let len := data.length
+            calldatacopy(mem, data.offset, len)
+            hash := keccak256(mem, len)
+        }
+    }
+
     /// @dev Returns the packed validation data for `validatePaymasterUserOp`.
     function _packValidationData(bool valid, uint48 validUntil, uint48 validAfter)
         internal
@@ -108,7 +118,7 @@ contract Paymaster {
         virtual
         returns (uint256)
     {
-        return valid ? 0 : 1 | validUntil << 160 | validAfter << 208;
+        return (valid ? 0 : 1) | (uint256(validUntil) << 160) | (uint256(validAfter) << 208);
     }
 
     /// ===================== STAKING OPERATIONS ===================== ///
