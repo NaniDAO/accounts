@@ -6,7 +6,7 @@ Built with the *[Foundry](https://github.com/foundry-rs/forge-std)* testing suit
 
 All `Accounts` support the following standards: [`ERC173`](https://eips.ethereum.org/EIPS/eip-173), [`EIP712`](https://eips.ethereum.org/EIPS/eip-712), [`ERC1271`](https://eips.ethereum.org/EIPS/eip-1271), [`ERC1822`](https://eips.ethereum.org/EIPS/eip-1822), [`ERC1967`](https://eips.ethereum.org/EIPS/eip-1967), [`ERC2098`](https://eips.ethereum.org/EIPS/eip-2098), [`ERC4337`](https://eips.ethereum.org/EIPS/eip-4337), [`ERC5267`](https://eips.ethereum.org/EIPS/eip-5267), [`ERC6492`](https://eips.ethereum.org/EIPS/eip-6492), [`ERC7582`](https://ethereum-magicians.org/t/erc-7582-modular-accounts-with-delegated-validation/17640)
 
-Currently, `Accounts` is the [most optimized](https://github.com/zerodevapp/aa-benchmark) smart account implementation.
+Currently, `Accounts` is the [most optimized](https://github.com/zerodevapp/aa-benchmark) smart account implementation available to the public.
 
 ## Getting Started
 
