@@ -1,5 +1,5 @@
 # Account
-[Git Source](https://github.com/NaniDAO/accounts/blob/02ab93bee68a899f7f84b457acff5201adfd6806/src/Account.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/2b176650c1c7dc3fb29490114f14dad2292d0d08/src/Account.sol)
 
 **Inherits:**
 ERC4337
@@ -11,6 +11,16 @@ Simple extendable smart account implementation. Includes plugin tooling.
 
 
 ## State Variables
+### _NULL_HASH
+*Prehash of `keccak256("")` for validation efficiency.*
+
+
+```solidity
+bytes32 internal constant _NULL_HASH =
+    0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
+```
+
+
 ### _VALIDATE_TYPEHASH
 *EIP712 typehash as defined in https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct.
 Derived from `userOp` without the signature and the time fields of `validUntil` and `validAfter`.*

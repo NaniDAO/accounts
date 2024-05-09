@@ -7,14 +7,14 @@ import {EIP712, SignatureCheckerLib, ERC1271} from "@solady/src/accounts/ERC1271
 /// @notice Simple extendable smart account implementation. Includes plugin tooling.
 /// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/Account.sol)
 contract Account is ERC4337 {
+    /// @dev Prehash of `keccak256("")` for validation efficiency.
+    bytes32 internal constant _NULL_HASH =
+        0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
+
     /// @dev EIP712 typehash as defined in https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct.
     /// Derived from `userOp` without the signature and the time fields of `validUntil` and `validAfter`.
     bytes32 internal constant _VALIDATE_TYPEHASH =
         0xa9a214c6f6d90f71d094504e32920cfd4d8d53e5d7cf626f9a26c88af60081c7;
-
-    /// @dev Prehash of `keccak256("")` for validation efficiency.
-    bytes32 internal constant _NULL_HASH =
-        0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
 
     /// @dev Constructs
     /// this implementation.

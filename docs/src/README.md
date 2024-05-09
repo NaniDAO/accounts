@@ -20,7 +20,7 @@ Build the foundry project with `forge build`. Run contract tests with `forge tes
 
 Chain           | Factory                                 | Implementation                          | Commit
 ----------------|-----------------------------------------|-----------------------------------------|------------------------------------------
-Ethereum, Arbitrum / Nova, Optimism, Base, Zora, Blast, Gnosis, Polygon / zkEVM, BNB, Avalanche & testnets | [0x000000000000D7d630383B775342a83589950fb6](https://etherscan.io/address/0x000000000000D7d630383B775342a83589950fb6#code) | [0x000000000000120234A3A6926bCF3173E007876e](https://etherscan.io/address/0x000000000000120234A3A6926bCF3173E007876e#code) | [62e6273586d89aaf1fbab7524d5d1d692b2b6b69](https://github.com/NaniDAO/Account/commit/62e6273586d89aaf1fbab7524d5d1d692b2b6b69)
+Ethereum, Arbitrum / Nova, Optimism, Base, Zora, Blast, Gnosis, Polygon / zkEVM, BNB, Avalanche & testnets | [0x000000000000D7d630383B775342a83589950fb6](https://etherscan.io/address/0x000000000000D7d630383B775342a83589950fb6#code) | [0x000000000000120234A3A6926bCF3173E007876e](https://etherscan.io/address/0x000000000000120234A3A6926bCF3173E007876e#code) | [62e6273586d89aaf1fbab7524d5d1d692b2b6b69](https://github.com/NaniDAO/Account/commit/02ab93bee68a899f7f84b457acff5201adfd6806)
 
 ### [Plugin Validators](https://ethereum-magicians.org/t/erc-7582-modular-accounts-with-delegated-validation/17640):
 
