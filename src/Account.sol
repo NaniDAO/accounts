@@ -12,6 +12,10 @@ contract Account is ERC4337 {
     bytes32 internal constant _VALIDATE_TYPEHASH =
         0xa9a214c6f6d90f71d094504e32920cfd4d8d53e5d7cf626f9a26c88af60081c7;
 
+    /// @dev Prehash of `keccak256("")` for validation efficiency.
+    bytes32 internal constant _NULL_HASH =
+        0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
+
     /// @dev Constructs
     /// this implementation.
     constructor() payable {}
@@ -77,13 +81,13 @@ contract Account is ERC4337 {
                     _VALIDATE_TYPEHASH,
                     digest, // Optimize.
                     userOp.nonce,
-                    userOp.initCode.length == 0 ? bytes32(0) : _calldataKeccak(userOp.initCode),
+                    userOp.initCode.length == 0 ? _NULL_HASH : _calldataKeccak(userOp.initCode),
                     _calldataKeccak(userOp.callData),
                     userOp.accountGasLimits,
                     userOp.preVerificationGas,
                     userOp.gasFees,
                     userOp.paymasterAndData.length == 0
-                        ? bytes32(0)
+                        ? _NULL_HASH
                         : _calldataKeccak(userOp.paymasterAndData),
                     validUntil,
                     validAfter
