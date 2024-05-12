@@ -1,12 +1,12 @@
 # [accounts](https://github.com/nanidao/accounts)  [![License: AGPL-3.0-only](https://img.shields.io/badge/License-AGPL-black.svg)](https://opensource.org/license/agpl-v3/) [![solidity](https://img.shields.io/badge/solidity-%5E0.8.25-black)](https://docs.soliditylang.org/en/v0.8.25/) [![Foundry](https://img.shields.io/badge/Built%20with-Foundry-000000.svg)](https://getfoundry.sh/) ![tests](https://github.com/nanidao/accounts/actions/workflows/ci.yml/badge.svg)
 
-Simple extendable smart account implementations (*Smarter* `Accounts`). 
+Simple extendable smart account implementations (*Smarter* `Accounts` or `NANI`). 
 
-Built with the *[Foundry](https://github.com/foundry-rs/forge-std)* testing suite and *[Solady](https://github.com/vectorized/solady)* solidity optimizations, this codebase demonstrates contemporary and efficient account abstractions through a representative [implementation](./src/Account.sol) (`Account`, `v1.1.1`) and [factory](./src/Accounts.sol) that deploys related `ERC1967` minimal proxies with `UUPS` upgradeability. As such, `Accounts` users can upgrade into any implementation at any time, such as [`Kernel`](https://github.com/zerodevapp/kernel/tree/dev).
+Built with the *[Foundry](https://github.com/foundry-rs/forge-std)* testing suite and *[Solady](https://github.com/vectorized/solady)* solidity optimizations, this codebase demonstrates contemporary and efficient account abstractions through a representative [implementation](./src/Account.sol) (`Account`, `v1.1.1`) and [factory](./src/Accounts.sol) that deploys related `ERC1967` minimal proxies with `UUPS` upgradeability. As such, `Accounts` users can upgrade into any account implementation at any time from their NANI wallet, such as [`Kernel`](https://github.com/zerodevapp/kernel/tree/dev) or [Coinbase](https://github.com/coinbase/smart-wallet/tree/main), while the latest version of `NANI` `Accounts` will be maintained and deployed here.
 
 All `Accounts` support the following standards: [`ERC173`](https://eips.ethereum.org/EIPS/eip-173), [`EIP712`](https://eips.ethereum.org/EIPS/eip-712), [`ERC1271`](https://eips.ethereum.org/EIPS/eip-1271), [`ERC1822`](https://eips.ethereum.org/EIPS/eip-1822), [`ERC1967`](https://eips.ethereum.org/EIPS/eip-1967), [`ERC2098`](https://eips.ethereum.org/EIPS/eip-2098), [`ERC4337`](https://eips.ethereum.org/EIPS/eip-4337), [`ERC5267`](https://eips.ethereum.org/EIPS/eip-5267), [`ERC6492`](https://eips.ethereum.org/EIPS/eip-6492), [`ERC7582`](https://ethereum-magicians.org/t/erc-7582-modular-accounts-with-delegated-validation/17640)
 
-Currently, `Accounts` is the [most optimized](https://github.com/zerodevapp/aa-benchmark) smart account implementation available to the public.
+Currently, `Accounts` is the [most optimized](https://github.com/zerodevapp/aa-benchmark) smart account implementation available to the public with a companion user interface on [`nani.ooo`](https://nani.ooo/). Incentives are designed for participation in testing and development.
 
 ## Getting Started
 
@@ -20,7 +20,7 @@ Build the foundry project with `forge build`. Run contract tests with `forge tes
 
 Chain           | Factory                                 | Implementation                          | Commit
 ----------------|-----------------------------------------|-----------------------------------------|------------------------------------------
-Ethereum, Arbitrum / Nova, Optimism, Base, Zora, Blast, Gnosis, Polygon / zkEVM, BNB, Avalanche & testnets | [0x000000000000D7d630383B775342a83589950fb6](https://etherscan.io/address/0x000000000000D7d630383B775342a83589950fb6#code) | [0x000000000000120234A3A6926bCF3173E007876e](https://etherscan.io/address/0x000000000000120234A3A6926bCF3173E007876e#code) | [62e6273586d89aaf1fbab7524d5d1d692b2b6b69](https://github.com/NaniDAO/Account/commit/02ab93bee68a899f7f84b457acff5201adfd6806)
+Ethereum, Arbitrum / Nova, Optimism, Base, Zora, Blast, Gnosis, Polygon / zkEVM, BNB, Avalanche & testnets | [0x0000000000008dd2574908774527FD6DA397d75B](https://etherscan.io/address/0x0000000000008dd2574908774527FD6DA397d75B#code) | [0x0000000000009909E101c0DAa5337332b01d38c6](https://etherscan.io/address/0x0000000000009909E101c0DAa5337332b01d38c6#code) | [62e6273586d89aaf1fbab7524d5d1d692b2b6b69](https://github.com/NaniDAO/Account/commit/75d1333d55164dd03c33e761edcbb17011bc0678)
 
 ### [Plugin Validators](https://ethereum-magicians.org/t/erc-7582-modular-accounts-with-delegated-validation/17640):
 
