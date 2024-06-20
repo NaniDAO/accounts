@@ -594,7 +594,7 @@ contract AccountTest is SoladyTest {
                     "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
                 ),
                 keccak256("NANI"),
-                keccak256("1.1.1"),
+                keccak256("1.2.0"),
                 block.chainid,
                 address(account)
             )
@@ -617,7 +617,7 @@ contract AccountTest is SoladyTest {
     ) internal view returns (bytes32 digest) {
         address _account = address(account);
         bytes32 nameHash = keccak256(bytes("NANI"));
-        bytes32 versionHash = keccak256(bytes("1.1.1"));
+        bytes32 versionHash = keccak256(bytes("1.2.0"));
         assembly ("memory-safe") {
             let m := mload(0x40) // Load the free memory pointer.
             mstore(m, _DOMAIN_TYPEHASH)

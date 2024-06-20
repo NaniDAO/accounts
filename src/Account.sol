@@ -29,7 +29,7 @@ contract Account is ERC4337 {
         override(EIP712)
         returns (string memory, string memory)
     {
-        return ("NANI", "1.1.1");
+        return ("NANI", "1.2.0");
     }
 
     /// @dev Validates userOp
@@ -106,7 +106,7 @@ contract Account is ERC4337 {
         }
     }
 
-    /// @dev Extends ERC4337 userOp validation with stored ERC7582 validator plugins.
+    /// @dev Extends ERC4337 userOp validation in stored ERC7582 validator plugin.
     function _validateUserOp() internal virtual returns (uint256 validationData) {
         assembly ("memory-safe") {
             let m := mload(0x40)
