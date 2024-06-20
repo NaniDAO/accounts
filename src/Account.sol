@@ -99,33 +99,38 @@ contract Account is ERC4337 {
     /// @dev Keccak function over calldata. This is more efficient than letting solidity do it.
     function _calldataKeccak(bytes calldata data) internal pure virtual returns (bytes32 hash) {
         assembly ("memory-safe") {
-            let mem := mload(0x40)
-            let len := data.length
-            calldatacopy(mem, data.offset, len)
-            hash := keccak256(mem, len)
+            let m := mload(0x40)
+            let l := data.length
+            calldatacopy(m, data.offset, l)
+            hash := keccak256(m, l)
         }
     }
 
     /// @dev Extends ERC4337 userOp validation with stored ERC7582 validator plugins.
     function _validateUserOp() internal virtual returns (uint256 validationData) {
         assembly ("memory-safe") {
+            let m := mload(0x40)
             calldatacopy(0x00, 0x00, calldatasize())
-            if iszero(
-                call(
-                    gas(),
-                    /*validator*/
-                    shr(96, sload(shl(64, /*key*/ shr(64, /*nonce*/ calldataload(0x84))))),
-                    0,
-                    0x00,
-                    calldatasize(),
-                    0x00,
-                    0x20
+            if or(
+                lt(returndatasize(), 0x20),
+                iszero(
+                    call(
+                        gas(),
+                        /*validator*/
+                        shr(96, sload(shl(64, /*key*/ shr(64, /*nonce*/ calldataload(0x84))))),
+                        0,
+                        0x00,
+                        calldatasize(),
+                        0x00,
+                        0x20
+                    )
                 )
             ) {
                 returndatacopy(0x00, 0x00, returndatasize())
                 revert(0x00, returndatasize())
             }
             validationData := mload(0x00)
+            mstore(0x40, m) // Restore the free memory pointer.
         }
     }
 
