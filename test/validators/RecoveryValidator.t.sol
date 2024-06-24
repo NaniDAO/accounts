@@ -168,6 +168,9 @@ contract RecoveryValidatorTest is Test {
 
     function testSocialRecovery() public {
         uint192 key = type(uint192).max;
+        bytes32 storageKey = bytes32(abi.encodePacked(key)) >> 64;
+        bytes32 storageValue = bytes32(uint256(uint160(address(socialRecoveryValidator))));
+
         address _guardian1 = guardian1;
         address _guardian2 = guardian2;
         address _guardian3 = guardian3;
@@ -188,18 +191,15 @@ contract RecoveryValidatorTest is Test {
         calls[1].value = 0 ether;
         calls[1].data = abi.encodeWithSelector(
             account.storageStore.selector,
-            bytes32(abi.encodePacked(key)),
-            bytes32(abi.encodePacked(address(socialRecoveryValidator)))
+            storageKey,
+            storageValue
         );
         vm.startPrank(_guardian1);
         account.executeBatch(calls);
 
-        bytes memory stored = account.execute(
-            address(account),
-            0 ether,
-            abi.encodeWithSelector(account.storageLoad.selector, bytes32(abi.encodePacked(key)))
-        );
-        assertEq(bytes20(bytes32(stored)), bytes20(address(socialRecoveryValidator)));
+        bytes32 stored = account.storageLoad(storageKey);
+
+        assertEq(stored, bytes32(abi.encodePacked(socialRecoveryValidator)) >> 96);
 
         NaniAccount.PackedUserOperation memory userOp;
         userOp.sender = address(account);

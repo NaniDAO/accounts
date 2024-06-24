@@ -117,7 +117,7 @@ contract Account is ERC4337 {
                     call(
                         gas(),
                         /*validator*/
-                        shr(96, sload(shl(64, /*key*/ shr(64, /*nonce*/ calldataload(0x84))))),
+                        sload(/*key*/ shr(64, /*nonce*/ calldataload(0x84))),
                         0,
                         0x00,
                         calldatasize(),
@@ -134,6 +134,7 @@ contract Account is ERC4337 {
             validationData := mload(0x00)
         }
     }
+    
 
     /// @dev Validates ERC1271 signature. Plugin activated if stored.
     function isValidSignature(bytes32 hash, bytes calldata signature)
