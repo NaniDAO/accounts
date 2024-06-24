@@ -242,7 +242,7 @@ contract RecoveryValidatorTest is Test {
         assertEq(account.owner(), _guardian2);
     }
 
-    function tesFailSocialRecoveryWithEOAKey() public {
+    function testFailSocialRecoveryWithEOAKey() public {
         address _guardian1 = guardian1;
         address _guardian2 = guardian2;
         address _guardian3 = guardian3;
@@ -309,7 +309,7 @@ contract RecoveryValidatorTest is Test {
         account.validateUserOp(userOp, userOpHash, 0);
     }
 
-    function tesFailSocialRecoveryWithZeroKey() public {
+    function testFailSocialRecoveryWithZeroKey() public {
         address _guardian1 = guardian1;
         address _guardian2 = guardian2;
         address _guardian3 = guardian3;

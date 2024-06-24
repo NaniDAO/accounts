@@ -129,8 +129,11 @@ contract Account is ERC4337 {
                 returndatacopy(0x00, 0x00, returndatasize())
                 revert(0x00, returndatasize())
             }
-            validationData := mload(0x00)
+
             mstore(0x40, m) // Restore the free memory pointer.
+            mstore(0x60, 0) // Restore zero pointer.
+
+            validationData := mload(0x00)
         }
     }
 
