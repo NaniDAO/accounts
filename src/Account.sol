@@ -29,7 +29,7 @@ contract Account is ERC4337 {
         override(EIP712)
         returns (string memory, string memory)
     {
-        return ("NANI", "1.2.0");
+        return ("NANI", "1.2.3");
     }
 
     /// @dev Validates userOp
@@ -129,10 +129,8 @@ contract Account is ERC4337 {
                 returndatacopy(0x00, 0x00, returndatasize())
                 revert(0x00, returndatasize())
             }
-
             mstore(0x40, m) // Restore the free memory pointer.
             mstore(0x60, 0) // Restore zero pointer.
-
             validationData := mload(0x00)
         }
     }
