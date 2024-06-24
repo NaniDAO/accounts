@@ -189,11 +189,8 @@ contract RecoveryValidatorTest is Test {
 
         calls[1].target = address(account);
         calls[1].value = 0 ether;
-        calls[1].data = abi.encodeWithSelector(
-            account.storageStore.selector,
-            storageKey,
-            storageValue
-        );
+        calls[1].data =
+            abi.encodeWithSelector(account.storageStore.selector, storageKey, storageValue);
         vm.startPrank(_guardian1);
         account.executeBatch(calls);
 

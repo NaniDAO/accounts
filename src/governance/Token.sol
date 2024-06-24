@@ -12,7 +12,7 @@ contract Token {
     string public constant symbol = unicode"⌘";
     uint256 public constant decimals = 18;
     uint256 public constant totalSupply = 1e27;
-
+    
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
 
@@ -31,15 +31,11 @@ contract Token {
     }
 
     function transferFrom(address from, address to, uint256 amount) public payable returns (bool) {
-        if (msg.sender != from) {
-            if (allowance[from][msg.sender] != type(uint256).max) {
+        if (msg.sender != from)
+            if (allowance[from][msg.sender] != type(uint256).max)
                 allowance[from][msg.sender] -= amount;
-            }
-        }
         balanceOf[from] -= amount;
-        unchecked {
-            balanceOf[to] += amount;
-        }
+        unchecked { balanceOf[to] += amount; }
         emit Transfer(from, to, amount);
         return true;
     }
