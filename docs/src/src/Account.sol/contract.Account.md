@@ -1,5 +1,5 @@
 # Account
-[Git Source](https://github.com/NaniDAO/accounts/blob/75d1333d55164dd03c33e761edcbb17011bc0678/src/Account.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/7d03f63f38e077f2bb76ec4063f510608c363fc3/src/Account.sol)
 
 **Inherits:**
 ERC4337
@@ -102,7 +102,7 @@ function __hashTypedData(PackedUserOperation calldata userOp, uint48 validUntil,
 
 ### _calldataKeccak
 
-*Keccak function over calldata. This is more efficient than letting solidity do it.*
+*Keccak function over calldata. This is more efficient than letting Solidity do it.*
 
 
 ```solidity
@@ -111,7 +111,7 @@ function _calldataKeccak(bytes calldata data) internal pure virtual returns (byt
 
 ### _validateUserOp
 
-*Extends ERC4337 userOp validation with stored ERC7582 validator plugins.*
+*Extends ERC4337 userOp validation in stored ERC7582 validator plugin.*
 
 
 ```solidity

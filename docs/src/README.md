@@ -1,12 +1,12 @@
-# [accounts](https://github.com/nanidao/accounts)  [![License: AGPL-3.0-only](https://img.shields.io/badge/License-AGPL-black.svg)](https://opensource.org/license/agpl-v3/) [![solidity](https://img.shields.io/badge/solidity-%5E0.8.25-black)](https://docs.soliditylang.org/en/v0.8.25/) [![Foundry](https://img.shields.io/badge/Built%20with-Foundry-000000.svg)](https://getfoundry.sh/) ![tests](https://github.com/nanidao/accounts/actions/workflows/ci.yml/badge.svg)
+# [accounts](https://github.com/nanidao/accounts)  [![License: AGPL-3.0-only](https://img.shields.io/badge/License-AGPL-black.svg)](https://opensource.org/license/agpl-v3/) [![solidity](https://img.shields.io/badge/solidity-%5E0.8.26-black)](https://docs.soliditylang.org/en/v0.8.26/) [![Foundry](https://img.shields.io/badge/Built%20with-Foundry-000000.svg)](https://getfoundry.sh/) ![tests](https://github.com/nanidao/accounts/actions/workflows/ci.yml/badge.svg)
 
-Simple extendable smart account implementations (*Smarter* `Accounts` or `NANI`). 
+Simple extendable smart account implementations (*Smarter* `Accounts` or `NANI`). `v1.2.3`
 
-Built with the *[Foundry](https://github.com/foundry-rs/forge-std)* testing suite and *[Solady](https://github.com/vectorized/solady)* solidity optimizations, this codebase demonstrates contemporary and efficient account abstractions through a representative [implementation](./src/Account.sol) (`Account`, `v1.1.1`) and [factory](./src/Accounts.sol) that deploys related `ERC1967` minimal proxies with `UUPS` upgradeability. As such, `Accounts` users can upgrade into any account implementation at any time from their NANI wallet, such as [`Kernel`](https://github.com/zerodevapp/kernel/tree/dev) or [Coinbase](https://github.com/coinbase/smart-wallet/tree/main), while the latest version of `NANI` `Accounts` will be maintained and deployed here.
+Built with the *[Foundry](https://github.com/foundry-rs/forge-std)* testing suite and *[Solady](https://github.com/vectorized/solady)* solidity optimizations, this codebase demonstrates contemporary and efficient account abstractions through a representative [implementation](./src/Account.sol) (`Account`, `v1.2.3`) and [factory](./src/Accounts.sol) that deploys related `ERC1967` minimal proxies with `UUPS` upgradeability. As such, `Accounts` users can upgrade into any account implementation at any time from their NANI wallet, such as [`Kernel`](https://github.com/zerodevapp/kernel/tree/dev) or [Coinbase](https://github.com/coinbase/smart-wallet/tree/main), while the latest version of `NANI` `Accounts` will be maintained and deployed here.
 
-All `Accounts` support the following standards: [`ERC173`](https://eips.ethereum.org/EIPS/eip-173), [`EIP712`](https://eips.ethereum.org/EIPS/eip-712), [`ERC1271`](https://eips.ethereum.org/EIPS/eip-1271), [`ERC1822`](https://eips.ethereum.org/EIPS/eip-1822), [`ERC1967`](https://eips.ethereum.org/EIPS/eip-1967), [`ERC2098`](https://eips.ethereum.org/EIPS/eip-2098), [`ERC4337`](https://eips.ethereum.org/EIPS/eip-4337), [`ERC5267`](https://eips.ethereum.org/EIPS/eip-5267), [`ERC6492`](https://eips.ethereum.org/EIPS/eip-6492), [`ERC7582`](https://ethereum-magicians.org/t/erc-7582-modular-accounts-with-delegated-validation/17640)
+All `Accounts` support the following standards: [`ERC173`](https://eips.ethereum.org/EIPS/eip-173), [`EIP712`](https://eips.ethereum.org/EIPS/eip-712), [`ERC1271`](https://eips.ethereum.org/EIPS/eip-1271), [`ERC1822`](https://eips.ethereum.org/EIPS/eip-1822), [`ERC1967`](https://eips.ethereum.org/EIPS/eip-1967), [`ERC2098`](https://eips.ethereum.org/EIPS/eip-2098), [`ERC4337`](https://eips.ethereum.org/EIPS/eip-4337), [`ERC5267`](https://eips.ethereum.org/EIPS/eip-5267), [`ERC6492`](https://eips.ethereum.org/EIPS/eip-6492), [`ERC7582`](https://eips.ethereum.org/EIPS/eip-7582)
 
-Currently, `Accounts` is the [most optimized](https://github.com/zerodevapp/aa-benchmark) smart account implementation available to the public with a companion user interface on [`nani.ooo`](https://nani.ooo/). Incentives are designed for participation in testing and development.
+Currently, `Accounts` is the [most optimized](https://github.com/zerodevapp/aa-benchmark) smart account implementation available to the public with a companion user interface on [`nani.ooo`](https://nani.ooo/). Incentives are designed for participation in testing and development. Governance of the `Accounts` implementation and interface models is also introduced in `v1.2.3`.
 
 ## Getting Started
 
@@ -16,15 +16,15 @@ Build the foundry project with `forge build`. Run contract tests with `forge tes
 
 ## Deployments
 
-***v1.1.1***
+***v1.2.3***
 
 Chain           | Factory                                 | Implementation                          | Commit
 ----------------|-----------------------------------------|-----------------------------------------|------------------------------------------
-Ethereum, Arbitrum / Nova, Optimism, Base, Zora, Blast, Gnosis, Polygon / zkEVM, BNB, Avalanche & testnets | [0x0000000000008dd2574908774527FD6DA397d75B](https://etherscan.io/address/0x0000000000008dd2574908774527FD6DA397d75B#code) | [0x0000000000009909E101c0DAa5337332b01d38c6](https://etherscan.io/address/0x0000000000009909E101c0DAa5337332b01d38c6#code) | [62e6273586d89aaf1fbab7524d5d1d692b2b6b69](https://github.com/NaniDAO/Account/commit/75d1333d55164dd03c33e761edcbb17011bc0678)
+Ethereum, Arbitrum / Nova, Optimism, Base, Zora, Blast, Gnosis, Polygon / zkEVM, BNB, Avalanche & testnets | [0x0000000000009f1E546FC4A8F68eB98031846cb8](https://etherscan.io/address/0x0000000000009f1E546FC4A8F68eB98031846cb8#code) | [0x0000000000002259DC557B2D35A3Bbbf3A70eB75](https://etherscan.io/address/0x0000000000002259DC557B2D35A3Bbbf3A70eB75#code) | [ffe035982fc03887895bafde845ad17490063cdc](https://github.com/NaniDAO/Account/commit/ffe035982fc03887895bafde845ad17490063cdc)
 
-### [Plugin Validators](https://ethereum-magicians.org/t/erc-7582-modular-accounts-with-delegated-validation/17640):
+### [Plugin Validators](https://github.com/NaniDAO/accounts/tree/main/src/validators):
 
-Utilizes [`ERC7582` minimal modular account](https://github.com/NaniDAO/7582-account) interface.
+Utilizes [`ERC7582` minimal modular account](https://eips.ethereum.org/EIPS/eip-7582) interface.
 
 #### JointValidator: [0x000000000000D3D2b2980A7BC509018E4d88e947](https://arbiscan.io/address/0x000000000000D3D2b2980A7BC509018E4d88e947#code)
 > Add joint owners to your smart account with full concurrent rights
@@ -34,6 +34,8 @@ Utilizes [`ERC7582` minimal modular account](https://github.com/NaniDAO/7582-acc
 > Add payment plans and delegate token transfer permissions (*e.g.*, invoice agents)
 #### PermitValidator: [0x000000000000ab6c9FF3ed50AC4BAF2a20890835](https://arbiscan.io/address/0x000000000000ab6c9FF3ed50AC4BAF2a20890835#code)
 > Add arbitrary permissions within the Permit structure (*e.g.*, voting and swapping rights)
+#### RemoteValidator: [0x0000000000159aAFCA7067005E28665a28B5B4cf](https://arbiscan.io/address/0x0000000000159aAFCA7067005E28665a28B5B4cf#code)
+> Add simple scheduled transactions sequence (*e.g.*, DCA) or other 'remote' agent operations
 
 ### Plugin Owners:
 
@@ -59,7 +61,7 @@ Utilizes [`ERC7582` minimal modular account](https://github.com/NaniDAO/7582-acc
 
 ### Agency:
 
-#### [IE](https://github.com/NaniDAO/ie): [0x1e00003a669bb466d6B49800000099E1abDD6600](https://arbiscan.io/address/0x1e00003a669bb466d6b49800000099e1abdd6600#code)
+#### [IE](https://github.com/NaniDAO/ie): [0x1e00002C59149d0057F12e031ecC0000d38A000C](https://arbiscan.io/address/0x1e00002C59149d0057F12e031ecC0000d38A000C#code)
 > translate text commands into onchain calldata (text-to-tx)
 #### [NANI](https://github.com/NaniDAO/NANI): [0x000000000000641b6A7B74F177bAbDB4417718EF](https://arbiscan.io/address/0x000000000000641b6a7b74f177babdb4417718ef#code)
 > check community models and verified function calls (agent helper)

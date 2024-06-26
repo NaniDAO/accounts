@@ -1,5 +1,5 @@
 # JointValidator
-[Git Source](https://github.com/NaniDAO/accounts/blob/75d1333d55164dd03c33e761edcbb17011bc0678/src/validators/JointValidator.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/7d03f63f38e077f2bb76ec4063f510608c363fc3/src/validators/JointValidator.sol)
 
 **Author:**
 nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/validators/JointValidator.sol)
