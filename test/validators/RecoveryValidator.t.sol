@@ -168,6 +168,9 @@ contract RecoveryValidatorTest is Test {
 
     function testSocialRecovery() public {
         uint192 key = type(uint192).max;
+        bytes32 storageKey = bytes32(abi.encodePacked(key)) >> 64;
+        bytes32 storageValue = bytes32(uint256(uint160(address(socialRecoveryValidator))));
+
         address _guardian1 = guardian1;
         address _guardian2 = guardian2;
         address _guardian3 = guardian3;
@@ -186,20 +189,14 @@ contract RecoveryValidatorTest is Test {
 
         calls[1].target = address(account);
         calls[1].value = 0 ether;
-        calls[1].data = abi.encodeWithSelector(
-            account.storageStore.selector,
-            bytes32(abi.encodePacked(key)),
-            bytes32(abi.encodePacked(address(socialRecoveryValidator)))
-        );
+        calls[1].data =
+            abi.encodeWithSelector(account.storageStore.selector, storageKey, storageValue);
         vm.startPrank(_guardian1);
         account.executeBatch(calls);
 
-        bytes memory stored = account.execute(
-            address(account),
-            0 ether,
-            abi.encodeWithSelector(account.storageLoad.selector, bytes32(abi.encodePacked(key)))
-        );
-        assertEq(bytes20(bytes32(stored)), bytes20(address(socialRecoveryValidator)));
+        bytes32 stored = account.storageLoad(storageKey);
+
+        assertEq(stored, bytes32(abi.encodePacked(socialRecoveryValidator)) >> 96);
 
         NaniAccount.PackedUserOperation memory userOp;
         userOp.sender = address(account);
@@ -240,6 +237,140 @@ contract RecoveryValidatorTest is Test {
             );
         }
         assertEq(account.owner(), _guardian2);
+    }
+
+    function testFailSocialRecoveryWithEOAKey() public {
+        address _guardian1 = guardian1;
+        address _guardian2 = guardian2;
+        address _guardian3 = guardian3;
+
+        uint192 key = uint192(uint160(_guardian3));
+
+        address[] memory guardians = new address[](2);
+        guardians[0] = _guardian2;
+        guardians[1] = _guardian3;
+
+        account.initialize(_guardian1);
+
+        NaniAccount.Call[] memory calls = new NaniAccount.Call[](2);
+        calls[0].target = address(socialRecoveryValidator);
+        calls[0].value = 0 ether;
+        calls[0].data =
+            abi.encodeWithSelector(socialRecoveryValidator.install.selector, 2 days, 2, guardians);
+
+        calls[1].target = address(account);
+        calls[1].value = 0 ether;
+        calls[1].data = abi.encodeWithSelector(
+            account.storageStore.selector,
+            bytes32(abi.encodePacked(key)),
+            bytes32(abi.encodePacked(_guardian3))
+        );
+        vm.startPrank(_guardian1);
+        account.executeBatch(calls);
+
+        bytes memory stored = account.execute(
+            address(account),
+            0 ether,
+            abi.encodeWithSelector(account.storageLoad.selector, bytes32(abi.encodePacked(key)))
+        );
+        assertEq(bytes20(bytes32(stored)), bytes20(address(socialRecoveryValidator)));
+
+        NaniAccount.PackedUserOperation memory userOp;
+        userOp.sender = address(account);
+        userOp.callData = abi.encodeWithSelector(
+            account.execute.selector,
+            address(this),
+            0 ether,
+            abi.encodeWithSelector(account.transferOwnership.selector, _guardian2)
+        );
+
+        userOp.nonce = 0 | (uint256(uint160(_guardian3)) << 64);
+        bytes32 userOpHash = hex"00";
+
+        Signature[] memory authorizers = new Signature[](2);
+        authorizers[0].signer = guardian2;
+        authorizers[0].sign = _sign(guardian2key, _toEthSignedMessageHash(userOpHash));
+
+        authorizers[1].signer = guardian3;
+        authorizers[1].sign = _sign(guardian3key, _toEthSignedMessageHash(userOpHash));
+
+        userOp.signature = abi.encode(authorizers);
+
+        vm.startPrank(_guardian2);
+        socialRecoveryValidator.requestOwnershipHandover(address(account));
+
+        // 3 days later with no owner cancellation...
+        vm.warp(3 days);
+        socialRecoveryValidator.completeOwnershipHandoverRequest(address(account));
+        vm.startPrank(_ENTRY_POINT);
+        account.validateUserOp(userOp, userOpHash, 0);
+    }
+
+    function testFailSocialRecoveryWithZeroKey() public {
+        address _guardian1 = guardian1;
+        address _guardian2 = guardian2;
+        address _guardian3 = guardian3;
+
+        uint192 key = uint192(0);
+
+        address[] memory guardians = new address[](2);
+        guardians[0] = _guardian2;
+        guardians[1] = _guardian3;
+
+        account.initialize(_guardian1);
+
+        NaniAccount.Call[] memory calls = new NaniAccount.Call[](2);
+        calls[0].target = address(socialRecoveryValidator);
+        calls[0].value = 0 ether;
+        calls[0].data =
+            abi.encodeWithSelector(socialRecoveryValidator.install.selector, 2 days, 2, guardians);
+
+        calls[1].target = address(account);
+        calls[1].value = 0 ether;
+        calls[1].data = abi.encodeWithSelector(
+            account.storageStore.selector,
+            bytes32(abi.encodePacked(key)),
+            bytes32(abi.encodePacked(_guardian3))
+        );
+        vm.startPrank(_guardian1);
+        account.executeBatch(calls);
+
+        bytes memory stored = account.execute(
+            address(account),
+            0 ether,
+            abi.encodeWithSelector(account.storageLoad.selector, bytes32(abi.encodePacked(key)))
+        );
+        assertEq(bytes20(bytes32(stored)), bytes20(address(socialRecoveryValidator)));
+
+        NaniAccount.PackedUserOperation memory userOp;
+        userOp.sender = address(account);
+        userOp.callData = abi.encodeWithSelector(
+            account.execute.selector,
+            address(this),
+            0 ether,
+            abi.encodeWithSelector(account.transferOwnership.selector, _guardian2)
+        );
+
+        userOp.nonce = 0 | (uint256(uint160(0)) << 64);
+        bytes32 userOpHash = hex"00";
+
+        Signature[] memory authorizers = new Signature[](2);
+        authorizers[0].signer = guardian2;
+        authorizers[0].sign = _sign(guardian2key, _toEthSignedMessageHash(userOpHash));
+
+        authorizers[1].signer = guardian3;
+        authorizers[1].sign = _sign(guardian3key, _toEthSignedMessageHash(userOpHash));
+
+        userOp.signature = abi.encode(authorizers);
+
+        vm.startPrank(_guardian2);
+        socialRecoveryValidator.requestOwnershipHandover(address(account));
+
+        // 3 days later with no owner cancellation...
+        vm.warp(3 days);
+        socialRecoveryValidator.completeOwnershipHandoverRequest(address(account));
+        vm.startPrank(_ENTRY_POINT);
+        account.validateUserOp(userOp, userOpHash, 0);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////
