@@ -222,6 +222,9 @@ contract RecoveryValidatorTest is Test {
         vm.startPrank(_guardian2);
         socialRecoveryValidator.requestOwnershipHandover(address(account));
 
+        RecoveryValidator.Settings memory settings =
+            socialRecoveryValidator.getSettings(address(account));
+        assertEq(settings.deadline, 2 days + 1);
         // 3 days later with no owner cancellation...
         vm.warp(3 days);
         socialRecoveryValidator.completeOwnershipHandoverRequest(address(account));
@@ -237,6 +240,8 @@ contract RecoveryValidatorTest is Test {
             );
         }
         assertEq(account.owner(), _guardian2);
+        settings = socialRecoveryValidator.getSettings(address(account));
+        assertEq(settings.deadline, 0);
     }
 
     function testFailSocialRecoveryWithEOAKey() public {
@@ -405,7 +410,7 @@ contract RecoveryValidatorTest is Test {
         return SignatureCheckerLib.toEthSignedMessageHash(hash);
     }
 
-    function _sign(uint256 pK, bytes32 hash) internal view returns (bytes memory) {
+    function _sign(uint256 pK, bytes32 hash) internal pure returns (bytes memory) {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pK, hash);
         console.logBytes32(hash);
         console.logBytes(abi.encodePacked(r, s, v));

@@ -8,7 +8,7 @@ import {SignatureCheckerLib} from "@solady/src/utils/SignatureCheckerLib.sol";
 /// @dev Operationally this validator works as a one-time recovery
 /// multisig singleton by allowing accounts to program authorizers
 /// and thresholds for such authorizers to validate user operations.
-/// @custom:version 1.2.0
+/// @custom:version 1.3.0
 contract RecoveryValidator {
     /// ======================= CUSTOM ERRORS ======================= ///
 
@@ -148,7 +148,7 @@ contract RecoveryValidator {
                 }
             }
         }
-        uninstall(); // Uninstall the recovery settings.
+        emit DeadlineSet(msg.sender, settings.deadline = 0);
     }
 
     /// =================== AUTHORIZER OPERATIONS =================== ///
@@ -176,7 +176,7 @@ contract RecoveryValidator {
     }
 
     /// @dev Sets new authorizers for the caller account.
-    function setAuthorizers(address[] calldata authorizers) public payable virtual {
+    function setAuthorizers(address[] memory authorizers) public payable virtual {
         LibSort.sort(authorizers);
         LibSort.uniquifySorted(authorizers);
         if (_settings[msg.sender].threshold > authorizers.length) revert InvalidSetting();
@@ -215,7 +215,7 @@ contract RecoveryValidator {
     /// ================== INSTALLATION OPERATIONS ================== ///
 
     /// @dev Installs the recovery validator settings for the caller account.
-    function install(uint32 delay, uint192 threshold, address[] calldata authorizers)
+    function install(uint32 delay, uint192 threshold, address[] memory authorizers)
         public
         payable
         virtual

@@ -13,14 +13,14 @@ contract Passkeys {
 
     /// @dev Logs new passkey `x` `y` pairing for an account.
     /// note: Revocation is done by setting `y` to nothing.
-    event PasskeySet(address indexed account, uint256 x, uint256 y);
+    event PasskeySet(address indexed account, bytes32 x, bytes32 y);
 
     /// ========================== STRUCTS ========================== ///
 
     /// @dev Passkey pair.
     struct Passkey {
-        uint256 x;
-        uint256 y;
+        bytes32 x;
+        bytes32 y;
     }
 
     /// ========================== STORAGE ========================== ///
@@ -29,7 +29,7 @@ contract Passkeys {
     mapping(address account => mapping(address backup => bool active)) public backups;
 
     /// @dev Stores mapping of passkey `x` `y` pairings to accounts. Null revokes.
-    mapping(address account => mapping(uint256 x => uint256 y)) public passkeys;
+    mapping(address account => mapping(bytes32 x => bytes32 y)) public passkeys;
 
     /// =================== VALIDATION OPERATIONS =================== ///
 
@@ -45,13 +45,11 @@ contract Passkeys {
         if (signature.length == 160) {
             isValid = P256.verifySignature(
                 hash,
-                uint256(bytes32(signature[:32])),
-                uint256(bytes32(signature[32:64])),
-                uint256(bytes32(signature[64:128])),
-                uint256(bytes32(signature[128:160]))
-            )
-                && passkeys[msg.sender][uint256(bytes32(signature[96:128]))]
-                    == uint256(bytes32(signature[128:160]));
+                bytes32(signature[:32]),
+                bytes32(signature[32:64]),
+                bytes32(signature[64:128]),
+                bytes32(signature[128:160])
+            ) && passkeys[msg.sender][bytes32(signature[96:128])] == bytes32(signature[128:160]);
         } else {
             address backup;
             isValid = SignatureCheckerLib.isValidSignatureNowCalldata(
@@ -92,7 +90,7 @@ contract Passkeys {
     }
 
     /// @dev Sets passkey `x` `y` pairing for the caller account.
-    function setPasskey(uint256 x, uint256 y) public virtual {
+    function setPasskey(bytes32 x, bytes32 y) public virtual {
         emit PasskeySet(msg.sender, x, (passkeys[msg.sender][x] = y));
     }
 }
