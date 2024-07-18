@@ -28,7 +28,7 @@ Utilizes [`ERC7582` minimal modular account](https://eips.ethereum.org/EIPS/eip-
 
 #### JointValidator: [0x000000000000D3D2b2980A7BC509018E4d88e947](https://arbiscan.io/address/0x000000000000D3D2b2980A7BC509018E4d88e947#code)
 > Add joint owners to your smart account with full concurrent rights
-#### RecoveryValidator: [0x000000000000B498889a6371092C19f0ddfCaAf6](https://arbiscan.io/address/0x000000000000B498889a6371092C19f0ddfCaAf6#code)
+#### RecoveryValidator: [0x000000000000a78fB292191473E51Dd34700c43D](https://arbiscan.io/address/0x000000000000a78fB292191473E51Dd34700c43D#code)
 > Add backups to your smart account (can set time delay and *m/n* scheme)
 #### PaymentValidator: [0x00000000000032CD4FAE890F90e61e6864e44aa7](https://arbiscan.io/address/0x00000000000032CD4FAE890F90e61e6864e44aa7#code)
 > Add payment plans and delegate token transfer permissions (*e.g.*, invoice agents)
