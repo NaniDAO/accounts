@@ -13,19 +13,19 @@ contract NEETH is ERC20 {
     address internal constant DAO = 0xDa000000000000d2885F108500803dfBAaB2f2aA;
 
     /// @dev The Uniswap V3 pool on Arbitrum for swapping between WETH & stETH.
-    address internal constant POOL = 0x35218a1cbaC5Bbc3E57fd9Bd38219D37571b3537;
+    address internal immutable i_pool;
 
     /// @dev The WETH contract for wrapping and unwrapping ETH on Arbitrum.
-    address internal constant WETH = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1;
+    address internal immutable i_weth;
 
     /// @dev The yield token contract address (in V1, bridged wrapped stETH).
-    address internal constant YIELD = 0x5979D7b546E38E414F7E9822514be443A4800529;
+    address internal immutable i_yield;
 
     /// @dev A canonical ERC4337 EntryPoint contract for NEETH alpha (0.6).
-    address internal constant EP06 = 0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789;
+    address internal immutable i_ep06;
 
     /// @dev A canonical ERC4337 EntryPoint contract for NEETH alpha (0.7).
-    address internal constant EP07 = 0x0000000071727De22E5E9d8BAf0edAc6f37da032;
+    address internal immutable i_ep07;
 
     /// @dev The minimum value that can be returned from `getSqrtRatioAtTick` (plus one).
     uint160 internal constant MIN_SQRT_RATIO_PLUS_ONE = 4295128740;
@@ -86,7 +86,9 @@ contract NEETH is ERC20 {
     /// @dev Requires that the caller is the DAO.
     modifier onlyDAO() virtual {
         assembly ("memory-safe") {
-            if iszero(eq(caller(), DAO)) { revert(codesize(), 0x00) }
+            if iszero(eq(caller(), DAO)) {
+                revert(codesize(), 0x00)
+            }
         }
         _;
     }
@@ -94,7 +96,9 @@ contract NEETH is ERC20 {
     /// @dev Requires that the caller is the EntryPoint (0.6).
     modifier onlyEntryPoint06() virtual {
         assembly ("memory-safe") {
-            if iszero(eq(caller(), EP06)) { revert(codesize(), 0x00) }
+            if iszero(eq(caller(), sload(i_ep06.slot))) {
+                revert(codesize(), 0x00)
+            }
         }
         _;
     }
@@ -102,7 +106,9 @@ contract NEETH is ERC20 {
     /// @dev Requires that the caller is the EntryPoint (0.7).
     modifier onlyEntryPoint07() virtual {
         assembly ("memory-safe") {
-            if iszero(eq(caller(), EP07)) { revert(codesize(), 0x00) }
+            if iszero(eq(caller(), sload(i_ep07.slot))) {
+                revert(codesize(), 0x00)
+            }
         }
         _;
     }
@@ -122,7 +128,19 @@ contract NEETH is ERC20 {
     /// ======================== CONSTRUCTOR ======================== ///
 
     /// @dev Constructs NEETH.
-    constructor() payable {}
+    constructor(
+        address pool,
+        address weth,
+        address yield,
+        address ep06,
+        address ep07
+    ) payable {
+        i_pool = pool;
+        i_weth = weth;
+        i_yield = yield;
+        i_ep06 = ep06;
+        i_ep07 = ep07;
+    }
 
     /// ===================== DEPOSIT OPERATIONS ===================== ///
 
@@ -135,9 +153,14 @@ contract NEETH is ERC20 {
     /// The output NEETH shares represent swapped stETH.
     /// DAO receives a grant in order to fund concerns.
     /// This DAO fee will pay for itself quick enough.
-    function depositTo(address to) public payable virtual returns (uint256 neeth) {
+    function depositTo(
+        address to
+    ) public payable virtual returns (uint256 neeth) {
         uint256 fee = daoFee;
-        _mint(to, neeth = (_swap(false, int256(msg.value)) /*output stETH*/ - fee));
+        _mint(
+            to,
+            neeth = (_swap(false, int256(msg.value)) /*output stETH*/ - fee)
+        );
         _mint(DAO, fee);
     }
 
@@ -149,7 +172,11 @@ contract NEETH is ERC20 {
     }
 
     /// @dev Burns `amount` NEETH (stETH) of `from` and sends output ETH for `to`.
-    function withdrawFrom(address from, address to, uint256 amount) public virtual {
+    function withdrawFrom(
+        address from,
+        address to,
+        uint256 amount
+    ) public virtual {
         if (msg.sender != from) _spendAllowance(from, msg.sender, amount);
         _burn(from, amount); // Burn NEETH.
         _safeTransferETH(to, _swap(true, int256(amount)));
@@ -158,8 +185,11 @@ contract NEETH is ERC20 {
     /// ====================== SWAP OPERATIONS ====================== ///
 
     /// @dev Executes a swap across the Uniswap V3 pool on Arbitrum for WETH & stETH.
-    function _swap(bool zeroForOne, int256 amount) internal virtual returns (uint256) {
-        (int256 amount0, int256 amount1) = ISwapRouter(POOL).swap(
+    function _swap(
+        bool zeroForOne,
+        int256 amount
+    ) internal virtual returns (uint256) {
+        (int256 amount0, int256 amount1) = ISwapRouter(i_pool).swap(
             address(this),
             zeroForOne,
             amount,
@@ -176,7 +206,9 @@ contract NEETH is ERC20 {
         int256 amount1Delta;
         bool zeroForOne;
         assembly ("memory-safe") {
-            if iszero(eq(caller(), POOL)) { revert(codesize(), 0x00) }
+            if iszero(eq(caller(), sload(i_pool.slot))) {
+                revert(codesize(), 0x00)
+            }
             amount0Delta := calldataload(0x4)
             amount1Delta := calldataload(0x24)
             zeroForOne := byte(0, calldataload(0x84))
@@ -195,7 +227,7 @@ contract NEETH is ERC20 {
             mstore(0x14, caller()) // Store the `pool` argument.
             mstore(0x34, amount) // Store the `amount` argument.
             mstore(0x00, 0xa9059cbb000000000000000000000000) // `transfer(address,uint256)`.
-            pop(call(gas(), YIELD, 0, 0x10, 0x44, codesize(), 0x00))
+            pop(call(gas(), sload(i_yield.slot), 0, 0x10, 0x44, codesize(), 0x00))
             mstore(0x34, 0) // Restore the part of the free memory pointer that was overwritten.
         }
     }
@@ -203,11 +235,11 @@ contract NEETH is ERC20 {
     /// @dev Wraps an `amount` of ETH to WETH and funds pool caller for swap.
     function _wrapETH(uint256 amount) internal virtual {
         assembly ("memory-safe") {
-            pop(call(gas(), WETH, amount, codesize(), 0x00, codesize(), 0x00))
+            pop(call(gas(), sload(i_weth.slot), amount, codesize(), 0x00, codesize(), 0x00))
             mstore(0x14, caller()) // Store the `pool` argument.
             mstore(0x34, amount) // Store the `amount` argument.
             mstore(0x00, 0xa9059cbb000000000000000000000000) // `transfer(address,uint256)`.
-            pop(call(gas(), WETH, 0, 0x10, 0x44, codesize(), 0x00))
+            pop(call(gas(), sload(i_weth.slot), 0, 0x10, 0x44, codesize(), 0x00))
             mstore(0x34, 0) // Restore the part of the free memory pointer that was overwritten.
         }
     }
@@ -217,14 +249,16 @@ contract NEETH is ERC20 {
         assembly ("memory-safe") {
             mstore(0x00, 0x2e1a7d4d) // `withdraw(uint256)`.
             mstore(0x20, amount) // Store the `amount` argument.
-            pop(call(gas(), WETH, 0, 0x1c, 0x24, codesize(), 0x00))
+            pop(call(gas(), sload(i_weth.slot), 0, 0x1c, 0x24, codesize(), 0x00))
         }
     }
 
     /// @dev Sends an `amount` of ETH for `to`.
     function _safeTransferETH(address to, uint256 amount) internal virtual {
         assembly ("memory-safe") {
-            if iszero(call(gas(), to, amount, codesize(), 0x00, codesize(), 0x00)) {
+            if iszero(
+                call(gas(), to, amount, codesize(), 0x00, codesize(), 0x00)
+            ) {
                 mstore(0x00, 0xb12d13eb) // `ETHTransferFailed()`.
                 revert(0x1c, 0x04)
             }
@@ -235,7 +269,9 @@ contract NEETH is ERC20 {
     /// Only canonical WETH can call.
     receive() external payable virtual {
         assembly ("memory-safe") {
-            if iszero(eq(caller(), WETH)) { revert(codesize(), 0x00) }
+            if iszero(eq(caller(), sload(i_weth.slot))) {
+                revert(codesize(), 0x00)
+            }
         }
     }
 
@@ -244,36 +280,47 @@ contract NEETH is ERC20 {
     /// @dev Payment validation 0.6: Check NEETH will cover based on balance.
     function validatePaymasterUserOp(
         UserOperation calldata userOp,
-        bytes32, /*userOpHash*/
+        bytes32 /*userOpHash*/,
         uint256 maxCost
     ) public payable virtual onlyEntryPoint06 returns (bytes memory, uint256) {
-        if (balanceOf(userOp.sender) >= maxCost) return (abi.encode(userOp.sender), 0x00);
+        if (balanceOf(userOp.sender) >= maxCost)
+            return (abi.encode(userOp.sender), 0x00);
         return ("", 0x01); // If insufficient NEETH, return fail code and empty context.
     }
 
     /// @dev Payment validation 0.7: Check NEETH will cover based on balance.
     function validatePaymasterUserOp(
         PackedUserOperation calldata userOp,
-        bytes32, /*userOpHash*/
+        bytes32 /*userOpHash*/,
         uint256 maxCost
     ) public payable virtual onlyEntryPoint07 returns (bytes memory, uint256) {
-        if (balanceOf(userOp.sender) >= maxCost) return (abi.encode(userOp.sender), 0x00);
+        if (balanceOf(userOp.sender) >= maxCost)
+            return (abi.encode(userOp.sender), 0x00);
         return ("", 0x01); // If insufficient NEETH, return fail code and empty context.
     }
 
     /// @dev postOp validation 0.6: Check NEETH conditions are otherwise met.
-    function postOp(PostOpMode, bytes calldata context, uint256 actualGasCost)
-        public
-        payable
-        virtual
-        onlyEntryPoint06
-    {
+    function postOp(
+        PostOpMode,
+        bytes calldata context,
+        uint256 actualGasCost
+    ) public payable virtual onlyEntryPoint06 {
         unchecked {
             uint256 cost = actualGasCost + _postOpCost;
             address user = abi.decode(context, (address));
             _burn(user, _swap(true, -int256(cost)));
             assembly ("memory-safe") {
-                pop(call(gas(), caller(), cost, codesize(), 0x00, codesize(), 0x00))
+                pop(
+                    call(
+                        gas(),
+                        caller(),
+                        cost,
+                        codesize(),
+                        0x00,
+                        codesize(),
+                        0x00
+                    )
+                )
             }
         }
     }
@@ -290,7 +337,17 @@ contract NEETH is ERC20 {
             address user = abi.decode(context, (address));
             _burn(user, _swap(true, -int256(cost)));
             assembly ("memory-safe") {
-                pop(call(gas(), caller(), cost, codesize(), 0x00, codesize(), 0x00))
+                pop(
+                    call(
+                        gas(),
+                        caller(),
+                        cost,
+                        codesize(),
+                        0x00,
+                        codesize(),
+                        0x00
+                    )
+                )
             }
         }
     }
@@ -298,27 +355,38 @@ contract NEETH is ERC20 {
     /// ===================== STAKING OPERATIONS ===================== ///
 
     /// @dev Adds stake to EntryPoint (if `old`, version 0.6 is used).
-    function addStake(bool old, uint32 unstakeDelaySec) public payable virtual onlyDAO {
-        IEntryPoint(payable(old ? EP06 : EP07)).addStake{value: msg.value}(unstakeDelaySec);
+    function addStake(
+        bool old,
+        uint32 unstakeDelaySec
+    ) public payable virtual onlyDAO {
+        IEntryPoint(payable(old ? i_ep06 : i_ep07)).addStake{value: msg.value}(
+            unstakeDelaySec
+        );
     }
 
     /// @dev Unlocks stake from EntryPoint (if `old`, version 0.6 is used).
     function unlockStake(bool old) public virtual onlyDAO {
-        IEntryPoint(payable(old ? EP06 : EP07)).unlockStake();
+        IEntryPoint(payable(old ? i_ep06 : i_ep07)).unlockStake();
     }
 
     /// @dev Withdraws stake from EntryPoint (if `old`, version 0.6 is used).
-    function withdrawStake(bool old, address payable withdrawAddress) public virtual onlyDAO {
-        IEntryPoint(payable(old ? EP06 : EP07)).withdrawStake(withdrawAddress);
+    function withdrawStake(
+        bool old,
+        address payable withdrawAddress
+    ) public virtual onlyDAO {
+        IEntryPoint(payable(old ? i_ep06 : i_ep07)).withdrawStake(withdrawAddress);
     }
 
     /// @dev Withdraws EntryPoint deposits under DAO governance (if `old`, version 0.6 is used).
-    function withdrawTo(bool old, address payable withdrawAddress, uint256 withdrawAmount)
-        public
-        virtual
-        onlyDAO
-    {
-        IEntryPoint(old ? EP06 : EP07).withdrawTo(withdrawAddress, withdrawAmount);
+    function withdrawTo(
+        bool old,
+        address payable withdrawAddress,
+        uint256 withdrawAmount
+    ) public virtual onlyDAO {
+        IEntryPoint(old ? i_ep06 : i_ep07).withdrawTo(
+            withdrawAddress,
+            withdrawAmount
+        );
     }
 
     /// =================== GOVERNANCE OPERATIONS =================== ///
@@ -344,7 +412,11 @@ interface IEntryPoint {
 
 /// @dev Simple Uniswap V3 swapping interface.
 interface ISwapRouter {
-    function swap(address, bool, int256, uint160, bytes calldata)
-        external
-        returns (int256, int256);
+    function swap(
+        address,
+        bool,
+        int256,
+        uint160,
+        bytes calldata
+    ) external returns (int256, int256);
 }
