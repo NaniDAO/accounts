@@ -1,5 +1,5 @@
 # RecoveryValidator
-[Git Source](https://github.com/NaniDAO/accounts/blob/7d03f63f38e077f2bb76ec4063f510608c363fc3/src/validators/RecoveryValidator.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/e8688d40b41a4f91d7244ea40c12251a38f039f2/src/validators/RecoveryValidator.sol)
 
 Simple social recovery validator for smart accounts.
 
@@ -117,7 +117,7 @@ function setThreshold(uint192 threshold) public payable virtual;
 
 
 ```solidity
-function setAuthorizers(address[] calldata authorizers) public payable virtual;
+function setAuthorizers(address[] memory authorizers) public payable virtual;
 ```
 
 ### requestOwnershipHandover
@@ -157,7 +157,7 @@ function cancelOwnershipHandover() public payable virtual;
 
 
 ```solidity
-function install(uint32 delay, uint192 threshold, address[] calldata authorizers)
+function install(uint32 delay, uint192 threshold, address[] memory authorizers)
     public
     payable
     virtual;

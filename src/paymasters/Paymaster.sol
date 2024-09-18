@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.19;
 
+import "@solady/src/auth/Ownable.sol";
 import "@solady/src/utils/SignatureCheckerLib.sol";
 
 /// @notice Simple ERC4337 Paymaster.
 /// @author nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/paymasters/Paymaster.sol)
 /// @custom:version 1.0.0
-contract Paymaster {
+contract Paymaster is Ownable {
     /// ========================= CONSTANTS ========================= ///
 
     /// @dev The canonical ERC4337 EntryPoint contract (0.7).
     address internal constant ENTRY_POINT = 0x0000000071727De22E5E9d8BAf0edAc6f37da032;
 
-    /// ========================= IMMUTABLES ========================= ///
-
-    /// @dev Holds an immutable owner for this contract.
-    address internal immutable OWNER;
+    /// @dev Prehash of `keccak256("")` for validation efficiency.
+    bytes32 internal constant _NULL_HASH =
+        0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
 
     /// ========================== STRUCTS ========================== ///
 
@@ -32,22 +32,11 @@ contract Paymaster {
         bytes signature;
     }
 
-    /// ========================= MODIFIERS ========================= ///
-
-    /// @dev Requires that the caller is the owner.
-    modifier onlyOwner() virtual {
-        address owner = OWNER;
-        assembly ("memory-safe") {
-            if iszero(eq(caller(), owner)) { revert(codesize(), 0x00) }
-        }
-        _;
-    }
-
     /// ======================== CONSTRUCTOR ======================== ///
 
     /// @dev Constructs this owned implementation.
     constructor(address owner) payable {
-        OWNER = owner;
+        _initializeOwner(owner);
     }
 
     /// =================== VALIDATION OPERATIONS =================== ///
@@ -59,14 +48,14 @@ contract Paymaster {
         uint256 /*maxCost*/
     ) public payable virtual returns (bytes memory, uint256) {
         assembly ("memory-safe") {
-            if iszero(eq(caller(), ENTRY_POINT)) { revert(codesize(), 0x00) }
+            if iszero(eq(caller(), ENTRY_POINT)) { revert(codesize(), codesize()) }
         }
         (uint48 validUntil, uint48 validAfter) =
-            abi.decode(userOp.paymasterAndData[20:84], (uint48, uint48));
-        bytes calldata signature = userOp.paymasterAndData[84:];
+            abi.decode(userOp.paymasterAndData[52:116], (uint48, uint48));
+        bytes calldata signature = userOp.paymasterAndData[116:];
         if (
             SignatureCheckerLib.isValidSignatureNowCalldata(
-                OWNER, _hashSignedUserOp(userOp, validUntil, validAfter), signature
+                owner(), _hashSignedUserOp(userOp, validUntil, validAfter), signature
             )
         ) {
             return ("", _packValidationData(true, validUntil, validAfter));
@@ -86,7 +75,7 @@ contract Paymaster {
                 abi.encode(
                     userOp.sender,
                     userOp.nonce,
-                    userOp.initCode.length == 0 ? bytes32(0) : _calldataKeccak(userOp.initCode),
+                    userOp.initCode.length == 0 ? _NULL_HASH : _calldataKeccak(userOp.initCode),
                     _calldataKeccak(userOp.callData),
                     userOp.accountGasLimits,
                     uint256(bytes32(userOp.paymasterAndData[20:52])),
@@ -101,13 +90,13 @@ contract Paymaster {
         );
     }
 
-    /// @dev Keccak function over calldata. This is more efficient than letting solidity do it.
+    /// @dev Keccak function over calldata. This is more efficient than letting Solidity do it.
     function _calldataKeccak(bytes calldata data) internal pure virtual returns (bytes32 hash) {
         assembly ("memory-safe") {
-            let mem := mload(0x40)
-            let len := data.length
-            calldatacopy(mem, data.offset, len)
-            hash := keccak256(mem, len)
+            let m := mload(0x40)
+            let l := data.length
+            calldatacopy(m, data.offset, l)
+            hash := keccak256(m, l)
         }
     }
 

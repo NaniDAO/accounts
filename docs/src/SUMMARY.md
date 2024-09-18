@@ -30,5 +30,8 @@
     - [IExecutor](src/validators/PermitValidator.sol/interface.IExecutor.md)
     - [RecoveryValidator](src/validators/RecoveryValidator.sol/contract.RecoveryValidator.md)
     - [ITransferOwnership](src/validators/RecoveryValidator.sol/interface.ITransferOwnership.md)
+    - [RemoteValidator](src/validators/RemoteValidator.sol/contract.RemoteValidator.md)
+    - [IOwnable](src/validators/RemoteValidator.sol/interface.IOwnable.md)
   - [Account](src/Account.sol/contract.Account.md)
+  - [AccountURL](src/AccountURL.sol/contract.AccountURL.md)
   - [Accounts](src/Accounts.sol/contract.Accounts.md)

@@ -1,5 +1,5 @@
 # NEETH
-[Git Source](https://github.com/NaniDAO/accounts/blob/7d03f63f38e077f2bb76ec4063f510608c363fc3/src/paymasters/NEETH.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/e8688d40b41a4f91d7244ea40c12251a38f039f2/src/paymasters/NEETH.sol)
 
 **Inherits:**
 ERC20
@@ -19,33 +19,6 @@ Simple wrapped ERC4337 implementation with paymaster and yield functions.
 
 ```solidity
 address internal constant DAO = 0xDa000000000000d2885F108500803dfBAaB2f2aA;
-```
-
-
-### POOL
-*The Uniswap V3 pool on Arbitrum for swapping between WETH & stETH.*
-
-
-```solidity
-address internal constant POOL = 0x35218a1cbaC5Bbc3E57fd9Bd38219D37571b3537;
-```
-
-
-### WETH
-*The WETH contract for wrapping and unwrapping ETH on Arbitrum.*
-
-
-```solidity
-address internal constant WETH = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1;
-```
-
-
-### YIELD
-*The yield token contract address (in V1, bridged wrapped stETH).*
-
-
-```solidity
-address internal constant YIELD = 0x5979D7b546E38E414F7E9822514be443A4800529;
 ```
 
 
@@ -83,6 +56,35 @@ uint160 internal constant MIN_SQRT_RATIO_PLUS_ONE = 4295128740;
 ```solidity
 uint160 internal constant MAX_SQRT_RATIO_MINUS_ONE =
     1461446703485210103287273052203988822378723970341;
+```
+
+
+### POOL
+========================= IMMUTABLES ========================= ///
+
+*The Uniswap V3 pool for swapping WETH & staked ETH.*
+
+
+```solidity
+address internal immutable POOL;
+```
+
+
+### WETH
+*The WETH contract for wrapping and unwrapping ETH.*
+
+
+```solidity
+address internal immutable WETH;
+```
+
+
+### YIELD
+*The yield token contract address (in V1, pools).*
+
+
+```solidity
+address internal immutable YIELD;
 ```
 
 
@@ -164,7 +166,7 @@ function symbol() public view virtual override returns (string memory);
 
 
 ```solidity
-constructor() payable;
+constructor(address pool, address weth, address yield) payable;
 ```
 
 ### deposit
@@ -181,7 +183,7 @@ function deposit() public payable virtual returns (uint256 neeth);
 ### depositTo
 
 *Deposits `msg.value` ETH into NEETH for `to`.
-The output NEETH shares represent swapped stETH.
+The output NEETH shares represent swapped st-ETH.
 DAO receives a grant in order to fund concerns.
 This DAO fee will pay for itself quick enough.*
 
@@ -194,7 +196,7 @@ function depositTo(address to) public payable virtual returns (uint256 neeth);
 
 ==================== WITHDRAW OPERATIONS ==================== ///
 
-*Burns `amount` NEETH (stETH) of caller and returns ETH.*
+*Burns `amount` NEETH (st-ETH) of caller and returns ETH.*
 
 
 ```solidity
@@ -203,7 +205,7 @@ function withdraw(uint256 amount) public virtual;
 
 ### withdrawFrom
 
-*Burns `amount` NEETH (stETH) of `from` and sends output ETH for `to`.*
+*Burns `amount` NEETH (st-ETH) of `from` and sends output ETH for `to`.*
 
 
 ```solidity
@@ -214,7 +216,7 @@ function withdrawFrom(address from, address to, uint256 amount) public virtual;
 
 ====================== SWAP OPERATIONS ====================== ///
 
-*Executes a swap across the Uniswap V3 pool on Arbitrum for WETH & stETH.*
+*Executes a swap across the Uniswap V3 pool for WETH & st-ETH.*
 
 
 ```solidity
@@ -232,7 +234,7 @@ fallback() external payable virtual;
 
 ### _transferYieldToken
 
-*Funds an `amount` of YIELD token (stETH) to pool caller for swap.*
+*Funds an `amount` of YIELD token (st-ETH) to pool caller for swap.*
 
 
 ```solidity

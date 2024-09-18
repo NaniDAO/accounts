@@ -1,5 +1,8 @@
 # Paymaster
-[Git Source](https://github.com/NaniDAO/accounts/blob/7d03f63f38e077f2bb76ec4063f510608c363fc3/src/paymasters/Paymaster.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/e8688d40b41a4f91d7244ea40c12251a38f039f2/src/paymasters/Paymaster.sol)
+
+**Inherits:**
+Ownable
 
 **Author:**
 nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/paymasters/Paymaster.sol)
@@ -19,29 +22,17 @@ address internal constant ENTRY_POINT = 0x0000000071727De22E5E9d8BAf0edAc6f37da0
 ```
 
 
-### OWNER
-========================= IMMUTABLES ========================= ///
-
-*Holds an immutable owner for this contract.*
+### _NULL_HASH
+*Prehash of `keccak256("")` for validation efficiency.*
 
 
 ```solidity
-address internal immutable OWNER;
+bytes32 internal constant _NULL_HASH =
+    0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
 ```
 
 
 ## Functions
-### onlyOwner
-
-========================= MODIFIERS ========================= ///
-
-*Requires that the caller is the owner.*
-
-
-```solidity
-modifier onlyOwner() virtual;
-```
-
 ### constructor
 
 ======================== CONSTRUCTOR ======================== ///
@@ -83,7 +74,7 @@ function _hashSignedUserOp(
 
 ### _calldataKeccak
 
-*Keccak function over calldata. This is more efficient than letting solidity do it.*
+*Keccak function over calldata. This is more efficient than letting Solidity do it.*
 
 
 ```solidity

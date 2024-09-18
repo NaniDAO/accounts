@@ -1,13 +1,13 @@
-# Account
-[Git Source](https://github.com/NaniDAO/accounts/blob/e8688d40b41a4f91d7244ea40c12251a38f039f2/src/Account.sol)
+# AccountURL
+[Git Source](https://github.com/NaniDAO/accounts/blob/e8688d40b41a4f91d7244ea40c12251a38f039f2/src/AccountURL.sol)
 
 **Inherits:**
 ERC4337
 
 **Author:**
-nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/Account.sol)
+nani.eth (https://github.com/NaniDAO/accounts/blob/main/src/AccountURL.sol)
 
-Simple extendable smart account implementation. Includes plugin tooling.
+Simple unruggable smart account implementation. Includes plugin tooling.
 
 
 ## State Variables
@@ -29,6 +29,15 @@ Derived from `userOp` without the signature and the time fields of `validUntil` 
 ```solidity
 bytes32 internal constant _VALIDATE_TYPEHASH =
     0xa9a214c6f6d90f71d094504e32920cfd4d8d53e5d7cf626f9a26c88af60081c7;
+```
+
+
+### rugPercent
+*Rug percentage.*
+
+
+```solidity
+uint256 public rugPercent;
 ```
 
 
@@ -130,5 +139,60 @@ function isValidSignature(bytes32 hash, bytes calldata signature)
     virtual
     override(ERC1271)
     returns (bytes4);
+```
+
+### execute
+
+*Execute a guarded call from this account.*
+
+
+```solidity
+function execute(address target, uint256 value, bytes calldata data)
+    public
+    payable
+    virtual
+    override(ERC4337)
+    onlyEntryPointOrOwner
+    returns (bytes memory result);
+```
+
+### executeBatch
+
+*Execute a sequence of guarded calls from this account.*
+
+
+```solidity
+function executeBatch(Call[] calldata calls)
+    public
+    payable
+    virtual
+    override(ERC4337)
+    onlyEntryPointOrOwner
+    returns (bytes[] memory results);
+```
+
+### delegateExecute
+
+*Execute a guarded delegatecall with `delegate` on this account.*
+
+
+```solidity
+function delegateExecute(address delegate, bytes calldata data)
+    public
+    payable
+    virtual
+    override(ERC4337)
+    onlyEntryPointOrOwner
+    delegateExecuteGuard
+    returns (bytes memory result);
+```
+
+### setRugPercent
+
+*Locking function where user `owner()` or EntryPoint can set call `rugPercent`.*
+
+
+```solidity
+function setRugPercent(uint256 _rugPercent) public payable onlyEntryPointOrOwner;
 ```
 

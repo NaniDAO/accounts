@@ -22,13 +22,16 @@ Chain           | Factory                                 | Implementation      
 ----------------|-----------------------------------------|-----------------------------------------|------------------------------------------
 Ethereum, Arbitrum / Nova, Optimism, Base, Zora, Blast, Gnosis, Polygon / zkEVM, BNB, Avalanche & testnets | [0x0000000000009f1E546FC4A8F68eB98031846cb8](https://etherscan.io/address/0x0000000000009f1E546FC4A8F68eB98031846cb8#code) | [0x0000000000002259DC557B2D35A3Bbbf3A70eB75](https://etherscan.io/address/0x0000000000002259DC557B2D35A3Bbbf3A70eB75#code) | [ffe035982fc03887895bafde845ad17490063cdc](https://github.com/NaniDAO/Account/commit/ffe035982fc03887895bafde845ad17490063cdc)
 
+#### Account URL (Unruggable): [0x0000000000004Bf084D1821a0d9D271A84E5c8E4](https://basescan.org/address/0x0000000000004bf084d1821a0d9d271a84e5c8e4#code)
+> Set hard 'rug' limits for ETH txs
+
 ### [Plugin Validators](https://github.com/NaniDAO/accounts/tree/main/src/validators):
 
 Utilizes [`ERC7582` minimal modular account](https://eips.ethereum.org/EIPS/eip-7582) interface.
 
 #### JointValidator: [0x000000000000D3D2b2980A7BC509018E4d88e947](https://arbiscan.io/address/0x000000000000D3D2b2980A7BC509018E4d88e947#code)
 > Add joint owners to your smart account with full concurrent rights
-#### RecoveryValidator: [0x000000000000B498889a6371092C19f0ddfCaAf6](https://arbiscan.io/address/0x000000000000B498889a6371092C19f0ddfCaAf6#code)
+#### RecoveryValidator: [0x000000000000a78fB292191473E51Dd34700c43D](https://arbiscan.io/address/0x000000000000a78fB292191473E51Dd34700c43D#code)
 > Add backups to your smart account (can set time delay and *m/n* scheme)
 #### PaymentValidator: [0x00000000000032CD4FAE890F90e61e6864e44aa7](https://arbiscan.io/address/0x00000000000032CD4FAE890F90e61e6864e44aa7#code)
 > Add payment plans and delegate token transfer permissions (*e.g.*, invoice agents)
@@ -39,7 +42,7 @@ Utilizes [`ERC7582` minimal modular account](https://eips.ethereum.org/EIPS/eip-
 
 ### Plugin Owners:
 
-#### [Dagon](https://github.com/Moloch-Mystics/dagon): [0x0000000000001ADDcB933DD5028159dc965b5b7f](https://arbiscan.io/address/0x0000000000001ADDcB933DD5028159dc965b5b7f#code)
+#### [Dagon](https://github.com/Moloch-Mystics/dagon): [0x000000000000FEb893BB5D63bA33323EdCC237cE](https://arbiscan.io/address/0x000000000000FEb893BB5D63bA33323EdCC237cE#code)
 > token-weighted ownership (simulates *multisig m/n* and *DAO* voting)
 #### Keys: [0x000000000000B418eE0A5B649462Fb851B266522](https://arbiscan.io/address/0x000000000000B418eE0A5B649462Fb851B266522#code)
 > token-bound ownership (NFTs are owners, *i.e.*, "my Milady is my key")
@@ -51,30 +54,9 @@ Utilizes [`ERC7582` minimal modular account](https://eips.ethereum.org/EIPS/eip-
 
 ### Paymaster:
 
-#### NEETH: [0x00000000000009B4AB3f1bC2b029bd7513Fbd8ED](https://arbiscan.io/address/0x00000000000009B4AB3f1bC2b029bd7513Fbd8ED#code)
-> magic paymaster: stake ETH and use Lido yield to sponsor transactions
-
-### Finance:
-
-#### [Ragequitter](https://github.com/Moloch-Mystics/ragequit): [0x0000000000008743D388E5279B2A9EF87A3115Ae](https://arbiscan.io/address/0x0000000000008743d388e5279b2a9ef87a3115ae#code)
-> fund smart accounts and give moloch-style refunds to contributors
-
-### Agency:
-
-#### [IE](https://github.com/NaniDAO/ie): [0x1e00002C59149d0057F12e031ecC0000d38A000C](https://arbiscan.io/address/0x1e00002C59149d0057F12e031ecC0000d38A000C#code)
-> translate text commands into onchain calldata (text-to-tx)
-#### [NANI](https://github.com/NaniDAO/NANI): [0x000000000000641b6A7B74F177bAbDB4417718EF](https://arbiscan.io/address/0x000000000000641b6a7b74f177babdb4417718ef#code)
-> check community models and verified function calls (agent helper)
-#### Akashic: [0x000000000000394793B2Fe854281CeE09a98bdBC](https://arbiscan.io/address/0x000000000000394793B2Fe854281CeE09a98bdBC#code)
-> onchain knowledge base with DAO governance of topics (embeddings)
-
-### [Governance](https://github.com/NaniDAO/NaniDAO):
-> incentivized testing and model training; community AI alignment
-
-* Points: [0x00000000007f7396897bf90B00e96EaE4B71d055](https://arbiscan.io/address/0x00000000007f7396897bf90b00e96eae4b71d055#code)
-* Token: [0x000000000000C6A645b0E51C9eCAA4CA580Ed8e8](https://arbiscan.io/address/0x000000000000C6A645b0E51C9eCAA4CA580Ed8e8)
-* Votes: [0x00000000F7000067ED10710A342eC0D09a734Bee](https://arbiscan.io/address/0x00000000f7000067ed10710a342ec0d09a734bee)
-* DAO: [0xDa000000000000d2885F108500803dfBAaB2f2aA](https://arbiscan.io/address/0xDa000000000000d2885F108500803dfBAaB2f2aA#code)
+#### NEETH (ARB): [0x00000000000009B4AB3f1bC2b029bd7513Fbd8ED](https://arbiscan.io/address/0x00000000000009B4AB3f1bC2b029bd7513Fbd8ED#code)
+#### NEETH (BASE): [0x00000000000077E2072D61672eb6EC18a136c80A](https://basescan.org/address/0x00000000000077E2072D61672eb6EC18a136c80A#code)
+> magic paymaster: stake ETH and use DeFi yield to sponsor transactions
 
 ## Blueprint
 

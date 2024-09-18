@@ -1,5 +1,5 @@
 # Passkeys
-[Git Source](https://github.com/NaniDAO/accounts/blob/7d03f63f38e077f2bb76ec4063f510608c363fc3/src/ownership/Passkeys.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/e8688d40b41a4f91d7244ea40c12251a38f039f2/src/ownership/Passkeys.sol)
 
 *Simple singleton to store passkey ownership and backups for accounts.*
 
@@ -21,7 +21,7 @@ mapping(address account => mapping(address backup => bool active)) public backup
 
 
 ```solidity
-mapping(address account => mapping(uint256 x => uint256 y)) public passkeys;
+mapping(address account => mapping(bytes32 x => bytes32 y)) public passkeys;
 ```
 
 
@@ -68,7 +68,7 @@ function setBackup(address backup, bool active) public virtual;
 
 
 ```solidity
-function setPasskey(uint256 x, uint256 y) public virtual;
+function setPasskey(bytes32 x, bytes32 y) public virtual;
 ```
 
 ## Events
@@ -88,7 +88,7 @@ note: Revocation is done by setting `y` to nothing.*
 
 
 ```solidity
-event PasskeySet(address indexed account, uint256 x, uint256 y);
+event PasskeySet(address indexed account, bytes32 x, bytes32 y);
 ```
 
 ## Structs
@@ -100,8 +100,8 @@ event PasskeySet(address indexed account, uint256 x, uint256 y);
 
 ```solidity
 struct Passkey {
-    uint256 x;
-    uint256 y;
+    bytes32 x;
+    bytes32 y;
 }
 ```
 

@@ -12,15 +12,6 @@ contract NEETH is ERC20 {
     /// @dev The governing DAO address.
     address internal constant DAO = 0xDa000000000000d2885F108500803dfBAaB2f2aA;
 
-    /// @dev The Uniswap V3 pool on Arbitrum for swapping between WETH & stETH.
-    address internal immutable POOL;
-
-    /// @dev The WETH contract for wrapping and unwrapping ETH on Arbitrum.
-    address internal immutable WETH;
-
-    /// @dev The yield token contract address (in V1, bridged wrapped stETH).
-    address internal immutable YIELD;
-
     /// @dev A canonical ERC4337 EntryPoint contract for NEETH alpha (0.6).
     address internal constant EP06 = 0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789;
 
@@ -33,6 +24,17 @@ contract NEETH is ERC20 {
     /// @dev The maximum value that can be returned from `getSqrtRatioAtTick` (minus one).
     uint160 internal constant MAX_SQRT_RATIO_MINUS_ONE =
         1461446703485210103287273052203988822378723970341;
+
+    /// ========================= IMMUTABLES ========================= ///
+
+    /// @dev The Uniswap V3 pool for swapping WETH & staked ETH.
+    address internal immutable POOL;
+
+    /// @dev The WETH contract for wrapping and unwrapping ETH.
+    address internal immutable WETH;
+
+    /// @dev The yield token contract address (in V1, pools).
+    address internal immutable YIELD;
 
     /// ========================== STRUCTS ========================== ///
 
@@ -93,18 +95,16 @@ contract NEETH is ERC20 {
 
     /// @dev Requires that the caller is the EntryPoint (0.6).
     modifier onlyEntryPoint06() virtual {
-        address ep06 = EP06;
         assembly ("memory-safe") {
-            if iszero(eq(caller(), ep06)) { revert(codesize(), codesize()) }
+            if iszero(eq(caller(), EP06)) { revert(codesize(), codesize()) }
         }
         _;
     }
 
     /// @dev Requires that the caller is the EntryPoint (0.7).
     modifier onlyEntryPoint07() virtual {
-        address ep07 = EP07;
         assembly ("memory-safe") {
-            if iszero(eq(caller(), ep07)) { revert(codesize(), codesize()) }
+            if iszero(eq(caller(), EP07)) { revert(codesize(), codesize()) }
         }
         _;
     }
@@ -136,23 +136,23 @@ contract NEETH is ERC20 {
     }
 
     /// @dev Deposits `msg.value` ETH into NEETH for `to`.
-    /// The output NEETH shares represent swapped stETH.
+    /// The output NEETH shares represent swapped st-ETH.
     /// DAO receives a grant in order to fund concerns.
     /// This DAO fee will pay for itself quick enough.
     function depositTo(address to) public payable virtual returns (uint256 neeth) {
         uint256 fee = daoFee;
-        _mint(to, neeth = (_swap(false, int256(msg.value)) /*output stETH*/ - fee));
+        _mint(to, neeth = (_swap(false, int256(msg.value)) /*output st-ETH*/ - fee));
         _mint(DAO, fee);
     }
 
     /// ==================== WITHDRAW OPERATIONS ==================== ///
 
-    /// @dev Burns `amount` NEETH (stETH) of caller and returns ETH.
+    /// @dev Burns `amount` NEETH (st-ETH) of caller and returns ETH.
     function withdraw(uint256 amount) public virtual {
         withdrawFrom(msg.sender, msg.sender, amount);
     }
 
-    /// @dev Burns `amount` NEETH (stETH) of `from` and sends output ETH for `to`.
+    /// @dev Burns `amount` NEETH (st-ETH) of `from` and sends output ETH for `to`.
     function withdrawFrom(address from, address to, uint256 amount) public virtual {
         if (msg.sender != from) _spendAllowance(from, msg.sender, amount);
         _burn(from, amount); // Burn NEETH.
@@ -161,7 +161,7 @@ contract NEETH is ERC20 {
 
     /// ====================== SWAP OPERATIONS ====================== ///
 
-    /// @dev Executes a swap across the Uniswap V3 pool on Arbitrum for WETH & stETH.
+    /// @dev Executes a swap across the Uniswap V3 pool for WETH & st-ETH.
     function _swap(bool zeroForOne, int256 amount) internal virtual returns (uint256) {
         (int256 amount0, int256 amount1) = ISwapRouter(POOL).swap(
             address(this),
@@ -181,7 +181,7 @@ contract NEETH is ERC20 {
         int256 amount1Delta;
         bool zeroForOne;
         assembly ("memory-safe") {
-            if iszero(eq(caller(), pool)) { revert(codesize(), 0x00) }
+            if iszero(eq(caller(), pool)) { revert(codesize(), codesize()) }
             amount0Delta := calldataload(0x4)
             amount1Delta := calldataload(0x24)
             zeroForOne := byte(0, calldataload(0x84))
@@ -194,7 +194,7 @@ contract NEETH is ERC20 {
         }
     }
 
-    /// @dev Funds an `amount` of YIELD token (stETH) to pool caller for swap.
+    /// @dev Funds an `amount` of YIELD token (st-ETH) to pool caller for swap.
     function _transferYieldToken(uint256 amount) internal virtual {
         address yield = YIELD;
         assembly ("memory-safe") {
