@@ -1,5 +1,5 @@
 # PermitValidator
-[Git Source](https://github.com/NaniDAO/accounts/blob/e8688d40b41a4f91d7244ea40c12251a38f039f2/src/validators/PermitValidator.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/7de36a3d39c803832cd611fb5f109f5ac92c99ae/src/validators/PermitValidator.sol)
 
 **Inherits:**
 EIP712
@@ -123,7 +123,7 @@ note: Ensure `timesUsed` is zero unless a rewrite is preferred.*
 
 
 ```solidity
-function setPermitHash(Permit calldata permit) public payable virtual;
+function setPermitHash(Permit calldata permit) public virtual;
 ```
 
 ### validatePermit
@@ -261,7 +261,7 @@ function getAuthorizers(address account) public view virtual returns (address[] 
 
 
 ```solidity
-function install(address[] calldata authorizers) public payable virtual;
+function install(address[] calldata authorizers) public virtual;
 ```
 
 ### uninstall
@@ -270,7 +270,7 @@ function install(address[] calldata authorizers) public payable virtual;
 
 
 ```solidity
-function uninstall() public payable virtual;
+function uninstall() public virtual;
 ```
 
 ## Events

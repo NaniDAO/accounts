@@ -132,13 +132,10 @@ contract PermitValidator is EIP712 {
             abi.decode(userOp.signature, (bytes32, bytes));
         address[] memory authorizers = _authorizers[msg.sender];
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
-        for (uint256 i; i != authorizers.length;) {
+        for (uint256 i; i != authorizers.length; ++i) {
             if (SignatureCheckerLib.isValidSignatureNow(authorizers[i], hash, signature)) {
                 validationData = 0x01; // Failure code.
                 break;
-            }
-            unchecked {
-                ++i;
             }
         }
         if (validationData == 0x00) return 0x01; // Failure code.
@@ -164,13 +161,10 @@ contract PermitValidator is EIP712 {
             abi.decode(userOp.signature, (bytes32, bytes));
         address[] memory authorizers = _authorizers[msg.sender];
         bytes32 hash = SignatureCheckerLib.toEthSignedMessageHash(userOpHash);
-        for (uint256 i; i != authorizers.length;) {
+        for (uint256 i; i != authorizers.length; ++i) {
             if (SignatureCheckerLib.isValidSignatureNow(authorizers[i], hash, signature)) {
                 validationData = 0x01; // Failure code.
                 break;
-            }
-            unchecked {
-                ++i;
             }
         }
         if (validationData == 0x00) return 0x01; // Failure code.
@@ -204,7 +198,7 @@ contract PermitValidator is EIP712 {
 
     /// @dev Sets the permit for a permit hash given by the caller.
     /// note: Ensure `timesUsed` is zero unless a rewrite is preferred.
-    function setPermitHash(Permit calldata permit) public payable virtual {
+    function setPermitHash(Permit calldata permit) public virtual {
         _permits[_hashTypedData(keccak256(abi.encode(msg.sender, permit)))] = permit;
     }
 
@@ -242,7 +236,7 @@ contract PermitValidator is EIP712 {
         virtual
         returns (uint256 validationData)
     {
-        validationData = valid | validUntil << 160 | validAfter << 208;
+        validationData = (valid) | (uint256(validUntil) << 160) | (uint256(validAfter) << 208);
     }
 
     /// @dev Validates a permit argument for a given call data.
@@ -365,12 +359,12 @@ contract PermitValidator is EIP712 {
     }
 
     /// @dev Installs new authorizers for the caller account.
-    function install(address[] calldata authorizers) public payable virtual {
+    function install(address[] calldata authorizers) public virtual {
         emit AuthorizersSet(msg.sender, (_authorizers[msg.sender] = authorizers));
     }
 
     /// @dev Uninstalls the authorizers for the caller account.
-    function uninstall() public payable virtual {
+    function uninstall() public virtual {
         emit AuthorizersSet(msg.sender, (_authorizers[msg.sender] = new address[](0)));
     }
 }

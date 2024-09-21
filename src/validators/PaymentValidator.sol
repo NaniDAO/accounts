@@ -162,7 +162,8 @@ contract PaymentValidator {
         virtual
         returns (uint256 validationData)
     {
-        validationData = valid == 1 ? 0 : 1 | validUntil << 160 | validAfter << 208;
+        validationData =
+            (valid == 1 ? 0 : 1) | (uint256(validUntil) << 160) | (uint256(validAfter) << 208);
     }
 
     /// =================== AUTHORIZER OPERATIONS =================== ///

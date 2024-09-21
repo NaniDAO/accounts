@@ -185,7 +185,7 @@ contract PaymentValidatorTest is Test {
         userOp.signature = _sign(ownerKey, userOpHash);
         userOp.callData = abi.encodeCall(IAccount.execute, (guardian1, 1 ether, ""));
         uint256 validity = validator.validateUserOp(userOp, bytes32("ok"), 0);
-        assertEq(validity, 1); // Error code.
+        assertEq(validity, 6277101733925179126504886505003981583386072424808101969921); // Packed Error code.
     }
 
     function testFailETHPaymentPlanInvalidValue() public {
@@ -278,7 +278,7 @@ contract PaymentValidatorTest is Test {
             (address(mockERC20), 0 ether, abi.encodeCall(IERC20.transfer, (guardian1, 1 ether)))
         );
         uint256 validity = validator.validateUserOp(userOp, bytes32("ok"), 0);
-        assertEq(validity, 0);
+        assertEq(validity, 6277101733925179126504886505003981583386072424808101969920);
     }
 
     function testFailERC20PaymentPlanInvalidSelector() public {
@@ -347,7 +347,7 @@ contract PaymentValidatorTest is Test {
             (address(mockERC20), 0 ether, abi.encodeCall(IERC20.transfer, (guardian1, 1 ether)))
         );
         uint256 validity = validator.validateUserOp(userOp, bytes32("ok"), 0);
-        assertEq(validity, 1);
+        assertEq(validity, 6277101733925179126504886505003981583386072424808101969921);
     }
 
     function testFailERC20PaymentPlanInvalidTarget() public {

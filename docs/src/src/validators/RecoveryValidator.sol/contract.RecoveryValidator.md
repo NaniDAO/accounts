@@ -1,5 +1,5 @@
 # RecoveryValidator
-[Git Source](https://github.com/NaniDAO/accounts/blob/e8688d40b41a4f91d7244ea40c12251a38f039f2/src/validators/RecoveryValidator.sol)
+[Git Source](https://github.com/NaniDAO/accounts/blob/7de36a3d39c803832cd611fb5f109f5ac92c99ae/src/validators/RecoveryValidator.sol)
 
 Simple social recovery validator for smart accounts.
 

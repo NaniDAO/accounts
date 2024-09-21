@@ -33,9 +33,9 @@ Utilizes [`ERC7582` minimal modular account](https://eips.ethereum.org/EIPS/eip-
 > Add joint owners to your smart account with full concurrent rights
 #### RecoveryValidator: [0x000000000000a78fB292191473E51Dd34700c43D](https://arbiscan.io/address/0x000000000000a78fB292191473E51Dd34700c43D#code)
 > Add backups to your smart account (can set time delay and *m/n* scheme)
-#### PaymentValidator: [0x00000000000032CD4FAE890F90e61e6864e44aa7](https://arbiscan.io/address/0x00000000000032CD4FAE890F90e61e6864e44aa7#code)
+#### PaymentValidator: [0x000000000000dF3C51a888aB783C3E6355e33fe0](https://arbiscan.io/address/0x000000000000dF3C51a888aB783C3E6355e33fe0#code)
 > Add payment plans and delegate token transfer permissions (*e.g.*, invoice agents)
-#### PermitValidator: [0x000000000000ab6c9FF3ed50AC4BAF2a20890835](https://arbiscan.io/address/0x000000000000ab6c9FF3ed50AC4BAF2a20890835#code)
+#### PermitValidator: [0x000000000000E8C738709eE8778063711B073680](https://arbiscan.io/address/0x000000000000E8C738709eE8778063711B073680#code)
 > Add arbitrary permissions within the Permit structure (*e.g.*, voting and swapping rights)
 #### RemoteValidator: [0x0000000000159aAFCA7067005E28665a28B5B4cf](https://arbiscan.io/address/0x0000000000159aAFCA7067005E28665a28B5B4cf#code)
 > Add simple scheduled transactions sequence (*e.g.*, DCA) or other 'remote' agent operations

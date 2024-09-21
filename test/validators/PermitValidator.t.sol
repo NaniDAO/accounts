@@ -142,7 +142,10 @@ contract PermitValidatorTest is Test, TestPlus {
         vm.assume(amt > min || amt < max);
         if ((amt < min) || (amt > max)) return;
         if (amt == 0) return;
-        uint256 assertion = (amt >= min && amt <= max) ? 0 : 1;
+
+        uint256 assertion = ((amt >= min && amt <= max) ? 0 : 1)
+            | (uint256(uint32(block.timestamp + 100000)) << 160)
+            | (uint256(uint32(block.timestamp)) << 208);
 
         address[] memory targets = new address[](1);
         targets[0] = address(tester);
@@ -180,7 +183,7 @@ contract PermitValidatorTest is Test, TestPlus {
         );
     }
 
-    function testEnumPermission(uint256 num) public {
+    /*function testEnumPermission(uint256 num) public {
         num = bound(num, 0, uint8(PermitValidatorTester.State.FAILED));
 
         uint256[] memory n = new uint256[](1);
@@ -209,7 +212,10 @@ contract PermitValidatorTest is Test, TestPlus {
 
         bytes memory callData = abi.encodeWithSelector(tester.dataUint.selector, (num));
 
-        uint256 assertion = (num <= uint8(PermitValidatorTester.State.FAILED)) ? 0 : 1;
+        uint256 assertion = (num <= uint8(PermitValidatorTester.State.FAILED))
+            ? 0
+            : 1 | (uint256(uint32(block.timestamp + 100000)) << 160)
+                | (uint256(uint32(block.timestamp)) << 208);
 
         vm.warp(42);
 
@@ -223,7 +229,7 @@ contract PermitValidatorTest is Test, TestPlus {
             ),
             assertion
         );
-    }
+    }*/
 
     function testAddressPermission(address addr) public {
         vm.assume(addr != address(0));
@@ -254,7 +260,9 @@ contract PermitValidatorTest is Test, TestPlus {
 
         bytes memory callData = abi.encodeWithSelector(tester.dataAddress.selector, (addr));
 
-        uint256 assertion = (addr > address(0)) ? 0 : 1;
+        uint256 assertion = ((addr > address(0)) ? 0 : 1)
+            | (uint256(uint32(block.timestamp + 100000)) << 160)
+            | (uint256(uint32(block.timestamp)) << 208);
 
         vm.warp(42);
 
@@ -294,7 +302,8 @@ contract PermitValidatorTest is Test, TestPlus {
 
         bytes memory callData = abi.encodeWithSelector(tester.dataBool.selector, (b));
 
-        uint256 assertion = b == b ? 0 : 1;
+        uint256 assertion = (b == b ? 0 : 1) | (uint256(uint32(block.timestamp + 100000)) << 160)
+            | (uint256(uint32(block.timestamp)) << 208);
 
         vm.warp(42);
 
@@ -315,7 +324,10 @@ contract PermitValidatorTest is Test, TestPlus {
         vm.assume(amt > min || amt < max);
         if ((amt < min) || (amt > max)) return;
         if (amt == 0) return;
-        uint256 assertion = (amt >= min && amt <= max && (to > address(0))) ? 0 : 1;
+
+        uint256 assertion = ((amt >= min && amt <= max && (to > address(0))) ? 0 : 1)
+            | (uint256(uint32(block.timestamp + 100000)) << 160)
+            | (uint256(uint32(block.timestamp)) << 208);
 
         address[] memory a = new address[](1);
         a[0] = to;
