@@ -58,6 +58,9 @@ Utilizes [`ERC7582` minimal modular account](https://eips.ethereum.org/EIPS/eip-
 #### NEETH (BASE): [0x00000000000077E2072D61672eb6EC18a136c80A](https://basescan.org/address/0x00000000000077E2072D61672eb6EC18a136c80A#code)
 > magic paymaster: stake ETH and use DeFi yield to sponsor transactions
 
+[0x0000000000006Ac3d14B99811525D19e0168fDFe](https://arbiscan.io/address/0x0000000000006Ac3d14B99811525D19e0168fDFe#code)
+> pay tx relay with any asset
+
 ## Blueprint
 
 ```txt
