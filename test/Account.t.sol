@@ -594,7 +594,7 @@ contract AccountTest is SoladyTest {
                     "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
                 ),
                 keccak256("NANI"),
-                keccak256("1.2.3"),
+                keccak256("1.3.0"),
                 block.chainid,
                 address(account)
             )
@@ -617,7 +617,7 @@ contract AccountTest is SoladyTest {
     ) internal view returns (bytes32 digest) {
         address _account = address(account);
         bytes32 nameHash = keccak256(bytes("NANI"));
-        bytes32 versionHash = keccak256(bytes("1.2.3"));
+        bytes32 versionHash = keccak256(bytes("1.3.0"));
         assembly ("memory-safe") {
             let m := mload(0x40) // Load the free memory pointer.
             mstore(m, _DOMAIN_TYPEHASH)
@@ -659,5 +659,468 @@ contract AccountTest is SoladyTest {
                 validAfter
             )
         );
+    }
+
+    // ===================== AGENT TESTS =====================
+
+    function _grantAgent(
+        address agent,
+        address[] memory targets,
+        bytes4[] memory selectors,
+        uint128 spendLimit,
+        uint48 validAfter,
+        uint48 validUntil,
+        uint32 txLimit
+    ) internal {
+        account.grantAgent(agent, targets, selectors, spendLimit, validAfter, validUntil, txLimit);
+    }
+
+    function testGrantAgent() public {
+        account.initialize(address(this));
+
+        address agent = address(0xA1);
+        address target = address(new Target());
+
+        address[] memory targets = new address[](1);
+        targets[0] = target;
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = Target.setData.selector;
+
+        _grantAgent(agent, targets, selectors, 1 ether, 0, 0, 0);
+
+        Account.AgentScope memory scope = account.getAgent(agent);
+        assertTrue(scope.active);
+        assertEq(scope.spendLimit, 1 ether);
+        assertEq(scope.spent, 0);
+        assertEq(scope.validAfter, 0);
+        assertEq(scope.validUntil, 0);
+        assertEq(scope.txLimit, 0);
+        assertEq(scope.txCount, 0);
+        assertEq(scope.nonce, 1);
+
+        assertTrue(account.canAgentCall(agent, target, Target.setData.selector));
+        assertFalse(account.canAgentCall(agent, target, Target.revertWithTargetError.selector));
+        assertFalse(account.canAgentCall(agent, address(0xdead), Target.setData.selector));
+    }
+
+    function testGrantAgentOnlyOwner() public {
+        account.initialize(address(this));
+
+        address agent = address(0xA1);
+        address[] memory targets = new address[](0);
+        bytes4[] memory selectors = new bytes4[](0);
+
+        vm.prank(address(0xBEEF));
+        vm.expectRevert(Ownable.Unauthorized.selector);
+        account.grantAgent(agent, targets, selectors, 0, 0, 0, 0);
+    }
+
+    function testGrantAgentViaSelfCall() public {
+        account.initialize(address(this));
+
+        address agent = address(0xA1);
+        address target = address(new Target());
+
+        address[] memory targets = new address[](1);
+        targets[0] = target;
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = Target.setData.selector;
+
+        // Owner calls execute -> account calls grantAgent on itself.
+        account.execute(
+            address(account),
+            0,
+            abi.encodeWithSelector(
+                Account.grantAgent.selector,
+                agent,
+                targets,
+                selectors,
+                uint128(1 ether),
+                uint48(0),
+                uint48(0),
+                uint32(0)
+            )
+        );
+
+        assertTrue(account.getAgent(agent).active);
+        assertTrue(account.canAgentCall(agent, target, Target.setData.selector));
+    }
+
+    function testRevokeAgent() public {
+        account.initialize(address(this));
+
+        address agent = address(0xA1);
+        address target = address(new Target());
+
+        address[] memory targets = new address[](1);
+        targets[0] = target;
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = Target.setData.selector;
+
+        _grantAgent(agent, targets, selectors, 1 ether, 0, 0, 0);
+        assertTrue(account.getAgent(agent).active);
+
+        account.revokeAgent(agent);
+        assertFalse(account.getAgent(agent).active);
+        assertFalse(account.canAgentCall(agent, target, Target.setData.selector));
+    }
+
+    function testRevokeAgentOnlyOwner() public {
+        account.initialize(address(this));
+
+        vm.prank(address(0xBEEF));
+        vm.expectRevert(Ownable.Unauthorized.selector);
+        account.revokeAgent(address(0xA1));
+    }
+
+    function testExecuteAsAgent() public {
+        vm.deal(address(account), 1 ether);
+        account.initialize(address(this));
+
+        address agent = address(0xA1);
+        address target = address(new Target());
+        bytes memory data = _randomBytes(111);
+
+        address[] memory targets = new address[](1);
+        targets[0] = target;
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = Target.setData.selector;
+
+        _grantAgent(agent, targets, selectors, 1 ether, 0, 0, 0);
+
+        vm.prank(agent);
+        account.executeAsAgent(
+            target, 123, abi.encodeWithSignature("setData(bytes)", data)
+        );
+        assertEq(Target(target).datahash(), keccak256(data));
+        assertEq(target.balance, 123);
+
+        // Check tx count incremented.
+        assertEq(account.getAgent(agent).txCount, 1);
+        // Check spent tracking.
+        assertEq(account.getAgent(agent).spent, 123);
+    }
+
+    function testExecuteAsAgentBatch() public {
+        vm.deal(address(account), 1 ether);
+        account.initialize(address(this));
+
+        address agent = address(0xA1);
+        Target target0 = new Target();
+        Target target1 = new Target();
+
+        address[] memory targets = new address[](2);
+        targets[0] = address(target0);
+        targets[1] = address(target1);
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = Target.setData.selector;
+
+        _grantAgent(agent, targets, selectors, 1 ether, 0, 0, 0);
+
+        ERC4337.Call[] memory calls = new ERC4337.Call[](2);
+        calls[0].target = address(target0);
+        calls[0].value = 100;
+        calls[0].data = abi.encodeWithSignature("setData(bytes)", _randomBytes(111));
+        calls[1].target = address(target1);
+        calls[1].value = 200;
+        calls[1].data = abi.encodeWithSignature("setData(bytes)", _randomBytes(222));
+
+        vm.prank(agent);
+        account.executeAsAgentBatch(calls);
+
+        assertEq(target0.datahash(), keccak256(_randomBytes(111)));
+        assertEq(target1.datahash(), keccak256(_randomBytes(222)));
+        assertEq(address(target0).balance, 100);
+        assertEq(address(target1).balance, 200);
+        assertEq(account.getAgent(agent).txCount, 2);
+        assertEq(account.getAgent(agent).spent, 300);
+    }
+
+    function testAgentInvalidWhenNotGranted() public {
+        vm.deal(address(account), 1 ether);
+        account.initialize(address(this));
+
+        address agent = address(0xA1);
+        address target = address(new Target());
+
+        vm.prank(agent);
+        vm.expectRevert(Account.AgentInvalid.selector);
+        account.executeAsAgent(target, 0, abi.encodeWithSignature("setData(bytes)", ""));
+    }
+
+    function testAgentInvalidAfterRevoke() public {
+        vm.deal(address(account), 1 ether);
+        account.initialize(address(this));
+
+        address agent = address(0xA1);
+        address target = address(new Target());
+
+        address[] memory targets = new address[](1);
+        targets[0] = target;
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = Target.setData.selector;
+
+        _grantAgent(agent, targets, selectors, 1 ether, 0, 0, 0);
+        account.revokeAgent(agent);
+
+        vm.prank(agent);
+        vm.expectRevert(Account.AgentInvalid.selector);
+        account.executeAsAgent(
+            target, 0, abi.encodeWithSignature("setData(bytes)", "")
+        );
+    }
+
+    function testAgentTargetDenied() public {
+        vm.deal(address(account), 1 ether);
+        account.initialize(address(this));
+
+        address agent = address(0xA1);
+        address target = address(new Target());
+        address badTarget = address(new Target());
+
+        address[] memory targets = new address[](1);
+        targets[0] = target;
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = Target.setData.selector;
+
+        _grantAgent(agent, targets, selectors, 0, 0, 0, 0);
+
+        vm.prank(agent);
+        vm.expectRevert(Account.AgentTargetDenied.selector);
+        account.executeAsAgent(
+            badTarget, 0, abi.encodeWithSignature("setData(bytes)", "")
+        );
+    }
+
+    function testAgentSelectorDenied() public {
+        vm.deal(address(account), 1 ether);
+        account.initialize(address(this));
+
+        address agent = address(0xA1);
+        address target = address(new Target());
+
+        address[] memory targets = new address[](1);
+        targets[0] = target;
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = Target.setData.selector;
+
+        _grantAgent(agent, targets, selectors, 1 ether, 0, 0, 0);
+
+        vm.prank(agent);
+        vm.expectRevert(Account.AgentSelectorDenied.selector);
+        account.executeAsAgent(
+            target, 0, abi.encodeWithSignature("revertWithTargetError(bytes)", "")
+        );
+    }
+
+    function testAgentSpendLimit() public {
+        vm.deal(address(account), 10 ether);
+        account.initialize(address(this));
+
+        address agent = address(0xA1);
+        address target = address(new Target());
+
+        address[] memory targets = new address[](1);
+        targets[0] = target;
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = Target.setData.selector;
+
+        _grantAgent(agent, targets, selectors, 1 ether, 0, 0, 0);
+
+        // Within limit.
+        vm.prank(agent);
+        account.executeAsAgent(
+            target, 0.5 ether, abi.encodeWithSignature("setData(bytes)", "")
+        );
+
+        // Exceeds limit.
+        vm.prank(agent);
+        vm.expectRevert(Account.AgentLimitExceeded.selector);
+        account.executeAsAgent(
+            target, 0.6 ether, abi.encodeWithSignature("setData(bytes)", "")
+        );
+
+        // Exactly remaining.
+        vm.prank(agent);
+        account.executeAsAgent(
+            target, 0.5 ether, abi.encodeWithSignature("setData(bytes)", "")
+        );
+        assertEq(account.getAgent(agent).spent, 1 ether);
+    }
+
+    function testAgentTxLimit() public {
+        vm.deal(address(account), 1 ether);
+        account.initialize(address(this));
+
+        address agent = address(0xA1);
+        address target = address(new Target());
+
+        address[] memory targets = new address[](1);
+        targets[0] = target;
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = Target.setData.selector;
+
+        _grantAgent(agent, targets, selectors, 0, 0, 0, 2);
+
+        vm.prank(agent);
+        account.executeAsAgent(
+            target, 0, abi.encodeWithSignature("setData(bytes)", "")
+        );
+
+        vm.prank(agent);
+        account.executeAsAgent(
+            target, 0, abi.encodeWithSignature("setData(bytes)", "")
+        );
+
+        // Third call exceeds tx limit.
+        vm.prank(agent);
+        vm.expectRevert(Account.AgentLimitExceeded.selector);
+        account.executeAsAgent(
+            target, 0, abi.encodeWithSignature("setData(bytes)", "")
+        );
+    }
+
+    function testAgentTimeBounds() public {
+        vm.deal(address(account), 1 ether);
+        account.initialize(address(this));
+
+        address agent = address(0xA1);
+        address target = address(new Target());
+
+        address[] memory targets = new address[](1);
+        targets[0] = target;
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = Target.setData.selector;
+
+        // Valid from timestamp 1000 to 2000.
+        _grantAgent(agent, targets, selectors, 0, 1000, 2000, 0);
+
+        // Before validAfter.
+        vm.warp(999);
+        vm.prank(agent);
+        vm.expectRevert(Account.AgentInvalid.selector);
+        account.executeAsAgent(
+            target, 0, abi.encodeWithSignature("setData(bytes)", "")
+        );
+
+        // Within bounds.
+        vm.warp(1500);
+        vm.prank(agent);
+        account.executeAsAgent(
+            target, 0, abi.encodeWithSignature("setData(bytes)", "")
+        );
+
+        // After validUntil.
+        vm.warp(2001);
+        vm.prank(agent);
+        vm.expectRevert(Account.AgentInvalid.selector);
+        account.executeAsAgent(
+            target, 0, abi.encodeWithSignature("setData(bytes)", "")
+        );
+    }
+
+    function testGrantAgentOverwriteInvalidatesOldScope() public {
+        vm.deal(address(account), 1 ether);
+        account.initialize(address(this));
+
+        address agent = address(0xA1);
+        Target target0 = new Target();
+        Target target1 = new Target();
+
+        // First grant: target0 + setData.
+        address[] memory targets0 = new address[](1);
+        targets0[0] = address(target0);
+        bytes4[] memory selectors0 = new bytes4[](1);
+        selectors0[0] = Target.setData.selector;
+        _grantAgent(agent, targets0, selectors0, 1 ether, 0, 0, 0);
+
+        assertTrue(account.canAgentCall(agent, address(target0), Target.setData.selector));
+
+        // Second grant: target1 + revertWithTargetError (overwrite).
+        address[] memory targets1 = new address[](1);
+        targets1[0] = address(target1);
+        bytes4[] memory selectors1 = new bytes4[](1);
+        selectors1[0] = Target.revertWithTargetError.selector;
+        _grantAgent(agent, targets1, selectors1, 2 ether, 0, 0, 0);
+
+        // Old target/selector no longer accessible (nonce bumped).
+        assertFalse(account.canAgentCall(agent, address(target0), Target.setData.selector));
+        // New target/selector is valid.
+        assertTrue(
+            account.canAgentCall(agent, address(target1), Target.revertWithTargetError.selector)
+        );
+        // Scope values overwritten.
+        assertEq(account.getAgent(agent).spendLimit, 2 ether);
+        assertEq(account.getAgent(agent).spent, 0);
+        assertEq(account.getAgent(agent).nonce, 2);
+    }
+
+    function testAgentEthTransferNoSelector() public {
+        vm.deal(address(account), 1 ether);
+        account.initialize(address(this));
+
+        address agent = address(0xA1);
+        address target = address(0xBEEF);
+
+        address[] memory targets = new address[](1);
+        targets[0] = target;
+        bytes4[] memory selectors = new bytes4[](0); // No selectors.
+
+        _grantAgent(agent, targets, selectors, 1 ether, 0, 0, 0);
+
+        // Plain ETH transfer (empty data, no selector check).
+        vm.prank(agent);
+        account.executeAsAgent(target, 0.1 ether, "");
+        assertEq(target.balance, 0.1 ether);
+    }
+
+    function testAgentRevertsBubbleUp() public {
+        vm.deal(address(account), 1 ether);
+        account.initialize(address(this));
+
+        address agent = address(0xA1);
+        address target = address(new Target());
+        bytes memory data = _randomBytes(111);
+
+        address[] memory targets = new address[](1);
+        targets[0] = target;
+        bytes4[] memory selectors = new bytes4[](2);
+        selectors[0] = Target.setData.selector;
+        selectors[1] = Target.revertWithTargetError.selector;
+
+        _grantAgent(agent, targets, selectors, 1 ether, 0, 0, 0);
+
+        vm.prank(agent);
+        vm.expectRevert(abi.encodeWithSignature("TargetError(bytes)", data));
+        account.executeAsAgent(
+            target, 0, abi.encodeWithSignature("revertWithTargetError(bytes)", data)
+        );
+    }
+
+    function testCanAgentCallViewChecks() public {
+        account.initialize(address(this));
+
+        address agent = address(0xA1);
+        address target = address(new Target());
+
+        // Not granted.
+        assertFalse(account.canAgentCall(agent, target, Target.setData.selector));
+
+        address[] memory targets = new address[](1);
+        targets[0] = target;
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = Target.setData.selector;
+
+        // With tx limit of 1.
+        _grantAgent(agent, targets, selectors, 0, 0, 0, 1);
+        assertTrue(account.canAgentCall(agent, target, Target.setData.selector));
+
+        // Exhaust the tx limit.
+        vm.deal(address(account), 1 ether);
+        vm.prank(agent);
+        account.executeAsAgent(
+            target, 0, abi.encodeWithSignature("setData(bytes)", "")
+        );
+        assertFalse(account.canAgentCall(agent, target, Target.setData.selector));
     }
 }
