@@ -244,7 +244,7 @@ contract RecoveryValidatorTest is Test {
         assertEq(settings.deadline, 0);
     }
 
-    function testFailSocialRecoveryWithEOAKey() public {
+    function testRevertSocialRecoveryWithEOAKey() public {
         address _guardian1 = guardian1;
         address _guardian2 = guardian2;
         address _guardian3 = guardian3;
@@ -263,6 +263,7 @@ contract RecoveryValidatorTest is Test {
         calls[0].data =
             abi.encodeWithSelector(socialRecoveryValidator.install.selector, 2 days, 2, guardians);
 
+        // Intentionally stores an EOA address (_guardian3) as the "validator".
         calls[1].target = address(account);
         calls[1].value = 0 ether;
         calls[1].data = abi.encodeWithSelector(
@@ -272,13 +273,6 @@ contract RecoveryValidatorTest is Test {
         );
         vm.startPrank(_guardian1);
         account.executeBatch(calls);
-
-        bytes memory stored = account.execute(
-            address(account),
-            0 ether,
-            abi.encodeWithSelector(account.storageLoad.selector, bytes32(abi.encodePacked(key)))
-        );
-        assertEq(bytes20(bytes32(stored)), bytes20(address(socialRecoveryValidator)));
 
         NaniAccount.PackedUserOperation memory userOp;
         userOp.sender = address(account);
@@ -308,10 +302,11 @@ contract RecoveryValidatorTest is Test {
         vm.warp(3 days);
         socialRecoveryValidator.completeOwnershipHandoverRequest(address(account));
         vm.startPrank(_ENTRY_POINT);
+        vm.expectRevert();
         account.validateUserOp(userOp, userOpHash, 0);
     }
 
-    function testFailSocialRecoveryWithZeroKey() public {
+    function testRevertSocialRecoveryWithZeroKey() public {
         address _guardian1 = guardian1;
         address _guardian2 = guardian2;
         address _guardian3 = guardian3;
@@ -330,6 +325,7 @@ contract RecoveryValidatorTest is Test {
         calls[0].data =
             abi.encodeWithSelector(socialRecoveryValidator.install.selector, 2 days, 2, guardians);
 
+        // Intentionally stores an EOA address (_guardian3) as the "validator".
         calls[1].target = address(account);
         calls[1].value = 0 ether;
         calls[1].data = abi.encodeWithSelector(
@@ -340,13 +336,6 @@ contract RecoveryValidatorTest is Test {
         vm.startPrank(_guardian1);
         account.executeBatch(calls);
 
-        bytes memory stored = account.execute(
-            address(account),
-            0 ether,
-            abi.encodeWithSelector(account.storageLoad.selector, bytes32(abi.encodePacked(key)))
-        );
-        assertEq(bytes20(bytes32(stored)), bytes20(address(socialRecoveryValidator)));
-
         NaniAccount.PackedUserOperation memory userOp;
         userOp.sender = address(account);
         userOp.callData = abi.encodeWithSelector(
@@ -356,6 +345,9 @@ contract RecoveryValidatorTest is Test {
             abi.encodeWithSelector(account.transferOwnership.selector, _guardian2)
         );
 
+        // With key=0, nonce < type(uint64).max, so it goes through owner signature
+        // validation (not the plugin path). The guardian signature won't match the owner,
+        // so validation returns non-zero (failure).
         userOp.nonce = 0 | (uint256(uint160(0)) << 64);
         bytes32 userOpHash = hex"00";
 
@@ -375,7 +367,8 @@ contract RecoveryValidatorTest is Test {
         vm.warp(3 days);
         socialRecoveryValidator.completeOwnershipHandoverRequest(address(account));
         vm.startPrank(_ENTRY_POINT);
-        account.validateUserOp(userOp, userOpHash, 0);
+        uint256 validationData = account.validateUserOp(userOp, userOpHash, 0);
+        assertNotEq(validationData, 0);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////

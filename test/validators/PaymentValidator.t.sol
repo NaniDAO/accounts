@@ -127,7 +127,7 @@ contract PaymentValidatorTest is Test {
         assertEq(validity, 0);
     }
 
-    function testFailPaymentPlanInvalidAllowance() public {
+    function testRevertPaymentPlanInvalidAllowance() public {
         vm.deal(address(account), 1 ether);
         account.initialize(owner);
         address[] memory guardians = new address[](2);
@@ -154,6 +154,7 @@ contract PaymentValidatorTest is Test {
         userOp.sender = address(account);
         userOp.signature = _sign(guardian1key, userOpHash);
         userOp.callData = abi.encodeCall(IAccount.execute, (guardian1, 0, ""));
+        vm.expectRevert();
         validator.validateUserOp(userOp, bytes32("ok"), 0);
     }
 
@@ -188,7 +189,7 @@ contract PaymentValidatorTest is Test {
         assertEq(validity, 6277101733925179126504886505003981583386072424808101969921); // Packed Error code.
     }
 
-    function testFailETHPaymentPlanInvalidValue() public {
+    function testRevertETHPaymentPlanInvalidValue() public {
         vm.deal(address(account), 1 ether);
         account.initialize(owner);
         address[] memory guardians = new address[](2);
@@ -215,10 +216,11 @@ contract PaymentValidatorTest is Test {
         userOp.sender = address(account);
         userOp.signature = _sign(guardian1key, userOpHash);
         userOp.callData = abi.encodeCall(IAccount.execute, (guardian1, 2 ether, ""));
+        vm.expectRevert();
         validator.validateUserOp(userOp, bytes32("ok"), 0);
     }
 
-    function testFailETHInvalidTarget() public {
+    function testRevertETHInvalidTarget() public {
         vm.deal(address(account), 1 ether);
         account.initialize(owner);
         address[] memory guardians = new address[](2);
@@ -245,6 +247,7 @@ contract PaymentValidatorTest is Test {
         userOp.sender = address(account);
         userOp.signature = _sign(guardian1key, userOpHash);
         userOp.callData = abi.encodeCall(IAccount.execute, (guardian2, 2 ether, ""));
+        vm.expectRevert();
         validator.validateUserOp(userOp, bytes32("ok"), 0);
     }
 
@@ -281,7 +284,7 @@ contract PaymentValidatorTest is Test {
         assertEq(validity, 6277101733925179126504886505003981583386072424808101969920);
     }
 
-    function testFailERC20PaymentPlanInvalidSelector() public {
+    function testRevertERC20PaymentPlanInvalidSelector() public {
         account.initialize(owner);
         address[] memory guardians = new address[](2);
         guardians[0] = guardian1;
@@ -314,6 +317,7 @@ contract PaymentValidatorTest is Test {
                 abi.encodeCall(IBadCall.notTransfer, (guardian1, 1 ether))
             )
         );
+        vm.expectRevert();
         validator.validateUserOp(userOp, bytes32("ok"), 0);
     }
 
@@ -350,7 +354,7 @@ contract PaymentValidatorTest is Test {
         assertEq(validity, 6277101733925179126504886505003981583386072424808101969921);
     }
 
-    function testFailERC20PaymentPlanInvalidTarget() public {
+    function testRevertERC20PaymentPlanInvalidTarget() public {
         account.initialize(owner);
         address[] memory guardians = new address[](2);
         guardians[0] = guardian1;
@@ -379,10 +383,11 @@ contract PaymentValidatorTest is Test {
             IAccount.execute,
             (address(mockERC20), 0 ether, abi.encodeCall(IERC20.transfer, (guardian2, 1 ether)))
         );
+        vm.expectRevert();
         validator.validateUserOp(userOp, bytes32("ok"), 0);
     }
 
-    function testFailERC20PaymentPlanInvalidValue() public {
+    function testRevertERC20PaymentPlanInvalidValue() public {
         account.initialize(owner);
         address[] memory guardians = new address[](2);
         guardians[0] = guardian1;
@@ -411,6 +416,7 @@ contract PaymentValidatorTest is Test {
             IAccount.execute,
             (address(mockERC20), 0 ether, abi.encodeCall(IERC20.transfer, (guardian1, 2 ether)))
         );
+        vm.expectRevert();
         validator.validateUserOp(userOp, bytes32("ok"), 0);
     }
 

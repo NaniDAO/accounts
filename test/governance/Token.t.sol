@@ -48,17 +48,19 @@ contract TokenTest is Test {
         assertEq(token.totalSupply(), MAX);
     }
 
-    function testFailUnsafeTransfer(address to) public {
+    function testRevertUnsafeTransfer(address to) public {
         vm.assume(to != address(0) && to != address(token) && to != alice);
         vm.prank(alice);
+        vm.expectRevert();
         token.transfer(to, MAX + 1);
     }
 
-    function testFailTransferBeyondBalance(address to) public {
+    function testRevertTransferBeyondBalance(address to) public {
         vm.assume(to != address(0) && to != address(token) && to != alice);
         vm.prank(alice);
         token.transfer(to, 1 ether);
         vm.prank(to);
+        vm.expectRevert();
         token.transfer(alice, 1 ether + 1);
     }
 
